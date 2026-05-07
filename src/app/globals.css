@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+/* Modo oscuro: clase `dark` en <html> (next-themes) */
+@variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light dark;
+  --background: #f7f9fa;
+  --foreground: #071012;
+  --muted: rgba(7, 16, 18, 0.06);
+  --muted-foreground: #5a6567;
+  --card: #ffffff;
+  --card-foreground: #071012;
+  --border: rgba(7, 16, 18, 0.12);
+  --input-bg: #ffffff;
+  --input-border: rgba(7, 16, 18, 0.14);
+  --primary: #00b6c7;
+  --primary-foreground: #071012;
+  --ring: rgba(0, 182, 199, 0.22);
+  --nav-bg: rgba(255, 255, 255, 0.86);
+  --nav-border: rgba(7, 16, 18, 0.1);
+  --sidebar: rgba(247, 249, 250, 0.94);
+  --divide: rgba(7, 16, 18, 0.08);
+  /* Marca Nextmedia (acentos, badges, mapas) */
+  --led: #00b6c7;
+  --electric: #1f8fff;
+  --purple: #b84dff;
+  --energy: #ffe600;
+  --signal: #ff7a00;
+  --highlight: #ff2daa;
+  --ocean: #081820;
+  --petroleum: #003a3a;
+  --signal: #ff7a00;
+}
+
+.dark {
+  --background: #071012;
+  --foreground: #f7f9fa;
+  --muted: rgba(255, 255, 255, 0.06);
+  --muted-foreground: rgba(247, 249, 250, 0.66);
+  --card: #081820;
+  --card-foreground: #f7f9fa;
+  --border: rgba(0, 182, 199, 0.24);
+  --input-bg: rgba(255, 255, 255, 0.04);
+  --input-border: rgba(255, 255, 255, 0.08);
+  --primary: #00b6c7;
+  --primary-foreground: #071012;
+  --ring: rgba(0, 182, 199, 0.28);
+  --nav-bg: rgba(7, 16, 18, 0.78);
+  --nav-border: rgba(0, 182, 199, 0.2);
+  --sidebar: rgba(8, 24, 32, 0.88);
+  --divide: rgba(0, 182, 199, 0.14);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-ring: var(--ring);
+  --color-nav: var(--nav-bg);
+  --color-sidebar: var(--sidebar);
+  --color-divide: var(--divide);
+  --color-led: var(--led);
+  --color-electric: var(--electric);
+  --color-ocean: var(--ocean);
+  --color-petroleum: var(--petroleum);
+  --color-carbon: #071012;
+  --color-signal: var(--signal);
+  --radius-card: 24px;
+  --radius-input: 14px;
+}
+
+/* Fondo página: Soft White (claro) / degradado Carbon → Petroleum (oscuro) */
+.nm-body {
+  background-color: var(--background);
+}
+
+.dark .nm-body {
+  background: linear-gradient(180deg, #071012 0%, #003a3a 100%);
+  background-attachment: fixed;
+}
+
+/* Glow sutil tipo LED (tarjetas / hovers) */
+.nm-glow {
+  box-shadow:
+    0 0 12px rgba(0, 182, 199, 0.12),
+    0 0 48px rgba(0, 182, 199, 0.06);
+}
+
+.dark .nm-glow {
+  box-shadow:
+    0 0 12px rgba(0, 182, 199, 0.15),
+    0 0 48px rgba(0, 182, 199, 0.08);
+}
+
+/* Display / titulares (Bebas Neue via variable de next/font) */
+.font-display {
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+}

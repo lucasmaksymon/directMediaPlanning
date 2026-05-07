@@ -1,0 +1,150 @@
+// Direct Planning — esquema inicial (MVP, modelo de pago C)
+// Ver docs/03-modelo-inventario-ooh.md y docs/04-prd-mvp.md
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  advertiser
+  provider
+  admin
+}
+
+enum InventoryFormat {
+  digital_ooh
+  static_ooh
+  digital_package
+}
+
+enum PriceModel {
+  fixed_list
+  negotiable
+  package
+}
+
+enum InventoryStatus {
+  draft
+  published
+  paused
+}
+
+enum BookingGranularity {
+  day
+  week
+}
+
+enum SlotState {
+  available
+  reserved_pending
+  reserved_confirmed
+  blocked
+}
+
+enum ReservationStatus {
+  draft
+  pending_provider
+  rejected
+  accepted
+  payment_pending
+  confirmed
+  cancelled
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String?
+  role         UserRole
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  advertiserProfile AdvertiserProfile?
+  providerProfile   ProviderProfile?
+  reservations      Reservation[]      @relation("AdvertiserReservations")
+}
+
+model AdvertiserProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  legalName String?
+  taxId     String?
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProviderProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName String
+  taxId       String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  inventoryUnits InventoryUnit[]
+}
+
+model InventoryUnit {
+  id                       String              @id @default(cuid())
+  providerId               String
+  provider                 ProviderProfile     @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  name                     String
+  format                   InventoryFormat
+  locationLabel            String
+  latitude                 Float?
+  longitude                Float?
+  basePriceAmount          Decimal             @db.Decimal(14, 2)
+  currency                 String              @default("ARS")
+  priceModel               PriceModel
+  minimalBookingGranularity BookingGranularity @default(week)
+  status                   InventoryStatus     @default(draft)
+  description              String?
+  imageUrls                String[]            @default([])
+  metadata                 Json?
+  createdAt                DateTime            @default(now())
+  updatedAt                DateTime            @updatedAt
+
+  availability AvailabilityBlock[]
+  reservations Reservation[]
+}
+
+model AvailabilityBlock {
+  id         String    @id @default(cuid())
+  unitId     String
+  unit       InventoryUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  startsAt   DateTime
+  endsAt     DateTime
+  state      SlotState @default(available)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([unitId, startsAt, endsAt])
+}
+
+model Reservation {
+  id               String              @id @default(cuid())
+  inventoryUnitId  String
+  inventoryUnit    InventoryUnit       @relation(fields: [inventoryUnitId], references: [id], onDelete: Cascade)
+  advertiserId     String
+  advertiser       User                @relation("AdvertiserReservations", fields: [advertiserId], references: [id], onDelete: Cascade)
+  startsAt         DateTime
+  endsAt           DateTime
+  status           ReservationStatus   @default(pending_provider)
+  agreedAmount     Decimal?            @db.Decimal(14, 2)
+  platformFeeRate  Decimal?            @db.Decimal(5, 4)
+  providerNote     String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@index([advertiserId])
+  @@index([inventoryUnitId, status])
+}
