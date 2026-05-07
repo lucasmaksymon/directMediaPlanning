@@ -30,7 +30,7 @@ export default async function ExplorarDetallePage({
   const isAdvertiser = session?.user?.role === "advertiser";
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+    <main className="w-full px-4 py-8 sm:px-6 lg:px-8 xl:px-10">
       <Link
         className="text-sm font-medium text-muted-foreground transition hover:text-led hover:underline"
         href="/explorar"

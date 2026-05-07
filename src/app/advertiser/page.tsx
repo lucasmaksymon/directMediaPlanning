@@ -24,7 +24,7 @@ export default async function AdvertiserReservationsPage() {
 
   return (
     <div className="space-y-10">
-      <header className="max-w-3xl">
+      <header className="max-w-5xl">
         <h1 className="font-display text-3xl font-normal uppercase tracking-wide text-foreground">
           Mis solicitudes
         </h1>

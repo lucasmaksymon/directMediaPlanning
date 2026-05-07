@@ -11,8 +11,8 @@ export default async function ExplorarPage({
   const { units, providers, filters } = await fetchExploreData(flat);
 
   return (
-    <main className="mx-auto max-w-[1440px] px-4 py-8 sm:px-6 lg:py-10">
-      <header className="mb-10 max-w-4xl">
+    <main className="w-full px-4 py-6 sm:px-6 lg:px-8 lg:py-8 xl:px-10">
+      <header className="mb-8 max-w-5xl">
         <h1 className="font-display text-3xl font-normal uppercase tracking-wide text-foreground sm:text-4xl">
           Catálogo de espacios
         </h1>

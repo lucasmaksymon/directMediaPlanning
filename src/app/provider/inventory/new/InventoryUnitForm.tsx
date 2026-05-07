@@ -35,7 +35,7 @@ function FormSection({
         <div className="min-w-0">
           <h2 className="text-base font-semibold tracking-tight text-foreground">{title}</h2>
           {description ? (
-            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-1.5 max-w-4xl text-sm leading-relaxed text-muted-foreground">
               {description}
             </p>
           ) : null}
@@ -173,7 +173,7 @@ export function InventoryUnitForm({ unit }: { unit?: UnitForEdit }) {
   }
 
   return (
-    <form action={action} className="max-w-2xl space-y-6">
+    <form action={action} className="w-full max-w-4xl space-y-6">
       <FormSection
         description="Nombre comercial del espacio y zona que ves en cotizaciones y en el catálogo."
         title="Espacio y zona"

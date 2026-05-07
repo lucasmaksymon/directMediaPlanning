@@ -15,7 +15,7 @@ export async function AppHeader() {
       suppressHydrationWarning
     >
       <div
-        className="mx-auto flex h-14 max-w-[1440px] items-center gap-3 px-4 sm:gap-4 sm:px-6"
+        className="flex h-14 w-full items-center gap-3 px-4 sm:gap-4 sm:px-6 lg:px-8 xl:px-10"
         suppressHydrationWarning
       >
         <Link className="shrink-0 font-display text-lg uppercase tracking-wide text-foreground" href="/">

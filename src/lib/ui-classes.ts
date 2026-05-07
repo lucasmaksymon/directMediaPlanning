@@ -23,8 +23,11 @@ export const btnPrimary =
 export const btnSecondary =
   "inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-full border-2 border-primary bg-transparent px-7 text-sm font-bold uppercase tracking-wide text-foreground transition duration-250 hover:bg-primary/10";
 
-/** Contenedor de página de marketing / auth. */
-export const pageContainer = "mx-auto max-w-[1440px] px-4 sm:px-6";
+/** Padding horizontal consistente para páginas a ancho completo. */
+export const layoutPadding = "px-4 sm:px-6 lg:px-8 xl:px-10";
+
+/** Contenedor de página (marketing / vistas públicas): usa todo el ancho útil. */
+export const pageContainer = cn("w-full", layoutPadding);
 
 /** Texto introductorio bajo títulos. */
 export const proseMuted = "text-base leading-relaxed text-muted-foreground";

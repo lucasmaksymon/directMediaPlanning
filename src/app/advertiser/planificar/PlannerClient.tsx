@@ -74,7 +74,7 @@ export function PlannerClient({ unitDetails }: Props) {
     <div className="space-y-8">
       {/* Paso 1: Brief */}
       {step === "brief" && (
-        <div className="max-w-2xl">
+        <div className="w-full max-w-4xl">
           <BriefForm onSubmit={handleBriefSubmit} pending={isPending} />
         </div>
       )}
@@ -115,7 +115,7 @@ export function PlannerClient({ unitDetails }: Props) {
                 <p className="mb-4 text-sm text-muted-foreground">
                   Seleccioná los espacios que querés reservar. Podés deseleccionar los que no te interesan.
                 </p>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                   {result.recomendaciones.map((rec) => {
                     const u = unitMap.get(rec.unitId);
                     if (!u) return null;

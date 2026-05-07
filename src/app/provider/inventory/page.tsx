@@ -31,7 +31,7 @@ export default async function ProviderInventoryPage() {
   return (
     <div className="space-y-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="max-w-2xl">
+        <div className="max-w-4xl">
           <h1 className="font-display text-3xl font-normal uppercase tracking-wide text-foreground">
             Inventario
           </h1>

@@ -190,8 +190,8 @@ export function ExplorarExplorer({ units, providers, filters }: Props) {
             <ul
               className={
                 vista === "ambos"
-                  ? "grid max-h-[min(70vh,640px)] gap-4 overflow-y-auto pr-1 [scrollbar-gutter:stable]"
-                  : "grid gap-4 sm:grid-cols-2"
+                  ? "grid max-h-[min(78dvh,900px)] gap-4 overflow-y-auto pr-1 [scrollbar-gutter:stable]"
+                  : "grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
               }
             >
               {units.map((u) => (

@@ -4,7 +4,10 @@ import { RegisterForm } from "./RegisterForm";
 
 export default function RegisterPage() {
   return (
-    <main className="mx-auto min-h-[70vh] max-w-lg px-4 py-16 sm:px-6" suppressHydrationWarning>
+    <main
+      className="mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full max-w-lg flex-col justify-center px-4 py-12 sm:px-6 lg:px-8"
+      suppressHydrationWarning
+    >
       <div className="mb-8" suppressHydrationWarning>
         <h1 className="font-display text-3xl font-normal uppercase tracking-wide text-foreground">
           Crear cuenta

@@ -31,8 +31,8 @@ export default async function InicioPage() {
     ]);
 
     return (
-      <div className="mx-auto max-w-[1440px] px-4 py-10 sm:px-6">
-        <header className="mb-10 max-w-3xl">
+      <div className="w-full px-4 py-8 sm:px-6 lg:px-8 xl:px-10">
+        <header className="mb-8 max-w-4xl">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-led">Panel del medio</p>
           <h1 className="font-display mt-3 text-3xl font-normal uppercase tracking-wide text-foreground sm:text-4xl">
             Bienvenido, {profile.companyName}
@@ -85,8 +85,8 @@ export default async function InicioPage() {
     ]);
 
     return (
-      <div className="mx-auto max-w-[1440px] px-4 py-10 sm:px-6">
-        <header className="mb-10 max-w-3xl">
+      <div className="w-full px-4 py-8 sm:px-6 lg:px-8 xl:px-10">
+        <header className="mb-8 max-w-4xl">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-led">Panel del anunciante</p>
           <h1 className="font-display mt-3 text-3xl font-normal uppercase tracking-wide text-foreground sm:text-4xl">
             Bienvenido

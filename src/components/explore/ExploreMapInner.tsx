@@ -46,7 +46,7 @@ export function ExploreMapInner({ units }: { units: ExploreUnitDTO[] }) {
 
   if (mappable.length === 0) {
     return (
-      <div className="flex h-[min(60vh,520px)] min-h-[360px] w-full flex-col items-center justify-center gap-2 rounded-3xl border border-dashed border-border bg-muted/50 px-6 text-center text-sm text-muted-foreground backdrop-blur-sm">
+      <div className="flex h-[min(75dvh,900px)] min-h-[22rem] w-full flex-col items-center justify-center gap-2 rounded-3xl border border-dashed border-border bg-muted/50 px-6 text-center text-sm text-muted-foreground backdrop-blur-sm">
         <p className="font-medium text-foreground">Sin puntos en el mapa</p>
         <p>
           Ningún resultado incluye coordenadas. Probá ampliar filtros o revisá la lista: algunos
@@ -57,12 +57,12 @@ export function ExploreMapInner({ units }: { units: ExploreUnitDTO[] }) {
   }
 
   return (
-    <div className="relative z-0 h-[min(60vh,520px)] w-full min-h-[360px] overflow-hidden rounded-3xl border border-led/25 shadow-sm nm-glow ring-1 ring-led/10">
+    <div className="relative z-0 h-[min(75dvh,900px)] w-full min-h-[22rem] overflow-hidden rounded-3xl border border-led/25 shadow-sm nm-glow ring-1 ring-led/10">
       <MapContainer
         center={center}
         className="h-full w-full"
         scrollWheelZoom
-        style={{ minHeight: 360 }}
+        style={{ minHeight: 352 }}
         zoom={12}
       >
         <TileLayer

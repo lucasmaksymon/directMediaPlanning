@@ -12,7 +12,7 @@ export default async function NewInventoryPage() {
 
   return (
     <div className="space-y-10">
-      <header className="max-w-2xl">
+      <header className="max-w-4xl">
         <Link
           className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition hover:text-led"
           href="/provider/inventory"

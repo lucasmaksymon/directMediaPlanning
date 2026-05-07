@@ -28,8 +28,8 @@ export function ProviderShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="mx-auto flex w-full max-w-screen-2xl">
-      <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-56 shrink-0 flex-col border-r border-border/90 bg-sidebar/95 backdrop-blur-sm lg:flex">
+    <div className="flex min-h-[calc(100dvh-3.5rem)] w-full">
+      <aside className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-56 shrink-0 flex-col border-r border-border/90 bg-sidebar/95 backdrop-blur-sm lg:flex">
         <div className="flex flex-1 flex-col overflow-y-auto px-3 py-6">
           <p className="px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Medio</p>
           <nav aria-label="Secciones del medio" className="mt-3 flex flex-col gap-0.5">
@@ -53,7 +53,7 @@ export function ProviderShell({ children }: { children: ReactNode }) {
           </nav>
         </div>
       </aside>
-      <div className="min-w-0 flex-1 px-4 py-8 sm:px-8 lg:max-w-[min(100%,56rem)] lg:pr-12 xl:max-w-none">
+      <div className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         {children}
       </div>
     </div>

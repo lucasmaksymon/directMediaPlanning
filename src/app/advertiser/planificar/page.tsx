@@ -31,7 +31,7 @@ export default async function PlanificadorPage() {
 
   return (
     <div className="space-y-10">
-      <header className="max-w-3xl">
+      <header className="max-w-5xl">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-led">IA</p>
         <h1 className="font-display mt-3 text-3xl font-normal uppercase tracking-wide text-foreground sm:text-4xl">
           Planificador de campaña

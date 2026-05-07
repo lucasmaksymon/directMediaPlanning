@@ -4,8 +4,11 @@ import { cn } from "@/lib/cn";
 
 export default function HomePage() {
   return (
-    <main className="mx-auto max-w-[1440px] px-4 py-16 sm:px-6 lg:py-20" suppressHydrationWarning>
-      <div className="max-w-3xl">
+    <main
+      className="w-full px-4 py-12 sm:px-6 lg:px-8 xl:px-10 lg:py-16 xl:py-20"
+      suppressHydrationWarning
+    >
+      <div className="max-w-5xl">
         <p className="text-sm font-medium uppercase tracking-[0.2em] text-led">Nextmedia</p>
         <h1 className="font-display mt-4 text-4xl font-normal uppercase leading-[1.05] tracking-wide text-foreground sm:text-5xl md:text-6xl">
           Medios publicitarios, transparentes y en un solo lugar
