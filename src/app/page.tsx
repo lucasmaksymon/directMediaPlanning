@@ -5,7 +5,7 @@ import { cn } from "@/lib/cn";
 export default function HomePage() {
   return (
     <main
-      className="w-full px-4 py-12 sm:px-6 lg:px-8 xl:px-10 lg:py-16 xl:py-20"
+      className="h-full w-full overflow-y-auto px-4 py-12 sm:px-6 lg:px-8 xl:px-10 lg:py-16 xl:py-20"
       suppressHydrationWarning
     >
       <div className="max-w-5xl">
@@ -53,6 +53,36 @@ export default function HomePage() {
           </div>
         </section>
       </div>
+
+      {/* Sección Last Minute */}
+      <section className="mt-16">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-signal">Oportunidad</p>
+            <h2 className="mt-2 text-2xl font-bold tracking-wide text-foreground">
+              Últimos espacios disponibles
+            </h2>
+          </div>
+          <Link href="/explorar/last-minute" className="text-sm font-semibold text-led hover:underline">
+            Ver todos →
+          </Link>
+        </div>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Espacios sin reservar en los próximos días con descuento automático. Ideales para campañas urgentes.
+        </p>
+        <div className="mt-6">
+          <Link
+            href="/explorar/last-minute"
+            className={cn(surfaceCard(), "inline-flex items-center gap-3 px-6 py-4 hover:border-signal/40 transition")}
+          >
+            <span className="text-2xl">⚡</span>
+            <div>
+              <p className="font-semibold text-foreground">Ver espacios last-minute</p>
+              <p className="text-sm text-muted-foreground">Descuentos de hasta 50% en espacios disponibles ahora</p>
+            </div>
+          </Link>
+        </div>
+      </section>
 
       <p className="mt-16 text-center text-sm text-muted-foreground">
         ¿Ya tenés cuenta?{" "}

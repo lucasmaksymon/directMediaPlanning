@@ -11,17 +11,7 @@ export default async function ExplorarPage({
   const { units, providers, filters } = await fetchExploreData(flat);
 
   return (
-    <main className="w-full px-4 py-6 sm:px-6 lg:px-8 lg:py-8 xl:px-10">
-      <header className="mb-8 max-w-5xl">
-        <h1 className="font-display text-3xl font-normal uppercase tracking-wide text-foreground sm:text-4xl">
-          Catálogo de espacios
-        </h1>
-        <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-          Filtrá por zona, medio o fechas. Compará precios de referencia y abrí la ficha de cada
-          espacio. El mapa muestra ubicaciones con coordenadas cargadas por el proveedor.
-        </p>
-      </header>
-
+    <main className="flex h-full flex-col overflow-hidden px-4 py-4 sm:px-6 lg:px-8 xl:px-10">
       <ExplorarExplorer filters={filters} providers={providers} units={units} />
     </main>
   );

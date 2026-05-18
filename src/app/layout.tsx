@@ -22,13 +22,15 @@ export default function RootLayout({
   return (
     <html lang="es-AR" suppressHydrationWarning>
       <body
-        className={`${inter.className} ${display.variable} nm-body min-h-screen text-foreground antialiased`}
+        className={`${inter.className} ${display.variable} nm-body flex h-dvh flex-col overflow-hidden text-foreground antialiased`}
         suppressHydrationWarning
       >
         <ThemeProvider>
           <AuthProvider>
             <AppHeader />
-            {children}
+            <div className="flex-1 min-h-0 overflow-hidden">
+              {children}
+            </div>
           </AuthProvider>
         </ThemeProvider>
       </body>

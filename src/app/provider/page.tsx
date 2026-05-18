@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import { btnPrimary, btnSecondary } from "@/lib/ui-classes";
 
 export default async function ProviderHomePage() {
   const session = await auth();
@@ -11,55 +10,32 @@ export default async function ProviderHomePage() {
   }
 
   return (
-    <div className="space-y-10">
-      <header className="max-w-5xl">
-        <h1 className="font-display text-3xl font-normal uppercase tracking-wide text-foreground">
+    <div className="flex h-[calc(100dvh-56px)] flex-col gap-3 px-4 py-4 sm:px-6 lg:px-8 xl:px-10">
+      <header>
+        <h1 className="font-display text-xl font-normal uppercase tracking-wide text-foreground sm:text-2xl">
           Panel del medio
         </h1>
-        <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-          Inventario, precios de referencia y solicitudes de anunciantes en un solo lugar. Pensado
-          para equipos que escalan catálogo y operación comercial.
-        </p>
       </header>
 
-      <ul className="flex flex-wrap gap-3">
-        <li>
-          <Link className={btnPrimary} href="/provider/inventory/new">
-            Nueva unidad
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {[
+          { href: "/provider/inventory", label: "Inventario", desc: "Gestioná espacios y visibilidad" },
+          { href: "/provider/reservations", label: "Solicitudes", desc: "Pedidos entrantes pendientes" },
+          { href: "/provider/inventory/new", label: "Nueva unidad", desc: "Sumá un espacio al catálogo" },
+          { href: "/provider/analytics", label: "Analíticas", desc: "Fill rate e ingresos" },
+          { href: "/provider/circuitos", label: "Circuitos OOH", desc: "Paquetes de múltiples espacios" },
+        ].map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="flex flex-col rounded-xl border border-border bg-card p-4 transition hover:border-led/40"
+          >
+            <p className="text-sm font-semibold text-foreground">{item.label}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{item.desc}</p>
+            <span className="mt-3 text-xs font-bold text-led">Abrir →</span>
           </Link>
-        </li>
-        <li>
-          <Link className={btnSecondary} href="/provider/inventory">
-            Inventario
-          </Link>
-        </li>
-        <li>
-          <Link className={btnSecondary} href="/provider/reservations">
-            Solicitudes
-          </Link>
-        </li>
-      </ul>
-
-      <section className="grid gap-4 sm:grid-cols-2">
-        <Link
-          className="rounded-3xl border border-border bg-card p-6 shadow-sm transition nm-glow hover:border-led/35 dark:bg-gradient-to-b dark:from-ocean dark:to-[#071012]"
-          href="/provider/inventory"
-        >
-          <h2 className="text-sm font-semibold text-foreground">Catálogo propio</h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Gestioná espacios, estados y visibilidad pública.
-          </p>
-        </Link>
-        <Link
-          className="rounded-3xl border border-border bg-card p-6 shadow-sm transition nm-glow hover:border-led/35 dark:bg-gradient-to-b dark:from-ocean dark:to-[#071012]"
-          href="/provider/reservations"
-        >
-          <h2 className="text-sm font-semibold text-foreground">Solicitudes</h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Pedidos entrantes y respuestas pendientes.
-          </p>
-        </Link>
-      </section>
+        ))}
+      </div>
     </div>
   );
 }

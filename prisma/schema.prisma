@@ -14,6 +14,7 @@ enum UserRole {
   advertiser
   provider
   admin
+  agency
 }
 
 enum InventoryFormat {
@@ -66,7 +67,9 @@ model User {
 
   advertiserProfile AdvertiserProfile?
   providerProfile   ProviderProfile?
+  agencyProfile     AgencyProfile?
   reservations      Reservation[]      @relation("AdvertiserReservations")
+  agencyMemberships AgencyClient[]     @relation("AgencyClients")
 }
 
 model AdvertiserProfile {
@@ -86,11 +89,13 @@ model ProviderProfile {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   companyName String
   taxId       String?
+  phone       String?
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   inventoryUnits InventoryUnit[]
+  circuits       Circuit[]
 }
 
 model InventoryUnit {
@@ -110,11 +115,23 @@ model InventoryUnit {
   description              String?
   imageUrls                String[]            @default([])
   metadata                 Json?
+
+  // Instant Book
+  instantBookEnabled       Boolean             @default(false)
+  instantBookMinDays       Int                 @default(1)
+  instantBookMaxAmount     Decimal?            @db.Decimal(14, 2)
+
+  // Last Minute
+  lastMinuteEnabled        Boolean             @default(false)
+  lastMinuteDiscountPercent Int                @default(20)
+  lastMinuteWindowDays     Int                 @default(7)
+
   createdAt                DateTime            @default(now())
   updatedAt                DateTime            @updatedAt
 
   availability AvailabilityBlock[]
   reservations Reservation[]
+  circuits     CircuitUnit[]
 }
 
 model AvailabilityBlock {
@@ -147,4 +164,55 @@ model Reservation {
 
   @@index([advertiserId])
   @@index([inventoryUnitId, status])
+}
+
+// Circuitos OOH — agrupamiento de unidades para venta en conjunto
+model Circuit {
+  id          String          @id @default(cuid())
+  providerId  String
+  provider    ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  totalPrice  Decimal?        @db.Decimal(14, 2)
+  isPublished Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  units CircuitUnit[]
+}
+
+model CircuitUnit {
+  id        String        @id @default(cuid())
+  circuitId String
+  circuit   Circuit       @relation(fields: [circuitId], references: [id], onDelete: Cascade)
+  unitId    String
+  unit      InventoryUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  order     Int           @default(0)
+
+  @@unique([circuitId, unitId])
+}
+
+// Agencia — gestiona múltiples anunciantes
+model AgencyProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName String
+  taxId       String?
+  phone       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  clients AgencyClient[]
+}
+
+model AgencyClient {
+  id               String        @id @default(cuid())
+  agencyId         String
+  agency           AgencyProfile @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  advertiserId     String
+  advertiser       User          @relation("AgencyClients", fields: [advertiserId], references: [id], onDelete: Cascade)
+  createdAt        DateTime      @default(now())
+
+  @@unique([agencyId, advertiserId])
 }

@@ -103,3 +103,47 @@
 .font-display {
   font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
 }
+
+/* ─── Scrollbar global ────────────────────────────────────────────────────── */
+:root {
+  --sb-size: 5px;
+  --sb-track: transparent;
+  --sb-thumb: rgba(7, 16, 18, 0.18);
+  --sb-thumb-hover: rgba(0, 182, 199, 0.55);
+}
+
+.dark {
+  --sb-thumb: rgba(0, 182, 199, 0.22);
+  --sb-thumb-hover: rgba(0, 182, 199, 0.6);
+}
+
+/* Webkit (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+  width: var(--sb-size);
+  height: var(--sb-size);
+}
+
+::-webkit-scrollbar-track {
+  background: var(--sb-track);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--sb-thumb);
+  border-radius: 999px;
+  transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--sb-thumb-hover);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sb-thumb) var(--sb-track);
+}

@@ -86,7 +86,7 @@ export function BriefForm({ onSubmit, pending }: Props) {
           onChange={(e) => setForm((f) => ({ ...f, presupuesto: Number(e.target.value) || 0 }))}
           placeholder="Ej. 500000"
           required
-          step={1000}
+          step={1}
           type="number"
           value={form.presupuesto || ""}
         />

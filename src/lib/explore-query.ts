@@ -1,5 +1,6 @@
 import { Prisma, ReservationStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { normalizeText } from "@/lib/normalize-text";
 
 export type ExploreUnitDTO = {
   id: string;
@@ -25,6 +26,20 @@ export type ExploreFilters = {
   vista: "lista" | "mapa" | "ambos";
   precioMax: string;
 };
+
+/**
+ * Genera condiciones OR para búsqueda de texto insensible a acentos.
+ * Busca con el valor original Y con la versión sin acentos (para cubrir
+ * "Cordoba" → "Córdoba" y viceversa).
+ */
+function buildTextSearch(q: string): Prisma.InventoryUnitWhereInput[] {
+  const variants = Array.from(new Set([q, normalizeText(q)])).filter(Boolean);
+  return variants.flatMap((v) => [
+    { name: { contains: v, mode: "insensitive" as const } },
+    { locationLabel: { contains: v, mode: "insensitive" as const } },
+    { provider: { companyName: { contains: v, mode: "insensitive" as const } } },
+  ]);
+}
 
 const BLOCKING: ReservationStatus[] = [
   ReservationStatus.pending_provider,
@@ -83,11 +98,7 @@ export async function fetchExploreData(flat: Record<string, string>): Promise<{
     ...(providerId ? { providerId } : {}),
     ...(q
       ? {
-          OR: [
-            { name: { contains: q, mode: "insensitive" } },
-            { locationLabel: { contains: q, mode: "insensitive" } },
-            { provider: { companyName: { contains: q, mode: "insensitive" } } },
-          ],
+          OR: buildTextSearch(q),
         }
       : {}),
     ...(Number.isFinite(precioMaxNum) && precioMaxNum > 0

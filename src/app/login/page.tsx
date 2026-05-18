@@ -6,7 +6,7 @@ import { LoginForm } from "./LoginForm";
 export default function LoginPage() {
   return (
     <main
-      className="mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full max-w-lg flex-col justify-center px-4 py-12 sm:px-6 lg:px-8"
+      className="mx-auto flex h-full w-full max-w-lg flex-col justify-center px-4 py-12 sm:px-6 lg:px-8"
       suppressHydrationWarning
     >
       <div className="mb-8" suppressHydrationWarning>

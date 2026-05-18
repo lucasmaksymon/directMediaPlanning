@@ -4,6 +4,7 @@ import { UserRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
+import { sendEmail } from "@/lib/email";
 
 export type RegisterState = { error?: string } | undefined;
 
@@ -59,6 +60,7 @@ export async function registerUser(
         },
       },
     });
+    sendEmail({ type: "welcome", to: emailRaw, role: "advertiser", name: legalName || undefined }).catch(() => {});
   } else {
     await prisma.user.create({
       data: {
@@ -70,6 +72,7 @@ export async function registerUser(
         },
       },
     });
+    sendEmail({ type: "welcome", to: emailRaw, role: "provider", name: companyName }).catch(() => {});
   }
 
   redirect("/login?registered=1");

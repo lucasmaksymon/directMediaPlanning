@@ -18,6 +18,8 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
+    "@react-pdf/renderer": "^4.5.1",
+    "@uploadthing/react": "^7.3.3",
     "bcryptjs": "^2.4.3",
     "clsx": "^2.1.1",
     "leaflet": "^1.9.4",
@@ -28,6 +30,9 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-leaflet": "^5.0.0",
+    "resend": "^6.12.3",
+    "twilio": "^6.0.2",
+    "uploadthing": "^7.7.4",
     "zod": "^4.4.3"
   },
   "devDependencies": {

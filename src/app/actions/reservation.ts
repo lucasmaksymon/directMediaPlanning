@@ -4,8 +4,10 @@ import { ReservationStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { sendEmail } from "@/lib/email";
+import { sendWhatsApp, buildNewReservationWhatsApp } from "@/lib/whatsapp";
 
-export type ReservationState = { error?: string; ok?: boolean } | undefined;
+export type ReservationState = { error?: string; ok?: boolean; instantBook?: boolean } | undefined;
 
 export async function createReservation(
   inventoryUnitId: string,
@@ -32,8 +34,14 @@ export async function createReservation(
     return { error: "La fecha de fin debe ser igual o posterior a la de inicio." };
   }
 
+  const advertiserExists = await prisma.user.findUnique({ where: { id: session.user.id } });
+  if (!advertiserExists) {
+    return { error: "Tu sesión está desactualizada. Por favor, cerrá sesión y volvé a ingresar." };
+  }
+
   const unit = await prisma.inventoryUnit.findFirst({
     where: { id: inventoryUnitId, status: "published" },
+    include: { provider: { select: { userId: true, companyName: true, phone: true } } },
   });
   if (!unit) {
     return { error: "Este espacio no está disponible para solicitudes en este momento." };
@@ -59,21 +67,68 @@ export async function createReservation(
     return { error: "Ya hay una solicitud pendiente o confirmada en ese rango. Elegí otras fechas." };
   }
 
+  // Determinar si aplica Instant Book
+  const durationDays = Math.ceil((endsAt.getTime() - startsAt.getTime()) / (1000 * 60 * 60 * 24));
+  const instantBookApplies =
+    (unit as { instantBookEnabled?: boolean; instantBookMinDays?: number; instantBookMaxAmount?: unknown }).instantBookEnabled &&
+    durationDays >= ((unit as { instantBookMinDays?: number }).instantBookMinDays ?? 1);
+  const reservationStatus = instantBookApplies ? ReservationStatus.accepted : ReservationStatus.pending_provider;
+
   await prisma.reservation.create({
     data: {
       inventoryUnitId,
       advertiserId: session.user.id,
       startsAt,
       endsAt,
-      status: ReservationStatus.pending_provider,
+      status: reservationStatus,
       agreedAmount: unit.basePriceAmount,
     },
   });
 
+  // Notificar al proveedor por email
+  const providerUser = await prisma.user.findFirst({
+    where: { providerProfile: { id: unit.providerId } },
+    select: { email: true, providerProfile: { select: { companyName: true } } },
+  });
+  if (providerUser) {
+    if (instantBookApplies) {
+      // Instant Book: notificar al anunciante que fue aceptado
+      sendEmail({
+        type: "reservation_accepted",
+        to: session.user.email ?? "",
+        unitName: unit.name,
+        providerName: providerUser.providerProfile?.companyName ?? "",
+        startsAt,
+        endsAt,
+        note: "Confirmación automática mediante Libro Instantáneo.",
+      }).catch(() => {});
+    } else {
+      sendEmail({
+        type: "new_reservation",
+        to: providerUser.email,
+        providerName: providerUser.providerProfile?.companyName ?? "",
+        unitName: unit.name,
+        advertiserEmail: session.user.email ?? "",
+        startsAt,
+        endsAt,
+        reservationId: inventoryUnitId,
+      }).catch(() => {});
+
+      // WhatsApp al proveedor si tiene teléfono
+      const providerPhone = (unit as { provider?: { phone?: string | null } }).provider?.phone;
+      if (providerPhone) {
+        sendWhatsApp(
+          providerPhone,
+          buildNewReservationWhatsApp(unit.name, session.user.email ?? "", startsAt, endsAt, inventoryUnitId),
+        ).catch(() => {});
+      }
+    }
+  }
+
   revalidatePath("/explorar");
   revalidatePath(`/explorar/${inventoryUnitId}`);
   revalidatePath("/advertiser");
-  return { ok: true };
+  return { ok: true, instantBook: instantBookApplies };
 }
 
 export type BatchReservationResult = { ok: true; created: number } | { ok: false; error: string };
@@ -92,6 +147,11 @@ export async function createBatchReservations(
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaInicio) || !/^\d{4}-\d{2}-\d{2}$/.test(fechaFin)) {
     return { ok: false, error: "Fechas inválidas." };
+  }
+
+  const advertiserExists = await prisma.user.findUnique({ where: { id: session.user.id } });
+  if (!advertiserExists) {
+    return { ok: false, error: "Tu sesión está desactualizada. Por favor, cerrá sesión y volvé a ingresar." };
   }
 
   const startsAt = new Date(`${fechaInicio}T00:00:00.000Z`);
@@ -175,6 +235,23 @@ export async function acceptReservation(reservationId: string, providerNote?: st
     },
   });
 
+  // Notificar al anunciante por email
+  const advertiserUser = await prisma.user.findUnique({
+    where: { id: resv.advertiserId },
+    select: { email: true },
+  });
+  if (advertiserUser) {
+    sendEmail({
+      type: "reservation_accepted",
+      to: advertiserUser.email,
+      unitName: resv.inventoryUnit.name,
+      providerName: profile.companyName,
+      startsAt: resv.startsAt,
+      endsAt: resv.endsAt,
+      note: providerNote,
+    }).catch(() => {});
+  }
+
   revalidatePath("/provider/reservations");
   revalidatePath("/advertiser");
   return { ok: true };
@@ -197,6 +274,7 @@ export async function rejectReservation(reservationId: string, providerNote?: st
       status: ReservationStatus.pending_provider,
       inventoryUnit: { providerId: profile.id },
     },
+    include: { inventoryUnit: { select: { name: true } } },
   });
   if (!resv) return { error: "Esa solicitud no existe o ya fue respondida." };
 
@@ -207,6 +285,21 @@ export async function rejectReservation(reservationId: string, providerNote?: st
       ...(providerNote ? { providerNote } : {}),
     },
   });
+
+  // Notificar al anunciante
+  const advertiserUser = await prisma.user.findUnique({
+    where: { id: resv.advertiserId },
+    select: { email: true },
+  });
+  if (advertiserUser) {
+    sendEmail({
+      type: "reservation_rejected",
+      to: advertiserUser.email,
+      unitName: resv.inventoryUnit.name,
+      providerName: profile.companyName,
+      note: providerNote,
+    }).catch(() => {});
+  }
 
   revalidatePath("/provider/reservations");
   revalidatePath("/advertiser");

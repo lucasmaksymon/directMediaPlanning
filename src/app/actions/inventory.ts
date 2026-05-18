@@ -79,6 +79,13 @@ export async function createInventoryUnit(
   }
 
   const description = String(formData.get("description") ?? "").trim() || null;
+  const imageUrlsRaw = String(formData.get("imageUrls") ?? "").trim();
+  const imageUrls = imageUrlsRaw ? imageUrlsRaw.split(",").map((u) => u.trim()).filter(Boolean) : [];
+
+  const instantBookEnabled = formData.get("instantBookEnabled") === "true";
+  const instantBookMinDays = Math.max(1, Number(formData.get("instantBookMinDays") ?? "1") || 1);
+  const lastMinuteEnabled = formData.get("lastMinuteEnabled") === "true";
+  const lastMinuteDiscountPercent = Math.min(90, Math.max(0, Number(formData.get("lastMinuteDiscountPercent") ?? "20") || 20));
 
   await prisma.inventoryUnit.create({
     data: {
@@ -93,6 +100,11 @@ export async function createInventoryUnit(
       minimalBookingGranularity: granularity as BookingGranularity,
       latitude: latitude ?? undefined,
       longitude: longitude ?? undefined,
+      imageUrls,
+      instantBookEnabled,
+      instantBookMinDays,
+      lastMinuteEnabled,
+      lastMinuteDiscountPercent,
     },
   });
 
@@ -159,6 +171,12 @@ export async function updateInventoryUnit(
   }
 
   const description = String(formData.get("description") ?? "").trim() || null;
+  const imageUrlsRaw = String(formData.get("imageUrls") ?? "").trim();
+  const imageUrls = imageUrlsRaw ? imageUrlsRaw.split(",").map((u) => u.trim()).filter(Boolean) : [];
+  const instantBookEnabled = formData.get("instantBookEnabled") === "true";
+  const instantBookMinDays = Math.max(1, Number(formData.get("instantBookMinDays") ?? "1") || 1);
+  const lastMinuteEnabled = formData.get("lastMinuteEnabled") === "true";
+  const lastMinuteDiscountPercent = Math.min(90, Math.max(0, Number(formData.get("lastMinuteDiscountPercent") ?? "20") || 20));
 
   await prisma.inventoryUnit.update({
     where: { id: unit.id },
@@ -173,6 +191,11 @@ export async function updateInventoryUnit(
       minimalBookingGranularity: granularity as BookingGranularity,
       latitude: latitude === null ? null : latitude,
       longitude: longitude === null ? null : longitude,
+      imageUrls,
+      instantBookEnabled,
+      instantBookMinDays,
+      lastMinuteEnabled,
+      lastMinuteDiscountPercent,
     },
   });
 

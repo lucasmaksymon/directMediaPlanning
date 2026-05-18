@@ -9,6 +9,7 @@ import {
 } from "@/app/actions/inventory";
 import { generateUnitDescription } from "@/app/actions/ai-inventory";
 import { LocationMapPicker } from "@/components/inventory/LocationMapPicker";
+import { ImageUploader } from "@/components/inventory/ImageUploader";
 import { cn } from "@/lib/cn";
 import { btnPrimary, fieldClass, labelClass, surfaceCard } from "@/lib/ui-classes";
 
@@ -75,6 +76,11 @@ type UnitForEdit = {
   latitude: string | null;
   longitude: string | null;
   description?: string | null;
+  imageUrls?: string[];
+  instantBookEnabled?: boolean;
+  instantBookMinDays?: number;
+  lastMinuteEnabled?: boolean;
+  lastMinuteDiscountPercent?: number;
 };
 
 export function InventoryUnitForm({ unit }: { unit?: UnitForEdit }) {
@@ -84,6 +90,11 @@ export function InventoryUnitForm({ unit }: { unit?: UnitForEdit }) {
   const [aiDescription, setAiDescription] = useState<string>(unit?.description ?? "");
   const [aiPending, setAiPending] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [imageUrls, setImageUrls] = useState<string[]>(unit?.imageUrls ?? []);
+  const [instantBook, setInstantBook] = useState(unit?.instantBookEnabled ?? false);
+  const [instantMinDays, setInstantMinDays] = useState(unit?.instantBookMinDays ?? 1);
+  const [lastMinute, setLastMinute] = useState(unit?.lastMinuteEnabled ?? false);
+  const [lastMinuteDiscount, setLastMinuteDiscount] = useState(unit?.lastMinuteDiscountPercent ?? 20);
 
   const setPin = useCallback((lat: number | null, lng: number | null) => {
     setPinLat(lat);
@@ -174,6 +185,12 @@ export function InventoryUnitForm({ unit }: { unit?: UnitForEdit }) {
 
   return (
     <form action={action} className="w-full max-w-4xl space-y-6">
+      {/* Hidden fields for client state */}
+      <input type="hidden" name="imageUrls" value={imageUrls.join(",")} />
+      <input type="hidden" name="instantBookEnabled" value={String(instantBook)} />
+      <input type="hidden" name="instantBookMinDays" value={String(instantMinDays)} />
+      <input type="hidden" name="lastMinuteEnabled" value={String(lastMinute)} />
+      <input type="hidden" name="lastMinuteDiscountPercent" value={String(lastMinuteDiscount)} />
       <FormSection
         description="Nombre comercial del espacio y zona que ves en cotizaciones y en el catálogo."
         title="Espacio y zona"
@@ -295,6 +312,10 @@ export function InventoryUnitForm({ unit }: { unit?: UnitForEdit }) {
         )}
       </FormSection>
 
+      <FormSection optional title="Fotos del espacio" description="Subí hasta 6 imágenes del cartel o pantalla. Aparecen en la ficha del catálogo público.">
+        <ImageUploader initialUrls={unit?.imageUrls ?? []} onChange={setImageUrls} />
+      </FormSection>
+
       <FormSection
         description="Cómo cotizás el espacio y cómo lo ven los anunciantes en el catálogo."
         title="Precio y visibilidad"
@@ -384,6 +405,76 @@ export function InventoryUnitForm({ unit }: { unit?: UnitForEdit }) {
             <option value="paused">Pausado (oculto temporalmente)</option>
           </select>
         </div>
+      </FormSection>
+
+      {/* Instant Book */}
+      <FormSection optional title="Libro instantáneo" description="El anunciante confirma la reserva al instante sin esperar tu aprobación (como Airbnb). Podés configurar condiciones.">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setInstantBook((v) => !v)}
+            className={cn(
+              "relative h-6 w-11 rounded-full border-2 transition-colors",
+              instantBook ? "border-led bg-led" : "border-border bg-muted",
+            )}
+            role="switch"
+            aria-checked={instantBook}
+          >
+            <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform", instantBook ? "left-5" : "left-0.5")} />
+          </button>
+          <label className={labelClass}>
+            {instantBook ? "Activado — confirmación inmediata" : "Desactivado — requiere aprobación manual"}
+          </label>
+        </div>
+        {instantBook && (
+          <div>
+            <label className={labelClass} htmlFor="instantMinDays">Duración mínima (días)</label>
+            <input
+              className={cn(fieldClass, "mt-1.5 w-40")}
+              id="instantMinDays"
+              type="number"
+              min={1}
+              value={instantMinDays}
+              onChange={(e) => setInstantMinDays(Math.max(1, Number(e.target.value)))}
+            />
+          </div>
+        )}
+      </FormSection>
+
+      {/* Last Minute */}
+      <FormSection optional title="Precio last-minute" description="Si el espacio queda sin reserva en los próximos días, se muestra en la sección 'Last Minute' del catálogo con descuento automático.">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setLastMinute((v) => !v)}
+            className={cn(
+              "relative h-6 w-11 rounded-full border-2 transition-colors",
+              lastMinute ? "border-led bg-led" : "border-border bg-muted",
+            )}
+            role="switch"
+            aria-checked={lastMinute}
+          >
+            <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform", lastMinute ? "left-5" : "left-0.5")} />
+          </button>
+          <label className={labelClass}>
+            {lastMinute ? "Activado" : "Desactivado"}
+          </label>
+        </div>
+        {lastMinute && (
+          <div>
+            <label className={labelClass} htmlFor="lastMinuteDiscount">Descuento automático (%)</label>
+            <input
+              className={cn(fieldClass, "mt-1.5 w-40")}
+              id="lastMinuteDiscount"
+              type="number"
+              min={5}
+              max={80}
+              value={lastMinuteDiscount}
+              onChange={(e) => setLastMinuteDiscount(Number(e.target.value))}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">El espacio aparece con {lastMinuteDiscount}% de descuento en la sección last-minute.</p>
+          </div>
+        )}
       </FormSection>
 
       {state?.error ? (

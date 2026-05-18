@@ -5,7 +5,7 @@ import { RegisterForm } from "./RegisterForm";
 export default function RegisterPage() {
   return (
     <main
-      className="mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full max-w-lg flex-col justify-center px-4 py-12 sm:px-6 lg:px-8"
+      className="mx-auto flex h-full w-full max-w-lg flex-col justify-center overflow-y-auto px-4 py-12 sm:px-6 lg:px-8"
       suppressHydrationWarning
     >
       <div className="mb-8" suppressHydrationWarning>

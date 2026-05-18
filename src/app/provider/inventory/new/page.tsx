@@ -11,7 +11,7 @@ export default async function NewInventoryPage() {
   }
 
   return (
-    <div className="space-y-10">
+    <div className="px-4 py-6 sm:px-6 lg:px-8 xl:px-10 space-y-8">
       <header className="max-w-4xl">
         <Link
           className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition hover:text-led"
@@ -19,10 +19,10 @@ export default async function NewInventoryPage() {
         >
           <span aria-hidden>←</span> Inventario
         </Link>
-        <h1 className="font-display mt-5 text-3xl font-normal uppercase tracking-wide text-foreground">
+        <h1 className="font-display mt-4 text-3xl font-normal uppercase tracking-wide text-foreground">
           Nueva unidad
         </h1>
-        <p className="mt-3 text-base leading-relaxed text-muted-foreground">
+        <p className="mt-2 text-base leading-relaxed text-muted-foreground">
           Describí el espacio (pantalla, valla, paquete), la zona y un precio de referencia. Podés
           dejarla en borrador y publicarla cuando esté validada.
         </p>
