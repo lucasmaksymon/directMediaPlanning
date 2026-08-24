@@ -1,5 +1,4 @@
-// Direct Planning — esquema inicial (MVP, modelo de pago C)
-// Ver docs/03-modelo-inventario-ooh.md y docs/04-prd-mvp.md
+// NextPlanning — inventario OOH con portales para Medios, Anunciantes y Agencias
 
 generator client {
   provider = "prisma-client-js"
@@ -57,6 +56,80 @@ enum ReservationStatus {
   cancelled
 }
 
+enum PriceType {
+  direct
+  agency
+}
+
+enum CampaignStatus {
+  draft
+  active
+  completed
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  approved
+  rejected
+  refunded
+}
+
+enum PoPStatus {
+  pending
+  submitted
+  verified
+  rejected
+}
+
+enum PublicationOrderStatus {
+  draft
+  sent
+  in_progress
+  completed
+  cancelled
+}
+
+enum ScreenPlatform {
+  android
+  web
+  tizen
+  other
+}
+
+enum DealType {
+  open
+  pmp
+  programmatic_guaranteed
+}
+
+enum OrganizationPlan {
+  freemium
+  pro
+  enterprise
+}
+
+model PlatformSettings {
+  id               String   @id @default("default")
+  platformFeeRate  Decimal  @default(0.06) @db.Decimal(5, 4)
+  freemiumMaxScreens Int    @default(10)
+  updatedAt        DateTime @updatedAt
+}
+
+model Organization {
+  id           String           @id @default(cuid())
+  name         String
+  slug         String           @unique
+  plan         OrganizationPlan @default(freemium)
+  maxScreens   Int              @default(10)
+  countryCode  String           @default("AR")
+  currency     String           @default("ARS")
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  providers ProviderProfile[]
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -70,6 +143,8 @@ model User {
   agencyProfile     AgencyProfile?
   reservations      Reservation[]      @relation("AdvertiserReservations")
   agencyMemberships AgencyClient[]     @relation("AgencyClients")
+  campaigns         Campaign[]
+  creativeAssets    CreativeAsset[]
 }
 
 model AdvertiserProfile {
@@ -83,19 +158,24 @@ model AdvertiserProfile {
   updatedAt DateTime @updatedAt
 }
 
+/// Proveedor interno (socio de NextMedia). Sin userId = sin acceso a la plataforma.
 model ProviderProfile {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  companyName String
-  taxId       String?
-  phone       String?
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String        @id @default(cuid())
+  userId         String?       @unique
+  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  companyName    String
+  taxId          String?
+  phone          String?
+  description    String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   inventoryUnits InventoryUnit[]
   circuits       Circuit[]
+  screens        Screen[]
+  playlists      Playlist[]
 }
 
 model InventoryUnit {
@@ -116,6 +196,9 @@ model InventoryUnit {
   imageUrls                String[]            @default([])
   metadata                 Json?
 
+  // Precios diferenciales: directo al anunciante y precio preferencial para agencias
+  agencyPriceAmount        Decimal?            @db.Decimal(14, 2)
+
   // Instant Book
   instantBookEnabled       Boolean             @default(false)
   instantBookMinDays       Int                 @default(1)
@@ -129,9 +212,13 @@ model InventoryUnit {
   createdAt                DateTime            @default(now())
   updatedAt                DateTime            @updatedAt
 
-  availability AvailabilityBlock[]
-  reservations Reservation[]
-  circuits     CircuitUnit[]
+  availability       AvailabilityBlock[]
+  reservations       Reservation[]
+  circuits           CircuitUnit[]
+  screen             Screen?
+  audienceReports    AudienceReport[]
+  programmaticDeals  ProgrammaticDeal[]
+  slotAvailabilities SlotAvailability[]
 }
 
 model AvailabilityBlock {
@@ -147,10 +234,51 @@ model AvailabilityBlock {
   @@index([unitId, startsAt, endsAt])
 }
 
+model Campaign {
+  id           String         @id @default(cuid())
+  advertiserId String
+  advertiser   User           @relation(fields: [advertiserId], references: [id], onDelete: Cascade)
+  name         String
+  status       CampaignStatus @default(draft)
+  budget       Decimal?       @db.Decimal(14, 2)
+  startsAt     DateTime?
+  endsAt       DateTime?
+  metadata     Json?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  reservations      Reservation[]
+  creatives         CreativeAsset[]
+  publicationOrders PublicationOrder[]
+
+  @@index([advertiserId])
+}
+
+model CreativeAsset {
+  id           String    @id @default(cuid())
+  advertiserId String
+  advertiser   User      @relation(fields: [advertiserId], references: [id], onDelete: Cascade)
+  campaignId   String?
+  campaign     Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  name         String
+  fileUrl      String
+  mimeType     String?
+  width        Int?
+  height       Int?
+  createdAt    DateTime  @default(now())
+
+  @@index([advertiserId])
+  @@index([campaignId])
+}
+
 model Reservation {
   id               String              @id @default(cuid())
   inventoryUnitId  String
   inventoryUnit    InventoryUnit       @relation(fields: [inventoryUnitId], references: [id], onDelete: Cascade)
+  circuitId        String?
+  circuit          Circuit?            @relation(fields: [circuitId], references: [id], onDelete: SetNull)
+  campaignId       String?
+  campaign         Campaign?           @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   advertiserId     String
   advertiser       User                @relation("AdvertiserReservations", fields: [advertiserId], references: [id], onDelete: Cascade)
   startsAt         DateTime
@@ -158,12 +286,169 @@ model Reservation {
   status           ReservationStatus   @default(pending_provider)
   agreedAmount     Decimal?            @db.Decimal(14, 2)
   platformFeeRate  Decimal?            @db.Decimal(5, 4)
+  platformFeeAmount Decimal?           @db.Decimal(14, 2)
+  priceType        PriceType           @default(direct)
+  agencyId         String?
+  agency           AgencyProfile?      @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+  commissionAmount Decimal?            @db.Decimal(14, 2)
   providerNote     String?
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 
+  payment           Payment?
+  proofOfPlay       ProofOfPlay?
+  publicationOrder  PublicationOrder?
+
   @@index([advertiserId])
   @@index([inventoryUnitId, status])
+  @@index([campaignId])
+  @@index([circuitId])
+}
+
+model Payment {
+  id                      String        @id @default(cuid())
+  reservationId           String        @unique
+  reservation               Reservation   @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  amount                  Decimal       @db.Decimal(14, 2)
+  platformFee             Decimal       @db.Decimal(14, 2)
+  providerAmount          Decimal       @db.Decimal(14, 2)
+  currency                String        @default("ARS")
+  status                  PaymentStatus @default(pending)
+  mercadoPagoPreferenceId String?
+  mercadoPagoPaymentId    String?
+  paidAt                  DateTime?
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+}
+
+model ProofOfPlay {
+  id            String    @id @default(cuid())
+  reservationId String    @unique
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  fileUrl       String?
+  notes         String?
+  status        PoPStatus @default(pending)
+  verifiedAt    DateTime?
+  submittedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model PublicationOrder {
+  id                 String                 @id @default(cuid())
+  reservationId      String                 @unique
+  reservation        Reservation            @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  campaignId         String?
+  campaign           Campaign?              @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  creativeAssetIds   String[]               @default([])
+  status             PublicationOrderStatus @default(draft)
+  instructions       String?
+  sentAt             DateTime?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+}
+
+model Screen {
+  id              String         @id @default(cuid())
+  providerId      String
+  provider        ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  inventoryUnitId String?        @unique
+  inventoryUnit   InventoryUnit? @relation(fields: [inventoryUnitId], references: [id], onDelete: SetNull)
+  name            String
+  deviceKey       String         @unique
+  platform        ScreenPlatform @default(web)
+  lastHeartbeat   DateTime?
+  isOnline        Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  playlists Playlist[]
+  playLogs  PlayLog[]
+
+  @@index([providerId])
+}
+
+model Playlist {
+  id          String          @id @default(cuid())
+  providerId  String
+  provider    ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  screenId    String?
+  screen      Screen?         @relation(fields: [screenId], references: [id], onDelete: SetNull)
+  name        String
+  version     Int             @default(1)
+  publishedAt DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  items PlaylistItem[]
+
+  @@index([providerId])
+  @@index([screenId])
+}
+
+model PlaylistItem {
+  id          String   @id @default(cuid())
+  playlistId  String
+  playlist    Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  creativeUrl String
+  durationSec Int      @default(10)
+  order       Int      @default(0)
+  startsAt    DateTime?
+  endsAt      DateTime?
+
+  @@index([playlistId])
+}
+
+model PlayLog {
+  id             String   @id @default(cuid())
+  screenId       String
+  screen         Screen   @relation(fields: [screenId], references: [id], onDelete: Cascade)
+  creativeUrl    String
+  playlistItemId String?
+  playedAt       DateTime @default(now())
+  durationSec    Int?
+
+  @@index([screenId, playedAt])
+}
+
+model AudienceReport {
+  id              String        @id @default(cuid())
+  inventoryUnitId String
+  inventoryUnit   InventoryUnit @relation(fields: [inventoryUnitId], references: [id], onDelete: Cascade)
+  provider        String
+  impressions     Int
+  periodStart     DateTime
+  periodEnd       DateTime
+  metadata        Json?
+  createdAt       DateTime      @default(now())
+
+  @@index([inventoryUnitId, periodStart])
+}
+
+model ProgrammaticDeal {
+  id              String        @id @default(cuid())
+  inventoryUnitId String
+  inventoryUnit   InventoryUnit @relation(fields: [inventoryUnitId], references: [id], onDelete: Cascade)
+  dealType        DealType      @default(open)
+  floorPrice      Decimal       @db.Decimal(14, 2)
+  currency        String        @default("ARS")
+  isActive        Boolean       @default(true)
+  openRtbUnitId   String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([inventoryUnitId, isActive])
+}
+
+model SlotAvailability {
+  id        String        @id @default(cuid())
+  unitId    String
+  unit      InventoryUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  slotStart DateTime
+  slotEnd   DateTime
+  state     SlotState     @default(available)
+
+  @@index([unitId, slotStart, slotEnd])
 }
 
 // Circuitos OOH — agrupamiento de unidades para venta en conjunto
@@ -178,7 +463,8 @@ model Circuit {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
-  units CircuitUnit[]
+  units        CircuitUnit[]
+  reservations Reservation[]
 }
 
 model CircuitUnit {
@@ -194,16 +480,21 @@ model CircuitUnit {
 
 // Agencia — gestiona múltiples anunciantes
 model AgencyProfile {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  companyName String
-  taxId       String?
-  phone       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName        String
+  taxId              String?
+  phone              String?
+  website            String?
+  description        String?
+  /// Porcentaje de comisión que cobra la agencia (0-100). Ej: 15 = 15%
+  commissionPct      Decimal  @default(15) @db.Decimal(5, 2)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  clients AgencyClient[]
+  clients      AgencyClient[]
+  reservations Reservation[]
 }
 
 model AgencyClient {

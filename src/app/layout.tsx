@@ -3,15 +3,15 @@ import { Bebas_Neue, Inter } from "next/font/google";
 import { AuthProvider } from "@/components/AuthProvider";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
+import { CLIENT_BRAND, PRODUCT_NAME, PRODUCT_TAGLINE } from "@/lib/brand";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], display: "swap", variable: "--font-sans" });
 const display = Bebas_Neue({ weight: "400", subsets: ["latin"], display: "swap", variable: "--font-display" });
 
 export const metadata: Metadata = {
-  title: "Direct Planning — Medios en un solo lugar",
-  description:
-    "Plataforma para conectar anunciantes con medios en vía pública y digital. Catálogo, solicitudes y seguimiento en un entorno claro y profesional.",
+  title: `${PRODUCT_NAME} — ${CLIENT_BRAND}`,
+  description: `${PRODUCT_TAGLINE}. Catálogo, planificación y solicitudes operados por ${CLIENT_BRAND}.`,
 };
 
 export default function RootLayout({
@@ -20,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es-AR" suppressHydrationWarning>
+    <html className="h-dvh overflow-hidden" lang="es-AR" suppressHydrationWarning>
       <body
         className={`${inter.className} ${display.variable} nm-body flex h-dvh flex-col overflow-hidden text-foreground antialiased`}
         suppressHydrationWarning
@@ -28,7 +28,7 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             <AppHeader />
-            <div className="flex-1 min-h-0 overflow-hidden">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               {children}
             </div>
           </AuthProvider>

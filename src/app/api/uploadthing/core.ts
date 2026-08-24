@@ -7,7 +7,7 @@ export const ourFileRouter = {
   inventoryImage: f({ image: { maxFileSize: "8MB", maxFileCount: 6 } })
     .middleware(async () => {
       const session = await auth();
-      if (!session?.user || (session.user.role !== "provider" && session.user.role !== "admin")) {
+      if (!session?.user || (session.user.role !== "admin")) {
         throw new Error("Solo los medios pueden subir imágenes.");
       }
       return { userId: session.user.id };

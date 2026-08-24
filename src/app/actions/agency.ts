@@ -68,3 +68,23 @@ export async function removeAgencyClient(advertiserId: string): Promise<{ ok: bo
     return { ok: false, error: e instanceof Error ? e.message : "Error." };
   }
 }
+
+export async function updateAgencyCommission(
+  commissionPct: number,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const { profile } = await requireAgency();
+    if (!profile) return { ok: false, error: "Sin perfil." };
+    if (commissionPct < 0 || commissionPct > 100) {
+      return { ok: false, error: "El porcentaje debe estar entre 0 y 100." };
+    }
+    await prisma.agencyProfile.update({
+      where: { id: profile.id },
+      data: { commissionPct },
+    });
+    revalidatePath("/agency");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error." };
+  }
+}

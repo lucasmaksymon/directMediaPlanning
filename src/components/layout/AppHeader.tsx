@@ -4,6 +4,7 @@ import { signOutAction } from "@/app/actions/session";
 import { buildHeaderNav } from "@/components/layout/build-nav";
 import { MobileMenu } from "@/components/layout/MobileMenu";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { PRODUCT_NAME } from "@/lib/brand";
 
 export async function AppHeader() {
   const session = await auth();
@@ -11,7 +12,7 @@ export async function AppHeader() {
 
   return (
     <header
-      className="sticky top-0 z-50 border-b border-border/80 bg-nav/90 backdrop-blur-md backdrop-saturate-150"
+      className="z-50 shrink-0 border-b border-border/80 bg-nav/90 backdrop-blur-md backdrop-saturate-150"
       suppressHydrationWarning
     >
       <div
@@ -20,9 +21,11 @@ export async function AppHeader() {
       >
         <Link className="shrink-0 font-display text-lg uppercase tracking-wide text-foreground" href="/">
           <span className="hidden sm:inline">
-            <span className="text-led">Direct</span> Planning
+            <span className="text-led">Next</span>Planning
           </span>
-          <span className="text-led sm:hidden">DP</span>
+          <span className="text-led sm:hidden" title={PRODUCT_NAME}>
+            NP
+          </span>
         </Link>
 
         <nav aria-label="Principal" className="hidden min-w-0 flex-1 items-center gap-1 md:flex">

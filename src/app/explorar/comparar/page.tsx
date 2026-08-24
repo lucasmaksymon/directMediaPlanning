@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { formatArs } from "@/lib/format";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
-import { btnPrimary, surfaceCard } from "@/lib/ui-classes";
+import { btnPrimary, layoutPadding, pageScroll, surfaceCard } from "@/lib/ui-classes";
 
 const formatLabels: Record<string, string> = {
   digital_ooh: "Digital · vía pública",
@@ -27,12 +27,11 @@ export default async function CompararPage({
   const units = ids.length > 0
     ? await prisma.inventoryUnit.findMany({
         where: { id: { in: ids }, status: "published" },
-        include: { provider: { select: { companyName: true } } },
       })
     : [];
 
   return (
-    <main className="h-full w-full overflow-y-auto px-4 py-8 sm:px-6 lg:px-8 xl:px-10">
+    <main className={cn(pageScroll, layoutPadding, "py-8")}>
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <Link href="/explorar" className="text-sm text-muted-foreground hover:text-led transition">← Catálogo</Link>
@@ -59,7 +58,7 @@ export default async function CompararPage({
                   <th key={u.id} className="pb-4 pr-4 text-left">
                     <div className={cn(surfaceCard(), "p-4")}>
                       <p className="font-semibold text-foreground text-sm">{u.name}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{u.provider.companyName}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{u.locationLabel}</p>
                     </div>
                   </th>
                 ))}

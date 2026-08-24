@@ -1,34 +1,29 @@
 import { auth } from "@/auth";
+import { CLIENT_BRAND, PRODUCT_NAME } from "@/lib/brand";
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
   const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "No autenticado." }, { status: 401 });
+  if (!session?.user) return Response.json({ error: "No autenticado." }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const reservationId = searchParams.get("id");
-  if (!reservationId) return NextResponse.json({ error: "ID requerido." }, { status: 400 });
+  if (!reservationId) return Response.json({ error: "ID requerido." }, { status: 400 });
 
   const reservation = await prisma.reservation.findFirst({
     where: {
       id: reservationId,
-      ...(session.user.role === "admin" ? {} : {
-        OR: [
-          { advertiserId: session.user.id },
-          { inventoryUnit: { provider: { userId: session.user.id } } },
-        ],
-      }),
+      ...(session.user.role === "admin"
+        ? {}
+        : { advertiserId: session.user.id }),
     },
     include: {
-      inventoryUnit: {
-        include: { provider: { include: { user: { select: { email: true } } } } },
-      },
+      inventoryUnit: true,
       advertiser: { include: { advertiserProfile: true } },
     },
   });
 
-  if (!reservation) return NextResponse.json({ error: "Reserva no encontrada." }, { status: 404 });
+  if (!reservation) return Response.json({ error: "Reserva no encontrada." }, { status: 404 });
 
   const formatDate = (d: Date) => d.toLocaleDateString("es-AR");
   const formatArs = (n: unknown) => `$${Number(n).toLocaleString("es-AR")}`;
@@ -39,13 +34,13 @@ export async function GET(req: Request) {
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
-<title>Orden de Publicidad ${opNumber} — Direct Planning</title>
+<title>Orden de Publicidad ${opNumber} — ${PRODUCT_NAME}</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; }
-  body { font-family: -apple-system, 'Segoe UI', sans-serif; color: #111; margin: 0; padding: 40px; background: #fff; max-width: 800px; margin: 0 auto; }
+  body { font-family: -apple-system, 'Segoe UI', sans-serif; color: #111; margin: 0 auto; padding: 40px; background: #fff; max-width: 800px; }
   .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; padding-bottom: 20px; border-bottom: 3px solid #111; }
   .logo { font-size: 20px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
-  .logo span { color: #00cc6a; }
+  .logo span { color: #00b6c7; }
   .op-number { font-size: 22px; font-weight: 800; text-align: right; }
   .op-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #888; margin-bottom: 4px; }
   .section { margin-bottom: 28px; }
@@ -68,8 +63,8 @@ export async function GET(req: Request) {
 
 <div class="header">
   <div>
-    <div class="logo">Direct <span>Planning</span></div>
-    <div style="font-size:12px;color:#888;margin-top:4px;">Marketplace OOH Argentina</div>
+    <div class="logo">${PRODUCT_NAME} · <span>${CLIENT_BRAND}</span></div>
+    <div style="font-size:12px;color:#888;margin-top:4px;">Orden de publicidad OOH</div>
   </div>
   <div>
     <div class="op-label">Orden de Publicidad</div>
@@ -80,7 +75,7 @@ export async function GET(req: Request) {
 
 <div class="grid2">
   <div class="section">
-    <div class="section-title">Anunciante</div>
+    <div class="section-title">Cliente</div>
     <div class="field">
       <div class="field-label">Razón social / Nombre</div>
       <div class="field-value">${reservation.advertiser.advertiserProfile?.legalName ?? reservation.advertiser.email}</div>
@@ -97,14 +92,10 @@ export async function GET(req: Request) {
   </div>
 
   <div class="section">
-    <div class="section-title">Medio / Proveedor</div>
+    <div class="section-title">Operador</div>
     <div class="field">
       <div class="field-label">Empresa</div>
-      <div class="field-value">${reservation.inventoryUnit.provider.companyName}</div>
-    </div>
-    <div class="field">
-      <div class="field-label">Email</div>
-      <div class="field-value">${reservation.inventoryUnit.provider.user.email}</div>
+      <div class="field-value">${CLIENT_BRAND}</div>
     </div>
   </div>
 </div>
@@ -138,25 +129,25 @@ export async function GET(req: Request) {
 
 ${reservation.providerNote ? `
 <div class="section">
-  <div class="section-title">Condiciones adicionales del medio</div>
+  <div class="section-title">Condiciones adicionales</div>
   <p style="font-size:13px;line-height:1.6;">${reservation.providerNote}</p>
 </div>` : ""}
 
 <div class="signatures">
   <div>
     <div class="sig-line"></div>
-    <div class="sig-label">Firma anunciante</div>
+    <div class="sig-label">Firma cliente</div>
   </div>
   <div>
     <div class="sig-line"></div>
-    <div class="sig-label">Firma medio / proveedor</div>
+    <div class="sig-label">Firma ${CLIENT_BRAND}</div>
   </div>
 </div>
 
 <div class="legal">
-  Este documento es una Orden de Publicidad generada a través de Direct Planning. Los precios indicados fueron acordados entre las partes. 
-  El pago, la facturación y la entrega de materiales se coordinan directamente entre anunciante y medio según los términos acordados.
-  Direct Planning actúa como plataforma de conexión (Modelo C) y no es parte de la transacción comercial.
+  Documento generado por ${PRODUCT_NAME} en nombre de ${CLIENT_BRAND}.
+  Los precios indicados fueron acordados entre las partes. El pago, la facturación y la entrega de materiales
+  se coordinan con el equipo de ${CLIENT_BRAND}.
   Ref. de reserva: ${reservation.id}
 </div>
 
@@ -165,11 +156,12 @@ ${reservation.providerNote ? `
 </button>
 </body>
 </html>`;
+  const cleanHtml = html.replace(/motion\.div/g, "div");
 
-  return new Response(html, {
+  return new Response(cleanHtml, {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
-      "Content-Disposition": `inline; filename="OP-${opNumber}.html"`,
+      "Content-Disposition": `inline; filename="op-${opNumber}.html"`,
     },
   });
 }

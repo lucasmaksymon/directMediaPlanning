@@ -4,8 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { formatArs } from "@/lib/format";
 import { reservationStatusLabel } from "@/lib/labels";
 import { AdminReservationStatus } from "./AdminReservationStatus";
+import { cn } from "@/lib/cn";
+import { adminPage } from "@/lib/ui-classes";
+import { productTitle } from "@/lib/brand";
 
-export const metadata = { title: "Reservas · Admin · Direct Planning" };
+export const metadata = { title: productTitle("Reservas") };
 
 export default async function AdminReservasPage() {
   const session = await auth();
@@ -22,8 +25,8 @@ export default async function AdminReservasPage() {
   });
 
   return (
-    <div className="flex h-[calc(100dvh-56px)] flex-col gap-3 px-4 py-4 sm:px-6 lg:px-8 xl:px-10">
-      <header className="flex items-center justify-between">
+    <div className={cn(adminPage, "gap-3")}>
+      <header className="flex shrink-0 items-center justify-between">
         <h1 className="font-display text-xl font-normal uppercase tracking-wide text-foreground sm:text-2xl">
           Reservas
         </h1>

@@ -175,7 +175,7 @@ export async function POST(req: Request) {
     ? `El anunciante indicó un presupuesto de $${brief.presupuesto.toLocaleString("es-AR")} ARS.`
     : "No se mencionó presupuesto aún — preguntalo si no lo sabés.";
 
-  const systemPrompt = `Sos el planificador de campañas OOH de Direct Planning, el marketplace de publicidad exterior de Argentina. Tu rol es diseñar planes de medios inteligentes y personalizados.
+  const systemPrompt = `Sos el planificador de campañas OOH de NextPlanning operado por NextMedia en Argentina. Tu rol es diseñar planes de medios inteligentes y personalizados con inventario NextMedia.
 
 ${presupuestoHint}
 
@@ -218,6 +218,9 @@ ${presupuestoHint}
 
 ═══ CATÁLOGO DISPONIBLE (pre-filtrado por zona/presupuesto) ═══
 ${catalogContext}
+
+═══ COMPRA PROGRAMÁTICA (DSP) ═══
+- Si el usuario pide compra programática, RTB o inventario vía SSP, explicá que NextPlanning también ofrece inventario en /api/programmatic/openrtb/v2/inventory con deals open/PMP/PG, pero la reserva directa del catálogo sigue siendo la vía principal para cerrar campañas en Argentina.
 
 ═══ INSTRUCCIONES GENERALES ═══
 - Hacé preguntas solo si te falta información clave (objetivo, zona, presupuesto o fechas)

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { HTTP_USER_AGENT } from "@/lib/brand";
 
 const NOMINATIM_REVERSE = "https://nominatim.openstreetmap.org/reverse";
 
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
   try {
     const res = await fetch(url.toString(), {
       headers: {
-        "User-Agent": "DirectMediaPlanning/0.1 (reverse geocode; inventory form)",
+        "User-Agent": `${HTTP_USER_AGENT} (reverse geocode; inventory form)`,
       },
       cache: "no-store",
     });

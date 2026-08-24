@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   const session = await auth();
-  if (!session?.user || (session.user.role !== "provider" && session.user.role !== "admin")) {
+  if (!session?.user || (session.user.role !== "admin")) {
     return NextResponse.json({ error: "Sin permiso." }, { status: 401 });
   }
 

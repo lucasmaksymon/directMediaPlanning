@@ -1,11 +1,13 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { surfaceCard } from "@/lib/ui-classes";
+import { adminPage, surfaceCard } from "@/lib/ui-classes";
 import { cn } from "@/lib/cn";
 import { AdminUserActions } from "./AdminUserActions";
 
-export const metadata = { title: "Usuarios · Admin · Direct Planning" };
+import { productTitle } from "@/lib/brand";
+
+export const metadata = { title: productTitle("Usuarios") };
 
 const roleLabels: Record<string, string> = {
   advertiser: "Anunciante",
@@ -33,7 +35,7 @@ export default async function AdminUsuariosPage() {
   });
 
   return (
-    <div className="flex h-[calc(100dvh-56px)] flex-col gap-3 px-4 py-4 sm:px-6 lg:px-8 xl:px-10">
+    <div className={cn(adminPage, "gap-3")}>
       <header className="flex items-center justify-between">
         <h1 className="font-display text-xl font-normal uppercase tracking-wide text-foreground sm:text-2xl">
           Usuarios

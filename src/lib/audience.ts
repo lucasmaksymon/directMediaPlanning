@@ -1,3 +1,5 @@
+import { HTTP_USER_AGENT } from "@/lib/brand";
+
 export type OverpassResult = {
   type: string;
   tags?: Record<string, string>;
@@ -39,7 +41,7 @@ export async function getNearbyPOIs(lat: number, lng: number, radiusMeters = 400
       headers: {
         "Content-Type": "text/plain",
         // Overpass recomienda identificar al cliente; sin UA a veces falla o devuelve HTML.
-        "User-Agent": "DirectMediaPlanning/1.0 (server-side audience estimate)",
+        "User-Agent": `${HTTP_USER_AGENT} (server-side audience estimate)`,
       },
       signal: AbortSignal.timeout(10000),
     });

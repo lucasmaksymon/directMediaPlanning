@@ -25,60 +25,39 @@ export function buildHeaderNav(session: AuthLike): {
   const role = session.user.role;
 
   if (role === "admin") {
-    const adminLink: NavItem = { href: "/admin", label: "Admin" };
+    const adminLink: NavItem = { href: "/admin", label: "Operaciones" };
     const sectionAdmin: NavItem[] = [
+      { href: "/admin/reservas", label: "Reservas" },
+      { href: "/admin/operaciones/inventory", label: "Inventario" },
+      { href: "/admin/operaciones/inventory/new", label: "Nueva unidad" },
+      { href: "/admin/operaciones/circuitos", label: "Circuitos" },
+      { href: "/admin/proveedores", label: "Proveedores" },
+      { href: "/admin/operaciones", label: "Resumen ops" },
       { href: "/admin", label: "Métricas" },
       { href: "/admin/usuarios", label: "Usuarios" },
-      { href: "/admin/reservas", label: "Reservas" },
-      { href: "/admin/inventario", label: "Inventario" },
     ];
     return {
       desktop: [catalog, adminLink],
       mobilePrimary: [catalog, adminLink],
-      mobileSections: [{ title: "Administración", items: sectionAdmin }],
-    };
-  }
-
-  if (role === "provider") {
-    const dashboard: NavItem = { href: "/provider", label: "Medio" };
-    const sectionMedio: NavItem[] = [
-      { href: "/provider", label: "Resumen" },
-      { href: "/provider/inventory", label: "Inventario" },
-      { href: "/provider/inventory/new", label: "Nueva unidad" },
-      { href: "/provider/reservations", label: "Solicitudes" },
-      { href: "/provider/analytics", label: "Analíticas" },
-      { href: "/provider/circuitos", label: "Circuitos OOH" },
-    ];
-    return {
-      desktop: [catalog, dashboard],
-      mobilePrimary: [catalog, dashboard],
-      mobileSections: [{ title: "Tu medio", items: sectionMedio }],
+      mobileSections: [{ title: "NextMedia · Operaciones", items: sectionAdmin }],
     };
   }
 
   if (role === "advertiser") {
-    const dashboard: NavItem = { href: "/advertiser", label: "Anunciante" };
+    const dashboard: NavItem = { href: "/advertiser", label: "Mi cuenta" };
     return {
       desktop: [catalog, dashboard],
       mobilePrimary: [catalog, dashboard],
       mobileSections: [
         {
-          title: "Cuenta", items: [
+          title: "Cuenta",
+          items: [
             { href: "/advertiser", label: "Mis solicitudes" },
             { href: "/advertiser/planificar", label: "Planificador IA" },
             { href: "/advertiser/creativo", label: "Validar creativo" },
-          ]
-        }
+          ],
+        },
       ],
-    };
-  }
-
-  if (role === "agency") {
-    const dashboard: NavItem = { href: "/agency", label: "Agencia" };
-    return {
-      desktop: [catalog, dashboard],
-      mobilePrimary: [catalog, dashboard],
-      mobileSections: [{ title: "Agencia", items: [{ href: "/agency", label: "Panel agencia" }] }],
     };
   }
 

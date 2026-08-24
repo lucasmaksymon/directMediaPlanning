@@ -1,4 +1,5 @@
 import twilio from "twilio";
+import { CLIENT_BRAND, PRODUCT_NAME } from "@/lib/brand";
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -29,5 +30,6 @@ export function buildNewReservationWhatsApp(
 ): string {
   const start = startsAt.toLocaleDateString("es-AR");
   const end = endsAt.toLocaleDateString("es-AR");
-  return `*Direct Planning* — Nueva solicitud de reserva\n\n*Espacio:* ${unitName}\n*Anunciante:* ${advertiserEmail}\n*Período:* ${start} al ${end}\n\nPara responder ingresá a: ${process.env.NEXT_PUBLIC_APP_URL ?? process.env.AUTH_URL ?? "http://localhost:3000"}/provider/reservations\n\n_Respondé ACEPTAR ${reservationId.slice(-6)} o RECHAZAR ${reservationId.slice(-6)} a este mensaje para gestionar la solicitud._`;
+  const base = process.env.NEXT_PUBLIC_APP_URL ?? process.env.AUTH_URL ?? "http://localhost:3000";
+  return `*${PRODUCT_NAME}* — Nueva solicitud (${CLIENT_BRAND})\n\n*Espacio:* ${unitName}\n*Cliente:* ${advertiserEmail}\n*Período:* ${start} al ${end}\n\nGestionar: ${base}/admin/reservas\n\n_Respondé ACEPTAR ${reservationId.slice(-6)} o RECHAZAR ${reservationId.slice(-6)} a este mensaje._`;
 }

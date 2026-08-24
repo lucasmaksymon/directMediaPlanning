@@ -7,20 +7,12 @@ export type ExploreUnitDTO = {
   name: string;
   locationLabel: string;
   basePriceAmount: string;
-  providerName: string;
-  providerId: string;
   lat: number | null;
   lng: number | null;
 };
 
-export type ExploreProviderOption = {
-  id: string;
-  companyName: string;
-};
-
 export type ExploreFilters = {
   q: string;
-  providerId: string;
   desde: string;
   hasta: string;
   vista: "lista" | "mapa" | "ambos";
@@ -37,7 +29,6 @@ function buildTextSearch(q: string): Prisma.InventoryUnitWhereInput[] {
   return variants.flatMap((v) => [
     { name: { contains: v, mode: "insensitive" as const } },
     { locationLabel: { contains: v, mode: "insensitive" as const } },
-    { provider: { companyName: { contains: v, mode: "insensitive" as const } } },
   ]);
 }
 
@@ -71,11 +62,9 @@ export function flattenSearchParams(
 
 export async function fetchExploreData(flat: Record<string, string>): Promise<{
   units: ExploreUnitDTO[];
-  providers: ExploreProviderOption[];
   filters: ExploreFilters;
 }> {
   const q = (flat.q ?? "").trim();
-  const providerId = (flat.proveedor ?? "").trim();
   const desde = (flat.desde ?? "").trim();
   const hasta = (flat.hasta ?? "").trim();
   const vistaRaw = (flat.vista ?? "ambos").trim();
@@ -95,7 +84,6 @@ export async function fetchExploreData(flat: Record<string, string>): Promise<{
 
   const where: Prisma.InventoryUnitWhereInput = {
     status: "published",
-    ...(providerId ? { providerId } : {}),
     ...(q
       ? {
           OR: buildTextSearch(q),
@@ -119,36 +107,24 @@ export async function fetchExploreData(flat: Record<string, string>): Promise<{
       : {}),
   };
 
-  const [units, providers] = await Promise.all([
-    prisma.inventoryUnit.findMany({
-      where,
-      orderBy: { updatedAt: "desc" },
-      include: { provider: { select: { id: true, companyName: true } } },
-    }),
-    prisma.providerProfile.findMany({
-      where: { inventoryUnits: { some: { status: "published" } } },
-      select: { id: true, companyName: true },
-      orderBy: { companyName: "asc" },
-    }),
-  ]);
+  const units = await prisma.inventoryUnit.findMany({
+    where,
+    orderBy: { updatedAt: "desc" },
+  });
 
   const dtos: ExploreUnitDTO[] = units.map((u) => ({
     id: u.id,
     name: u.name,
     locationLabel: u.locationLabel,
     basePriceAmount: u.basePriceAmount.toString(),
-    providerName: u.provider.companyName,
-    providerId: u.providerId,
     lat: u.latitude,
     lng: u.longitude,
   }));
 
   return {
     units: dtos,
-    providers,
     filters: {
       q,
-      providerId,
       desde,
       hasta,
       vista,

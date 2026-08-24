@@ -2,14 +2,20 @@ import { prisma } from "@/lib/prisma";
 import { formatArs } from "@/lib/format";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
-import { surfaceCard } from "@/lib/ui-classes";
+import { layoutPadding, pageScroll, surfaceCard } from "@/lib/ui-classes";
+import { productTitle } from "@/lib/brand";
+import { auth } from "@/auth";
+import { CircuitReserveForm } from "./CircuitReserveForm";
 
 export const metadata = {
-  title: "Circuitos OOH · Direct Planning",
+  title: productTitle("Circuitos OOH"),
   description: "Circuitos de espacios publicitarios para cobertura geográfica ampliada.",
 };
 
 export default async function CircuitosCatalogoPage() {
+  const session = await auth();
+  const isAdvertiser = session?.user?.role === "advertiser";
+
   const circuits = await prisma.circuit.findMany({
     where: { isPublished: true },
     include: {
@@ -25,7 +31,7 @@ export default async function CircuitosCatalogoPage() {
   });
 
   return (
-    <main className="h-full w-full overflow-y-auto px-4 py-8 sm:px-6 lg:px-8 xl:px-10 space-y-10">
+    <main className={cn(pageScroll, layoutPadding, "space-y-10 py-8")}>
       <header>
         <Link href="/explorar" className="text-sm text-muted-foreground hover:text-led transition">← Catálogo</Link>
         <p className="mt-4 text-xs font-semibold uppercase tracking-[0.2em] text-led">Circuitos OOH</p>
@@ -77,13 +83,16 @@ export default async function CircuitosCatalogoPage() {
                 </div>
               </div>
 
-              <div className="border-t border-border pt-4">
-                <p className="text-xs text-muted-foreground">
-                  Para contratar este circuito, contactá al medio{" "}
-                  <span className="font-medium text-foreground">{c.provider.companyName}</span>
-                  {" "}o solicitá cada espacio individualmente desde el catálogo.
-                </p>
-              </div>
+              {isAdvertiser ? (
+                <CircuitReserveForm circuitId={c.id} />
+              ) : (
+                <div className="border-t border-border pt-4">
+                  <p className="text-xs text-muted-foreground">
+                    <Link href="/login" className="text-led font-semibold underline">Iniciá sesión</Link>
+                    {" "}como anunciante para reservar este circuito.
+                  </p>
+                </div>
+              )}
             </div>
           ))}
         </div>

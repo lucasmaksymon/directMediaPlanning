@@ -1,4 +1,4 @@
-# Alcance MVP — Direct Planning
+# Alcance MVP — NextPlanning
 
 Documento de alcance para la primera iteración del producto. Las **decisiones confirmadas** deben actualizar este archivo; las marcadas como **pendientes** requieren validación con negocio y asesoría legal/contable.
 

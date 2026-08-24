@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     type: action === "accept" ? "reservation_accepted" : "reservation_rejected",
     to: reservation.advertiser.email,
     unitName: reservation.inventoryUnit.name,
-    providerName: reservation.inventoryUnit.provider.companyName,
+    providerName: "NextMedia",
     ...(action === "accept" ? { startsAt: reservation.startsAt, endsAt: reservation.endsAt } : {}),
   } as Parameters<typeof sendEmail>[0]).catch(() => {});
 

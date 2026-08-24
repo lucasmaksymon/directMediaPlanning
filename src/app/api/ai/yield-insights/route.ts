@@ -1,24 +1,19 @@
 import { auth } from "@/auth";
 import { openai } from "@/lib/openai";
 import { prisma } from "@/lib/prisma";
-import { getProviderProfileByUserId } from "@/lib/provider";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "No autenticado." }, { status: 401 });
 
-  const profile = await getProviderProfileByUserId(session.user.id);
-  if (!profile && session.user.role !== "admin") return NextResponse.json({ error: "Sin perfil." }, { status: 403 });
-
-  if (!profile) return NextResponse.json({ insights: [] });
+  if (session.user.role !== "admin") return NextResponse.json({ error: "Acceso denegado." }, { status: 403 });
 
   if (!process.env.OPENAI_API_KEY) {
     return NextResponse.json({ insights: ["Configurá OPENAI_API_KEY para habilitar el análisis IA."] });
   }
 
   const units = await prisma.inventoryUnit.findMany({
-    where: { providerId: profile.id },
     select: {
       name: true,
       basePriceAmount: true,

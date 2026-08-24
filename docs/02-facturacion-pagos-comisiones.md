@@ -1,4 +1,4 @@
-# Facturación, comisiones y pagos — MVP Direct Planning
+# Facturación, comisiones y pagos — MVP NextPlanning
 
 Este documento fija **propuestas operativas** para el MVP y lista **decisiones obligatorias** con asesoría contable y legal (Argentina). No sustituye asesoramiento profesional.
 

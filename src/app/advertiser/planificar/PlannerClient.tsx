@@ -6,7 +6,7 @@ import { RecommendationCard, type UnitDetail } from "@/components/planner/Recomm
 import { getPlannerRecommendations, type PlannerBrief, type PlannerResult } from "@/app/actions/planner";
 import { createBatchReservations } from "@/app/actions/reservation";
 import { formatArs } from "@/lib/format";
-import { btnPrimary } from "@/lib/ui-classes";
+import { btnPrimary, surfaceCard } from "@/lib/ui-classes";
 import { cn } from "@/lib/cn";
 
 type Props = {
@@ -70,11 +70,15 @@ export function PlannerClient({ unitDetails }: Props) {
     return acc + (u ? Number(u.basePriceAmount) : 0);
   }, 0);
 
+  const presupuestoMax = currentBrief?.presupuesto ?? 0;
+  const budgetPct = presupuestoMax > 0 ? Math.min((totalEstimado / presupuestoMax) * 100, 100) : 0;
+  const budgetOver = presupuestoMax > 0 && totalEstimado > presupuestoMax;
+
   return (
-    <div className="space-y-8">
+    <div className="mx-auto w-full max-w-3xl space-y-8 pb-4">
       {/* Paso 1: Brief */}
       {step === "brief" && (
-        <div className="w-full max-w-4xl">
+        <div className={cn(surfaceCard(), "p-6 sm:p-8")}>
           <BriefForm onSubmit={handleBriefSubmit} pending={isPending} />
         </div>
       )}
@@ -135,17 +139,45 @@ export function PlannerClient({ unitDetails }: Props) {
 
               {/* Resumen de selección + acción */}
               {selected.size > 0 && !reserveOk && (
-                <div className="rounded-3xl border border-border bg-card p-5 nm-glow dark:bg-gradient-to-b dark:from-ocean dark:to-[#071012]">
+                <div className={cn(
+                  "rounded-3xl border p-5 nm-glow dark:bg-gradient-to-b dark:from-ocean dark:to-[#071012]",
+                  budgetOver
+                    ? "border-signal/50 bg-signal/5"
+                    : "border-border bg-card",
+                )}>
                   <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <p className="text-sm text-muted-foreground">
                         <span className="font-semibold text-foreground">{selected.size}</span>{" "}
                         {selected.size === 1 ? "espacio seleccionado" : "espacios seleccionados"}
                       </p>
-                      <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
+                      <p className={cn(
+                        "mt-1 text-lg font-semibold tabular-nums",
+                        budgetOver ? "text-signal" : "text-foreground",
+                      )}>
                         Total estimado: {formatArs(totalEstimado)}
                       </p>
-                      <p className="text-xs text-muted-foreground">Precios de referencia · sujeto a confirmación del medio</p>
+                      {presupuestoMax > 0 && (
+                        <>
+                          <div className="mt-2 h-2 w-full max-w-xs overflow-hidden rounded-full bg-muted">
+                            <div
+                              className={cn(
+                                "h-full rounded-full transition-all duration-300",
+                                budgetOver ? "bg-signal" : "bg-led",
+                              )}
+                              style={{ width: `${budgetPct}%` }}
+                            />
+                          </div>
+                          <p className={cn("mt-1 text-xs", budgetOver ? "text-signal font-medium" : "text-muted-foreground")}>
+                            {budgetOver
+                              ? `Superás el presupuesto en ${formatArs(totalEstimado - presupuestoMax)}`
+                              : `${formatArs(presupuestoMax - totalEstimado)} disponibles de ${formatArs(presupuestoMax)}`}
+                          </p>
+                        </>
+                      )}
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Precios de referencia · sujeto a confirmación del medio
+                      </p>
                     </div>
                     <button
                       className={cn(btnPrimary)}

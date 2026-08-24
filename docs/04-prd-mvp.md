@@ -1,4 +1,4 @@
-# PRD liviano — MVP Direct Planning
+# PRD liviano — MVP NextPlanning
 
 **Versión:** 0.1  
 **Estado:** borrador de trabajo — alineado a [01-alcance-mvp.md](./01-alcance-mvp.md), [02-facturacion-pagos-comisiones.md](./02-facturacion-pagos-comisiones.md), [03-modelo-inventario-ooh.md](./03-modelo-inventario-ooh.md).

@@ -15,8 +15,8 @@ export async function generateUnitDescription(input: {
   priceModel: string;
 }): Promise<GenerateDescriptionResult> {
   const session = await auth();
-  if (!session?.user || session.user.role !== "provider") {
-    return { ok: false, error: "Solo proveedores pueden usar esta función." };
+  if (!session?.user || session.user.role !== "admin") {
+    return { ok: false, error: "Solo operaciones NextMedia pueden usar esta función." };
   }
 
   if (!process.env.OPENAI_API_KEY) {

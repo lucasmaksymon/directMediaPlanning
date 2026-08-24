@@ -1,4 +1,4 @@
-# Documentación — Primer acercamiento Direct Planning
+# Documentación — NextPlanning / NextMedia
 
 | Documento | Contenido |
 |-----------|-----------|
@@ -9,4 +9,4 @@
 | [05-backlog-priorizado.md](./05-backlog-priorizado.md) | Historias P0–P2 y orden sugerido |
 | [06-arquitectura-alto-nivel.md](./06-arquitectura-alto-nivel.md) | Componentes, datos, API mínima, seguridad |
 | [07-flujos-mvp.md](./07-flujos-mvp.md) | Flujos visitante, anunciante, medio, admin; diagrama; fuera de alcance |
-| [08-datos-demo.md](./08-datos-demo.md) | Emails, contraseña, inventario y reservas de prueba (seed) |
+| [08-datos-demo.md](./08-datos-demo.md) | Seed limpio: admin por env, proveedores Drive, paquetes LED draft |

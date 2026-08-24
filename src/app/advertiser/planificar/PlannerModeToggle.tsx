@@ -1,50 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { cn } from "@/lib/cn";
-
-const ChatPlanner = dynamic(() => import("./ChatPlanner").then((m) => m.ChatPlanner), {
-  ssr: false,
-  loading: () => (
-    <div className="flex h-64 items-center justify-center rounded-3xl border border-border bg-muted/50">
-      <p className="text-sm text-muted-foreground">Cargando chat…</p>
-    </div>
-  ),
-});
-
-type UnitDetail = {
-  id: string;
-  name: string;
-  locationLabel: string;
-  basePriceAmount: string;
-  format: string;
-  providerName: string;
-};
 
 type Props = {
   currentMode: "form" | "chat";
-  showChat?: boolean;
-  unitDetails?: UnitDetail[];
 };
 
-export function PlannerModeToggle({ currentMode, showChat, unitDetails }: Props) {
-  if (showChat) {
-    return (
-      <div className="h-full">
-        <ChatPlanner unitDetails={unitDetails} />
-      </div>
-    );
-  }
-
+export function PlannerModeToggle({ currentMode }: Props) {
   return (
-    <div className="flex gap-2">
+    <div className="flex shrink-0 gap-2" role="tablist" aria-label="Modo del planificador">
       <Link
         href="/advertiser/planificar"
+        role="tab"
+        aria-selected={currentMode === "form"}
         className={cn(
           "rounded-full px-4 py-2 text-sm font-medium transition",
           currentMode === "form"
-            ? "bg-primary text-primary-foreground"
+            ? "bg-primary text-primary-foreground shadow-[0_0_20px_rgba(0,182,199,0.35)]"
             : "border border-border bg-card text-foreground hover:bg-muted",
         )}
       >
@@ -52,10 +25,12 @@ export function PlannerModeToggle({ currentMode, showChat, unitDetails }: Props)
       </Link>
       <Link
         href="/advertiser/planificar?modo=chat"
+        role="tab"
+        aria-selected={currentMode === "chat"}
         className={cn(
           "rounded-full px-4 py-2 text-sm font-medium transition",
           currentMode === "chat"
-            ? "bg-primary text-primary-foreground"
+            ? "bg-primary text-primary-foreground shadow-[0_0_20px_rgba(0,182,199,0.35)]"
             : "border border-border bg-card text-foreground hover:bg-muted",
         )}
       >

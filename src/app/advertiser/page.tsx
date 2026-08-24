@@ -5,6 +5,8 @@ import { reservationStatusLabel } from "@/lib/labels";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/cn";
+import { adminPageHeader, advertiserPage } from "@/lib/ui-classes";
+import { PayReservationButton } from "@/components/payments/PayReservationButton";
 
 const statusDot: Record<string, string> = {
   pending_provider: "bg-signal",
@@ -24,6 +26,7 @@ export default async function AdvertiserReservationsPage() {
     orderBy: { createdAt: "desc" },
     include: {
       inventoryUnit: { select: { name: true, locationLabel: true } },
+      payment: true,
     },
   });
 
@@ -32,15 +35,18 @@ export default async function AdvertiserReservationsPage() {
     .map((r) => r.id);
 
   return (
-    <div className="flex h-[calc(100dvh-56px)] flex-col gap-3 px-4 py-4 sm:px-6 lg:px-8 xl:px-10">
-      <header className="flex items-center justify-between">
-        <h1 className="font-display text-xl font-normal uppercase tracking-wide text-foreground sm:text-2xl">
-          Mis solicitudes
-        </h1>
-        <div className="flex items-center gap-3">
+    <div className={cn(advertiserPage, "gap-3")}>
+      <header className={cn(adminPageHeader, "flex items-center justify-between gap-4")}>
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-led">Mi cuenta</p>
+          <h1 className="font-display text-xl font-normal uppercase tracking-wide text-foreground sm:text-2xl">
+            Mis solicitudes
+          </h1>
+        </div>
+        <div className="flex shrink-0 items-center gap-3">
           {acceptedIds.length > 0 && (
             <a
-              href={`/api/pdf/media-plan?ids=${acceptedIds.join(",")}`}
+              href={`/api/pdf/media-plan?ids=${acceptedIds.join(",")}&format=pdf`}
               target="_blank"
               rel="noopener noreferrer"
               className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:border-led/50 transition"
@@ -105,16 +111,21 @@ export default async function AdvertiserReservationsPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    {["accepted", "confirmed"].includes(r.status) && (
-                      <a
-                        href={`/api/pdf/op?id=${r.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="whitespace-nowrap rounded-lg border border-border px-2 py-1 text-[10px] font-semibold text-foreground hover:border-led/50 transition"
-                      >
-                        OP PDF
-                      </a>
-                    )}
+                    <div className="flex flex-col gap-2 items-start">
+                      {r.status === "accepted" && !r.payment && (
+                        <PayReservationButton reservationId={r.id} />
+                      )}
+                      {["accepted", "confirmed"].includes(r.status) && (
+                        <a
+                          href={`/api/pdf/op?id=${r.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="whitespace-nowrap rounded-lg border border-border px-2 py-1 text-[10px] font-semibold text-foreground hover:border-led/50 transition"
+                        >
+                          OP PDF
+                        </a>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -125,7 +136,7 @@ export default async function AdvertiserReservationsPage() {
 
       <Link
         href="/explorar"
-        className="text-xs font-medium text-muted-foreground hover:text-foreground transition underline underline-offset-2"
+        className="shrink-0 text-xs font-medium text-muted-foreground hover:text-foreground transition underline underline-offset-2"
       >
         ← Explorar catálogo
       </Link>

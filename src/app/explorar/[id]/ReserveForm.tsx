@@ -12,9 +12,13 @@ import { cn } from "@/lib/cn";
 export function ReserveForm({
   unitId,
   isAdvertiser,
+  isViaAgency = false,
+  agencyId = null,
 }: {
   unitId: string;
   isAdvertiser: boolean;
+  isViaAgency?: boolean;
+  agencyId?: string | null;
 }) {
   const [state, action, pending] = useActionState(
     async (prev: ReservationState, formData: FormData) =>
@@ -52,6 +56,15 @@ export function ReserveForm({
 
   return (
     <form action={action} className="space-y-4">
+      {/* Campos ocultos para contexto de precio */}
+      {isViaAgency && agencyId && (
+        <>
+          <input type="hidden" name="priceType" value="agency" />
+          <input type="hidden" name="agencyId" value={agencyId} />
+        </>
+      )}
+      {!isViaAgency && <input type="hidden" name="priceType" value="direct" />}
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className={labelClass} htmlFor="startsAt">
@@ -79,8 +92,9 @@ export function ReserveForm({
         </div>
       </div>
       <p className="text-xs leading-relaxed text-muted-foreground">
-        El medio confirmará disponibilidad y condiciones. El pago no se procesa por esta plataforma:
-        lo coordinás directamente con el proveedor.
+        {isViaAgency
+          ? "La solicitud se procesará a través de tu agencia al precio especial acordado."
+          : "El medio confirmará disponibilidad y condiciones. El pago se coordina con NextMedia."}
       </p>
       {state?.error ? (
         <p className="text-sm text-red-600 dark:text-red-400" role="alert">

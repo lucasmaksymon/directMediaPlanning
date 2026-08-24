@@ -3,9 +3,10 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { surfaceCard } from "@/lib/ui-classes";
 import { cn } from "@/lib/cn";
+import { productTitle } from "@/lib/brand";
 import { AgencyClientsManager } from "./AgencyClientsManager";
 
-export const metadata = { title: "Clientes · Agencia · Direct Planning" };
+export const metadata = { title: productTitle("Clientes · Agencia") };
 
 export default async function AgencyClientesPage() {
   const session = await auth();

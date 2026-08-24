@@ -4,12 +4,13 @@ import { formatArs } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { ReserveForm } from "./ReserveForm";
-import { surfaceCard } from "@/lib/ui-classes";
+import { layoutPadding, pageScroll, surfaceCard } from "@/lib/ui-classes";
 import { cn } from "@/lib/cn";
 import { getUnitCalendar } from "@/app/actions/availability";
 import { AvailabilityCalendar } from "@/components/calendar/AvailabilityCalendar";
 import { ImageGallery } from "@/components/explore/ImageGallery";
 import { AudienceInsight } from "@/components/explore/AudienceInsight";
+import { CLIENT_BRAND } from "@/lib/brand";
 
 const formatLabels: Record<string, string> = {
   digital_ooh: "Digital · vía pública",
@@ -27,15 +28,34 @@ export default async function ExplorarDetallePage({
 
   const unit = await prisma.inventoryUnit.findFirst({
     where: { id, status: "published" },
-    include: { provider: { select: { companyName: true } } },
   });
   if (!unit) notFound();
 
-  const isAdvertiser = session?.user?.role === "advertiser";
+  const role = session?.user?.role;
+  const isAdvertiser = role === "advertiser";
+
+  // Determinar si el anunciante está vinculado a una agencia
+  let agencyProfile: { id: string; companyName: string; commissionPct: unknown } | null = null;
+  if (isAdvertiser && session?.user?.id) {
+    const agencyLink = await prisma.agencyClient.findFirst({
+      where: { advertiserId: session.user.id },
+      include: {
+        agency: { select: { id: true, companyName: true, commissionPct: true } },
+      },
+    });
+    agencyProfile = agencyLink?.agency ?? null;
+  }
+
+  // Precio mostrado según contexto
+  const hasAgencyPrice = unit.agencyPriceAmount !== null;
+  const isViaAgency = isAdvertiser && agencyProfile !== null && hasAgencyPrice;
+  const displayPrice = isViaAgency ? unit.agencyPriceAmount! : unit.basePriceAmount;
+  const directPrice = unit.basePriceAmount;
+
   const calendarBlocks = await getUnitCalendar(id);
 
   return (
-    <main className="h-full w-full overflow-y-auto px-4 py-8 sm:px-6 lg:px-8 xl:px-10">
+    <main className={cn(pageScroll, layoutPadding, "py-8 pb-12")}>
       <Link
         className="text-sm font-medium text-muted-foreground transition hover:text-led hover:underline"
         href="/explorar"
@@ -56,32 +76,54 @@ export default async function ExplorarDetallePage({
         {unit.description && (
           <p className="mt-4 text-base leading-relaxed text-foreground/90">{unit.description}</p>
         )}
+
         {/* Badges destacados */}
         <div className="flex flex-wrap gap-2">
-          {(unit as { instantBookEnabled?: boolean }).instantBookEnabled && (
+          {unit.instantBookEnabled && (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-led/40 bg-led/10 px-3 py-1 text-xs font-semibold text-led">
               Confirmación inmediata
             </span>
           )}
-          {(unit as { lastMinuteEnabled?: boolean; lastMinuteDiscountPercent?: number }).lastMinuteEnabled && (
+          {unit.lastMinuteEnabled && (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-signal/40 bg-signal/10 px-3 py-1 text-xs font-semibold text-signal">
-              Last Minute — {(unit as { lastMinuteDiscountPercent?: number }).lastMinuteDiscountPercent ?? 20}% OFF
+              Last Minute — {unit.lastMinuteDiscountPercent ?? 20}% OFF
+            </span>
+          )}
+          {isViaAgency && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-led/60 bg-led/15 px-3 py-1 text-xs font-semibold text-led">
+              Precio especial vía {agencyProfile!.companyName}
             </span>
           )}
         </div>
 
         <dl className="mt-6 grid gap-4 text-sm sm:grid-cols-2">
+          {/* Precio diferencial */}
           <div>
-            <dt className="text-muted-foreground">Precio de referencia</dt>
-            <dd className="mt-1 font-medium text-foreground">{formatArs(unit.basePriceAmount)}</dd>
+            <dt className="text-muted-foreground">
+              {isViaAgency ? "Tu precio (vía agencia)" : "Precio de referencia"}
+            </dt>
+            <dd className="mt-1 text-xl font-bold text-led tabular-nums">
+              {formatArs(displayPrice)}
+            </dd>
+            {isViaAgency && (
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Precio directo:{" "}
+                <span className="line-through">{formatArs(directPrice)}</span>
+              </p>
+            )}
+            {!isViaAgency && hasAgencyPrice && isAdvertiser && (
+              <p className="mt-1 text-xs text-led">
+                ¿Tenés agencia? Podés acceder a precio especial de {formatArs(unit.agencyPriceAmount!)}
+              </p>
+            )}
           </div>
           <div>
             <dt className="text-muted-foreground">Formato</dt>
             <dd className="mt-1 font-medium text-foreground">{formatLabels[unit.format] ?? unit.format}</dd>
           </div>
           <div className="sm:col-span-2">
-            <dt className="text-muted-foreground">Medio</dt>
-            <dd className="mt-1 font-medium text-foreground">{unit.provider.companyName}</dd>
+            <dt className="text-muted-foreground">Operador</dt>
+            <dd className="mt-1 font-medium text-foreground">{CLIENT_BRAND}</dd>
           </div>
         </dl>
       </article>
@@ -102,11 +144,25 @@ export default async function ExplorarDetallePage({
       <section className={cn(surfaceCard(), "mt-6 p-6 sm:p-8")}>
         <h2 className="text-lg font-semibold text-foreground">Solicitar disponibilidad</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Indicá el rango de fechas. El medio revisará el pedido y se pondrá en contacto para confirmar
-          condiciones.
+          Indicá el rango de fechas. El medio revisará el pedido y se pondrá en contacto para
+          confirmar condiciones.
         </p>
+        {isViaAgency && agencyProfile && (
+          <div className="mt-3 rounded-2xl border border-led/30 bg-led/5 px-4 py-3 text-sm">
+            <p className="text-foreground">
+              Esta solicitud se enviará{" "}
+              <strong>a través de {agencyProfile.companyName}</strong> al precio de{" "}
+              <strong className="text-led">{formatArs(displayPrice)}</strong>.
+            </p>
+          </div>
+        )}
         <div className="mt-6">
-          <ReserveForm isAdvertiser={isAdvertiser} unitId={unit.id} />
+          <ReserveForm
+            agencyId={agencyProfile?.id ?? null}
+            isAdvertiser={isAdvertiser}
+            isViaAgency={isViaAgency}
+            unitId={unit.id}
+          />
         </div>
       </section>
     </main>

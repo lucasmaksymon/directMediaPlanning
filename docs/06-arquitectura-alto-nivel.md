@@ -1,4 +1,4 @@
-# Arquitectura de alto nivel — MVP Direct Planning
+# Arquitectura de alto nivel — MVP NextPlanning
 
 Vista objetivo para la primera implementación técnica. **No prescribe** framework concreto; el equipo puede mapear a Next.js, Laravel, etc.
 

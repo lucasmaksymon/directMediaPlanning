@@ -9,7 +9,6 @@ export type LastMinuteUnit = {
   discountedPrice: number;
   discountPercent: number;
   windowDays: number;
-  providerName: string;
   imageUrl?: string;
 };
 
@@ -22,7 +21,6 @@ export async function getLastMinuteUnits(): Promise<LastMinuteUnit[]> {
       lastMinuteEnabled: true,
     },
     include: {
-      provider: { select: { companyName: true } },
       reservations: {
         where: {
           status: { in: ["pending_provider", "accepted", "payment_pending", "confirmed"] },
@@ -52,7 +50,6 @@ export async function getLastMinuteUnits(): Promise<LastMinuteUnit[]> {
         discountedPrice,
         discountPercent,
         windowDays: u.lastMinuteWindowDays ?? 7,
-        providerName: u.provider.companyName,
         imageUrl: u.imageUrls?.[0] ?? undefined,
       };
     });

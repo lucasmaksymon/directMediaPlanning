@@ -1,4 +1,4 @@
-# Flujos del MVP (Direct Planning)
+# Flujos del MVP (NextPlanning)
 
 Estado del producto: **modelo de cobro C** — la plataforma gestiona el **match** (descubrimiento, solicitud y estados de reserva); **pago y facturación** quedan fuera de la app en esta versión.
 

@@ -6,14 +6,14 @@ export default auth((req) => {
   const session = req.auth;
   const role = session?.user?.role;
 
-  if (pathname.startsWith("/admin")) {
-    if (!session) return NextResponse.redirect(new URL("/login", req.url));
-    if (role !== "admin") return NextResponse.redirect(new URL("/", req.url));
-  }
-
   if (pathname.startsWith("/provider")) {
     if (!session) return NextResponse.redirect(new URL("/login", req.url));
     if (role !== "provider" && role !== "admin") return NextResponse.redirect(new URL("/", req.url));
+  }
+
+  if (pathname.startsWith("/admin")) {
+    if (!session) return NextResponse.redirect(new URL("/login", req.url));
+    if (role !== "admin") return NextResponse.redirect(new URL("/", req.url));
   }
 
   if (pathname.startsWith("/advertiser")) {

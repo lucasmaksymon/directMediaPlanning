@@ -3,10 +3,12 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatArs } from "@/lib/format";
 import { cn } from "@/lib/cn";
-import { surfaceCard } from "@/lib/ui-classes";
+import { adminPage, adminPageBody, adminPageHeader, surfaceCard } from "@/lib/ui-classes";
 import Link from "next/link";
 
-export const metadata = { title: "Admin · Direct Planning" };
+import { productTitle } from "@/lib/brand";
+
+export const metadata = { title: productTitle("Métricas") };
 
 async function getStats() {
   const [
@@ -43,14 +45,15 @@ export default async function AdminPage() {
   const s = await getStats();
 
   return (
-    <div className="flex h-[calc(100dvh-56px)] flex-col gap-4 overflow-y-auto px-4 py-4 sm:px-6 lg:px-8 xl:px-10 [scrollbar-gutter:stable]">
-      <header>
+    <div className={adminPage}>
+      <header className={adminPageHeader}>
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-led">Admin</p>
         <h1 className="font-display text-xl font-normal uppercase tracking-wide text-foreground sm:text-2xl">
           Métricas globales
         </h1>
       </header>
 
+      <div className={cn(adminPageBody, "flex flex-col gap-4")}>
       {/* Volumen */}
       <div className={cn(surfaceCard(), "flex items-center gap-4 px-5 py-4")}>
         <p className="text-2xl font-bold tabular-nums text-led">{formatArs(s.totalARS)}</p>
@@ -87,6 +90,7 @@ export default async function AdminPage() {
             {a.label} <span className="text-led">→</span>
           </Link>
         ))}
+      </div>
       </div>
     </div>
   );

@@ -78,7 +78,6 @@ export async function getPlannerRecommendations(brief: PlannerBrief): Promise<Pl
         },
       },
     },
-    include: { provider: { select: { companyName: true } } },
     take: 40,
     orderBy: { basePriceAmount: "asc" },
   });
@@ -93,33 +92,39 @@ export async function getPlannerRecommendations(brief: PlannerBrief): Promise<Pl
   const unitsContext = units
     .map(
       (u) =>
-        `ID: ${u.id} | Nombre: ${u.name} | Zona: ${u.locationLabel} | Formato: ${u.format} | Precio/ref: $${u.basePriceAmount} ARS | Medio: ${u.provider.companyName}`,
+        `ID: ${u.id} | Nombre: ${u.name} | Zona: ${u.locationLabel} | Formato: ${u.format} | Precio/ref: $${u.basePriceAmount} ARS`,
     )
     .join("\n");
 
   const systemPrompt = `Sos un experto en planificación de medios OOH (Out-of-Home) en Argentina.
 Tu tarea es seleccionar la mejor combinación de espacios publicitarios para un brief dado.
+REGLA CRÍTICA: La suma de los precios de los espacios seleccionados NO debe superar el presupuesto total indicado en el brief.
 Respondé ÚNICAMENTE con un JSON válido siguiendo el esquema exacto indicado. Sin markdown, sin explicaciones extra.`;
 
   const userPrompt = `BRIEF DEL ANUNCIANTE:
 - Objetivo: ${brief.objetivo}
 - Zona/mercado: ${brief.zona}
-- Presupuesto total: $${brief.presupuesto.toLocaleString("es-AR")} ARS
+- Presupuesto MÁXIMO (no superar): $${brief.presupuesto.toLocaleString("es-AR")} ARS
 - Período: ${brief.fechaInicio} al ${brief.fechaFin}
 - Audiencia objetivo: ${brief.audiencia ?? "general"}
 
 ESPACIOS DISPONIBLES (máx. ${units.length}):
 ${unitsContext}
 
-Seleccioná entre 2 y 5 espacios que mejor se adapten al brief. Priorizá diversidad de zonas, impacto para la audiencia y eficiencia de presupuesto.
+INSTRUCCIONES:
+1. Seleccioná entre 2 y 6 espacios que mejor se adapten al brief.
+2. La suma total de precios NO debe superar $${brief.presupuesto.toLocaleString("es-AR")} ARS.
+3. Priorizá: diversidad de zonas, impacto para la audiencia objetivo, eficiencia de presupuesto (maximizar alcance).
+4. Asigná score de 0-10 a cada espacio según ajuste al brief.
+5. Justificá brevemente por qué cada espacio fue elegido.
 
 Respondé SOLO con este JSON:
 {
   "recomendaciones": [
-    { "unitId": "<id>", "score": <0-10>, "justificacion": "<por qué este espacio encaja>" }
+    { "unitId": "<id>", "score": <0-10>, "justificacion": "<por qué este espacio encaja con el brief>" }
   ],
-  "presupuestoEstimado": <suma de precios de referencia seleccionados>,
-  "resumen": "<2-3 oraciones resumiendo la estrategia>"
+  "presupuestoEstimado": <suma exacta de precios de referencia seleccionados>,
+  "resumen": "<2-3 oraciones resumiendo la estrategia propuesta y el uso del presupuesto>"
 }`;
 
   try {

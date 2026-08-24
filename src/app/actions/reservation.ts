@@ -1,10 +1,13 @@
 "use server";
 
-import { ReservationStatus } from "@prisma/client";
+import { PriceType, ReservationStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { CLIENT_BRAND } from "@/lib/brand";
 import { sendEmail } from "@/lib/email";
+import { computePlatformFee, getPlatformFeeRate } from "@/lib/platform-fee";
+import { requireOpsSession } from "@/lib/ops-access";
 import { sendWhatsApp, buildNewReservationWhatsApp } from "@/lib/whatsapp";
 
 export type ReservationState = { error?: string; ok?: boolean; instantBook?: boolean } | undefined;
@@ -21,6 +24,11 @@ export async function createReservation(
 
   const startsAtRaw = String(formData.get("startsAt") ?? "");
   const endsAtRaw = String(formData.get("endsAt") ?? "");
+  const priceTypeRaw = String(formData.get("priceType") ?? "direct");
+  const agencyIdRaw = String(formData.get("agencyId") ?? "").trim() || null;
+  const campaignIdRaw = String(formData.get("campaignId") ?? "").trim() || null;
+  const priceType: PriceType = priceTypeRaw === "agency" ? PriceType.agency : PriceType.direct;
+
   if (!/^\d{4}-\d{2}-\d{2}$/.test(startsAtRaw) || !/^\d{4}-\d{2}-\d{2}$/.test(endsAtRaw)) {
     return { error: "Ingresá fechas válidas en ambos campos." };
   }
@@ -70,9 +78,35 @@ export async function createReservation(
   // Determinar si aplica Instant Book
   const durationDays = Math.ceil((endsAt.getTime() - startsAt.getTime()) / (1000 * 60 * 60 * 24));
   const instantBookApplies =
-    (unit as { instantBookEnabled?: boolean; instantBookMinDays?: number; instantBookMaxAmount?: unknown }).instantBookEnabled &&
-    durationDays >= ((unit as { instantBookMinDays?: number }).instantBookMinDays ?? 1);
+    unit.instantBookEnabled &&
+    durationDays >= (unit.instantBookMinDays ?? 1);
   const reservationStatus = instantBookApplies ? ReservationStatus.accepted : ReservationStatus.pending_provider;
+
+  // Calcular precio y comisión según tipo de reserva
+  let agreedAmount = unit.basePriceAmount;
+  let commissionAmount: number | null = null;
+
+  if (priceType === PriceType.agency && agencyIdRaw && unit.agencyPriceAmount) {
+    // Verificar que la agencia existe y el anunciante es cliente
+    const agencyLink = await prisma.agencyClient.findFirst({
+      where: { agencyId: agencyIdRaw, advertiserId: session.user.id },
+      include: { agency: { select: { commissionPct: true } } },
+    });
+    if (agencyLink) {
+      agreedAmount = unit.agencyPriceAmount;
+      commissionAmount = Number(unit.basePriceAmount) - Number(unit.agencyPriceAmount);
+    }
+  }
+
+  const platformFeeRate = await getPlatformFeeRate();
+  const { platformFee } = computePlatformFee(Number(agreedAmount), platformFeeRate);
+
+  if (campaignIdRaw) {
+    const campaign = await prisma.campaign.findFirst({
+      where: { id: campaignIdRaw, advertiserId: session.user.id },
+    });
+    if (!campaign) return { error: "Campaña no encontrada." };
+  }
 
   await prisma.reservation.create({
     data: {
@@ -81,47 +115,106 @@ export async function createReservation(
       startsAt,
       endsAt,
       status: reservationStatus,
-      agreedAmount: unit.basePriceAmount,
+      agreedAmount,
+      platformFeeRate,
+      platformFeeAmount: platformFee,
+      priceType,
+      agencyId: priceType === PriceType.agency ? agencyIdRaw : null,
+      commissionAmount: commissionAmount !== null ? commissionAmount : undefined,
+      campaignId: campaignIdRaw,
     },
   });
 
-  // Notificar al proveedor por email
-  const providerUser = await prisma.user.findFirst({
-    where: { providerProfile: { id: unit.providerId } },
-    select: { email: true, providerProfile: { select: { companyName: true } } },
+  // Obtener nombre del anunciante y agencia (si aplica)
+  const advertiserProfile = await prisma.advertiserProfile.findUnique({
+    where: { userId: session.user.id },
+    select: { legalName: true },
   });
-  if (providerUser) {
-    if (instantBookApplies) {
-      // Instant Book: notificar al anunciante que fue aceptado
-      sendEmail({
-        type: "reservation_accepted",
-        to: session.user.email ?? "",
-        unitName: unit.name,
-        providerName: providerUser.providerProfile?.companyName ?? "",
-        startsAt,
-        endsAt,
-        note: "Confirmación automática mediante Libro Instantáneo.",
-      }).catch(() => {});
-    } else {
+  const advertiserName = advertiserProfile?.legalName ?? session.user.email ?? "Anunciante";
+
+  let agencyName: string | undefined;
+  if (priceType === PriceType.agency && agencyIdRaw) {
+    const agency = await prisma.agencyProfile.findUnique({
+      where: { id: agencyIdRaw },
+      select: { companyName: true },
+    });
+    agencyName = agency?.companyName;
+  }
+
+  if (instantBookApplies) {
+    sendEmail({
+      type: "reservation_accepted",
+      to: session.user.email ?? "",
+      unitName: unit.name,
+      providerName: CLIENT_BRAND,
+      startsAt,
+      endsAt,
+      note: "Confirmación automática mediante Libro Instantáneo.",
+    }).catch(() => {});
+  } else {
+    // Notificar al proveedor si tiene usuario registrado
+    if (unit.provider.userId) {
+      const providerUser = await prisma.user.findUnique({
+        where: { id: unit.provider.userId },
+        select: { email: true },
+      });
+      if (providerUser?.email) {
+        sendEmail({
+          type: "new_reservation_provider",
+          to: providerUser.email,
+          unitName: unit.name,
+          advertiserName,
+          agencyName,
+          startsAt,
+          endsAt,
+          providerPanelUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/provider/reservas`,
+        }).catch(() => {});
+      }
+    }
+
+    // Notificar a admins también
+    const admins = await prisma.user.findMany({
+      where: { role: "admin" },
+      select: { email: true },
+    });
+    for (const admin of admins) {
       sendEmail({
         type: "new_reservation",
-        to: providerUser.email,
-        providerName: providerUser.providerProfile?.companyName ?? "",
+        to: admin.email,
+        providerName: unit.provider.companyName,
         unitName: unit.name,
         advertiserEmail: session.user.email ?? "",
         startsAt,
         endsAt,
         reservationId: inventoryUnitId,
       }).catch(() => {});
+    }
+    const notifyPhone = process.env.ADMIN_NOTIFY_WHATSAPP;
+    if (notifyPhone) {
+      sendWhatsApp(
+        notifyPhone,
+        buildNewReservationWhatsApp(unit.name, session.user.email ?? "", startsAt, endsAt, inventoryUnitId),
+      ).catch(() => {});
+    }
+  }
 
-      // WhatsApp al proveedor si tiene teléfono
-      const providerPhone = (unit as { provider?: { phone?: string | null } }).provider?.phone;
-      if (providerPhone) {
-        sendWhatsApp(
-          providerPhone,
-          buildNewReservationWhatsApp(unit.name, session.user.email ?? "", startsAt, endsAt, inventoryUnitId),
-        ).catch(() => {});
-      }
+  // Notificar a la agencia si la reserva es vía agencia
+  if (priceType === PriceType.agency && agencyIdRaw) {
+    const agencyUser = await prisma.agencyProfile.findUnique({
+      where: { id: agencyIdRaw },
+      include: { user: { select: { email: true } } },
+    });
+    if (agencyUser?.user?.email) {
+      sendEmail({
+        type: "new_reservation",
+        to: agencyUser.user.email,
+        providerName: unit.provider.companyName,
+        unitName: unit.name,
+        advertiserEmail: advertiserName,
+        startsAt,
+        endsAt,
+        reservationId: inventoryUnitId,
+      }).catch(() => {});
     }
   }
 
@@ -206,102 +299,84 @@ export async function rejectReservationFromForm(formData: FormData): Promise<voi
 }
 
 export async function acceptReservation(reservationId: string, providerNote?: string): Promise<ReservationState> {
-  const session = await auth();
-  if (!session?.user?.id || session.user.role !== "provider") {
+  try {
+    await requireOpsSession();
+
+    const resv = await prisma.reservation.findFirst({
+      where: { id: reservationId, status: ReservationStatus.pending_provider },
+      include: { inventoryUnit: true },
+    });
+    if (!resv) return { error: "Esa solicitud no existe o ya fue respondida." };
+
+    await prisma.reservation.update({
+      where: { id: resv.id },
+      data: {
+        status: ReservationStatus.accepted,
+        agreedAmount: resv.agreedAmount ?? resv.inventoryUnit.basePriceAmount,
+        ...(providerNote ? { providerNote } : {}),
+      },
+    });
+
+    const advertiserUser = await prisma.user.findUnique({
+      where: { id: resv.advertiserId },
+      select: { email: true },
+    });
+    if (advertiserUser) {
+      sendEmail({
+        type: "reservation_accepted",
+        to: advertiserUser.email,
+        unitName: resv.inventoryUnit.name,
+        providerName: CLIENT_BRAND,
+        startsAt: resv.startsAt,
+        endsAt: resv.endsAt,
+        note: providerNote,
+      }).catch(() => {});
+    }
+
+    revalidatePath("/admin/reservas");
+    revalidatePath("/advertiser");
+    return { ok: true };
+  } catch {
     return { error: "No tenés permiso para esta acción." };
   }
-
-  const profile = await prisma.providerProfile.findUnique({
-    where: { userId: session.user.id },
-  });
-  if (!profile) return { error: "No encontramos el perfil de tu medio." };
-
-  const resv = await prisma.reservation.findFirst({
-    where: {
-      id: reservationId,
-      status: ReservationStatus.pending_provider,
-      inventoryUnit: { providerId: profile.id },
-    },
-    include: { inventoryUnit: true },
-  });
-  if (!resv) return { error: "Esa solicitud no existe o ya fue respondida." };
-
-  await prisma.reservation.update({
-    where: { id: resv.id },
-    data: {
-      status: ReservationStatus.accepted,
-      agreedAmount: resv.agreedAmount ?? resv.inventoryUnit.basePriceAmount,
-      ...(providerNote ? { providerNote } : {}),
-    },
-  });
-
-  // Notificar al anunciante por email
-  const advertiserUser = await prisma.user.findUnique({
-    where: { id: resv.advertiserId },
-    select: { email: true },
-  });
-  if (advertiserUser) {
-    sendEmail({
-      type: "reservation_accepted",
-      to: advertiserUser.email,
-      unitName: resv.inventoryUnit.name,
-      providerName: profile.companyName,
-      startsAt: resv.startsAt,
-      endsAt: resv.endsAt,
-      note: providerNote,
-    }).catch(() => {});
-  }
-
-  revalidatePath("/provider/reservations");
-  revalidatePath("/advertiser");
-  return { ok: true };
 }
 
 export async function rejectReservation(reservationId: string, providerNote?: string): Promise<ReservationState> {
-  const session = await auth();
-  if (!session?.user?.id || session.user.role !== "provider") {
+  try {
+    await requireOpsSession();
+
+    const resv = await prisma.reservation.findFirst({
+      where: { id: reservationId, status: ReservationStatus.pending_provider },
+      include: { inventoryUnit: { select: { name: true } } },
+    });
+    if (!resv) return { error: "Esa solicitud no existe o ya fue respondida." };
+
+    await prisma.reservation.update({
+      where: { id: resv.id },
+      data: {
+        status: ReservationStatus.rejected,
+        ...(providerNote ? { providerNote } : {}),
+      },
+    });
+
+    const advertiserUser = await prisma.user.findUnique({
+      where: { id: resv.advertiserId },
+      select: { email: true },
+    });
+    if (advertiserUser) {
+      sendEmail({
+        type: "reservation_rejected",
+        to: advertiserUser.email,
+        unitName: resv.inventoryUnit.name,
+        providerName: CLIENT_BRAND,
+        note: providerNote,
+      }).catch(() => {});
+    }
+
+    revalidatePath("/admin/reservas");
+    revalidatePath("/advertiser");
+    return { ok: true };
+  } catch {
     return { error: "No tenés permiso para esta acción." };
   }
-
-  const profile = await prisma.providerProfile.findUnique({
-    where: { userId: session.user.id },
-  });
-  if (!profile) return { error: "No encontramos el perfil de tu medio." };
-
-  const resv = await prisma.reservation.findFirst({
-    where: {
-      id: reservationId,
-      status: ReservationStatus.pending_provider,
-      inventoryUnit: { providerId: profile.id },
-    },
-    include: { inventoryUnit: { select: { name: true } } },
-  });
-  if (!resv) return { error: "Esa solicitud no existe o ya fue respondida." };
-
-  await prisma.reservation.update({
-    where: { id: resv.id },
-    data: {
-      status: ReservationStatus.rejected,
-      ...(providerNote ? { providerNote } : {}),
-    },
-  });
-
-  // Notificar al anunciante
-  const advertiserUser = await prisma.user.findUnique({
-    where: { id: resv.advertiserId },
-    select: { email: true },
-  });
-  if (advertiserUser) {
-    sendEmail({
-      type: "reservation_rejected",
-      to: advertiserUser.email,
-      unitName: resv.inventoryUnit.name,
-      providerName: profile.companyName,
-      note: providerNote,
-    }).catch(() => {});
-  }
-
-  revalidatePath("/provider/reservations");
-  revalidatePath("/advertiser");
-  return { ok: true };
 }

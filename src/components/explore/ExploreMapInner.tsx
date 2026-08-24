@@ -76,7 +76,7 @@ export function ExploreMapInner({ units }: { units: ExploreUnitDTO[] }) {
                 <p className="font-semibold leading-snug text-carbon">{u.name}</p>
                 <p className="mt-1 text-xs leading-snug text-[#5a6567]">{u.locationLabel}</p>
                 <p className="mt-2 text-sm font-semibold text-carbon">{formatArs(Number(u.basePriceAmount))}</p>
-                <p className="text-xs text-[#5a6567]">{u.providerName}</p>
+                <p className="text-xs text-[#5a6567]">{u.locationLabel}</p>
                 <Link
                   className="mt-3 inline-flex text-sm font-semibold text-[#00b6c7] underline underline-offset-2"
                   href={`/explorar/${u.id}`}

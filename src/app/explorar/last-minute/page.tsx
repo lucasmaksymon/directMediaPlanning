@@ -1,12 +1,13 @@
 import { getLastMinuteUnits } from "@/lib/last-minute";
 import { formatArs } from "@/lib/format";
+import { productTitle } from "@/lib/brand";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
-import { btnPrimary, surfaceCard } from "@/lib/ui-classes";
+import { btnPrimary, layoutPadding, pageScroll, surfaceCard } from "@/lib/ui-classes";
 import Image from "next/image";
 
 export const metadata = {
-  title: "Last Minute · Direct Planning",
+  title: productTitle("Last Minute"),
   description: "Espacios disponibles con descuento inmediato. Oportunidades para campañas rápidas.",
 };
 
@@ -20,7 +21,7 @@ export default async function LastMinutePage() {
   const units = await getLastMinuteUnits();
 
   return (
-    <main className="h-full w-full overflow-y-auto px-4 py-8 sm:px-6 lg:px-8 xl:px-10 space-y-10">
+    <main className={cn(pageScroll, layoutPadding, "space-y-10 py-8")}>
       <header>
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-signal">Oportunidad</p>
         <h1 className="font-display mt-3 text-3xl font-normal uppercase tracking-wide text-foreground sm:text-4xl">
@@ -61,7 +62,7 @@ export default async function LastMinutePage() {
               <div className="flex flex-col flex-1 p-5">
                 <p className="font-semibold text-foreground line-clamp-2">{u.name}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{u.locationLabel}</p>
-                <p className="text-xs text-muted-foreground">{u.providerName} · {formatLabels[u.format] ?? u.format}</p>
+                <p className="text-xs text-muted-foreground">{formatLabels[u.format] ?? u.format}</p>
 
                 <div className="mt-4">
                   <p className="text-xs text-muted-foreground line-through">{formatArs(u.originalPrice)}</p>

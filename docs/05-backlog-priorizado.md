@@ -1,4 +1,4 @@
-# Backlog priorizado — MVP Direct Planning
+# Backlog priorizado — MVP NextPlanning
 
 Convención: **P0** = bloquea beta cerrada; **P1** = importante para buena experiencia; **P2** = siguiente iteración. Las historias están ordenadas por prioridad sugerida dentro de cada nivel.
 

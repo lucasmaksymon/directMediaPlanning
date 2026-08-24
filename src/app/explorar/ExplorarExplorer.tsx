@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ExploreMap } from "@/components/explore/ExploreMap";
 import { ExploreUnitCard } from "@/components/explore/ExploreUnitCard";
 import { SearchAutocomplete } from "@/components/explore/SearchAutocomplete";
-import type { ExploreFilters, ExploreProviderOption, ExploreUnitDTO } from "@/lib/explore-query";
+import type { ExploreFilters, ExploreUnitDTO } from "@/lib/explore-query";
 import { buildExploreHref } from "@/lib/explore-query";
 import { GEO_SUGGESTIONS } from "@/lib/geo-suggestions";
 import { cn } from "@/lib/cn";
@@ -14,11 +14,10 @@ import { btnPrimary } from "@/lib/ui-classes";
 
 type Props = {
   units: ExploreUnitDTO[];
-  providers: ExploreProviderOption[];
   filters: ExploreFilters;
 };
 
-export function ExplorarExplorer({ units, providers, filters }: Props) {
+export function ExplorarExplorer({ units, filters }: Props) {
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
   const router = useRouter();
   const [compareMode, setCompareMode] = useState(false);
@@ -35,7 +34,6 @@ export function ExplorarExplorer({ units, providers, filters }: Props) {
   const baseParams = useMemo(
     () => ({
       q: filters.q || undefined,
-      proveedor: filters.providerId || undefined,
       desde: filters.desde || undefined,
       hasta: filters.hasta || undefined,
       precio_max: filters.precioMax || undefined,
@@ -105,31 +103,9 @@ export function ExplorarExplorer({ units, providers, filters }: Props) {
                     sublabel: u.locationLabel,
                     value: u.name,
                   })),
-                  // 4. Nombres de medios
-                  ...providers.map((p) => ({
-                    label: p.companyName,
-                    sublabel: "Medio",
-                    value: p.companyName,
-                  })),
                 ];
               })()}
             />
-          </div>
-
-          {/* Medio */}
-          <div className="min-w-[160px] flex-[0_1_200px]">
-            <label className={labelCls} htmlFor="proveedor">Medio</label>
-            <select
-              className={inputCls}
-              defaultValue={filters.providerId}
-              id="proveedor"
-              name="proveedor"
-            >
-              <option value="">Todos</option>
-              {providers.map((p) => (
-                <option key={p.id} value={p.id}>{p.companyName}</option>
-              ))}
-            </select>
           </div>
 
           {/* Desde */}
@@ -276,7 +252,7 @@ export function ExplorarExplorer({ units, providers, filters }: Props) {
           {(vista === "lista" || vista === "ambos") && (
             <ul
               className={cn(
-                "grid gap-3 overflow-y-auto pr-1 [scrollbar-gutter:stable]",
+                "grid gap-3 overflow-y-auto pr-1",
                 vista === "lista" ? "sm:grid-cols-2 xl:grid-cols-3 h-full content-start" : "h-full content-start",
               )}
             >

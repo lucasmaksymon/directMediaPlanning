@@ -3,9 +3,9 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: dmp
-      POSTGRES_PASSWORD: dmp_local
-      POSTGRES_DB: directmediaplanning
+      POSTGRES_USER: nextmedia
+      POSTGRES_PASSWORD: nextmedia_local
+      POSTGRES_DB: nextplanning
     ports:
       - "5432:5432"
     volumes:

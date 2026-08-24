@@ -2,60 +2,20 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import { getProviderProfileByUserId } from "@/lib/provider";
-import { surfaceCard } from "@/lib/ui-classes";
+import { CLIENT_BRAND, productTitle } from "@/lib/brand";
+import { advertiserPage, pageScroll, surfaceCard } from "@/lib/ui-classes";
 import { cn } from "@/lib/cn";
 
 export const metadata = {
-  title: "Inicio · Direct Planning",
+  title: productTitle("Inicio"),
 };
 
 export default async function InicioPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  if (session.user.role === "provider") {
-    const profile = await getProviderProfileByUserId(session.user.id);
-    if (!profile) redirect("/provider");
-
-    const [totalUnits, publishedUnits, pendingReservations, acceptedReservations] = await Promise.all([
-      prisma.inventoryUnit.count({ where: { providerId: profile.id } }),
-      prisma.inventoryUnit.count({ where: { providerId: profile.id, status: "published" } }),
-      prisma.reservation.count({
-        where: { inventoryUnit: { providerId: profile.id }, status: "pending_provider" },
-      }),
-      prisma.reservation.count({
-        where: { inventoryUnit: { providerId: profile.id }, status: "accepted" },
-      }),
-    ]);
-
-    return (
-      <div className="flex h-full flex-col gap-4 overflow-y-auto px-4 py-4 sm:px-6 lg:px-8 xl:px-10">
-        <header>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-led">
-            Panel del medio
-          </p>
-          <h1 className="font-display text-2xl font-normal uppercase tracking-wide text-foreground sm:text-3xl">
-            {profile.companyName}
-          </h1>
-        </header>
-
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatCard href="/provider/inventory" label="Publicadas" sublabel="de total" value={publishedUnits} sub={totalUnits} accent={publishedUnits > 0} />
-          <StatCard href="/provider/reservations" label="Pendientes" sublabel="sin respuesta" value={pendingReservations} urgent={pendingReservations > 0} />
-          <StatCard href="/provider/reservations" label="Aceptadas" sublabel="en curso" value={acceptedReservations} accent={acceptedReservations > 0} />
-          <ActionCard href="/provider/inventory/new" label="Nueva unidad" cta="Crear →" />
-        </div>
-
-        <div className="grid gap-2 sm:grid-cols-2">
-          <QuickLink href="/provider/inventory" label="Ver inventario completo" />
-          <QuickLink href="/provider/reservations" label="Ver todas las solicitudes" />
-          <QuickLink href="/provider/analytics" label="Analíticas y yield" />
-          <QuickLink href="/provider/circuitos" label="Circuitos OOH" />
-        </div>
-      </div>
-    );
-  }
+  if (session.user.role === "provider") redirect("/provider");
+  if (session.user.role === "agency") redirect("/agency");
 
   if (session.user.role === "advertiser") {
     const [totalRequests, pendingRequests, acceptedRequests] = await Promise.all([
@@ -65,27 +25,34 @@ export default async function InicioPage() {
     ]);
 
     return (
-      <div className="flex h-full flex-col gap-4 overflow-y-auto px-4 py-4 sm:px-6 lg:px-8 xl:px-10">
+      <div className={cn(advertiserPage, pageScroll, "gap-4")}>
         <header>
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-led">
-            Panel del anunciante
+            {CLIENT_BRAND} · Mi cuenta
           </p>
           <h1 className="font-display text-2xl font-normal uppercase tracking-wide text-foreground sm:text-3xl">
-            Bienvenido
+            Hola
+            {session.user.email
+              ? `, ${session.user.email.split("@")[0].replace(/\./g, " ")}`
+              : ""}
           </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Resumen de tus solicitudes y accesos rápidos al catálogo.
+          </p>
         </header>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
           <StatCard href="/advertiser" label="Solicitudes" sublabel="enviadas" value={totalRequests} />
           <StatCard href="/advertiser" label="En revisión" sublabel="esperando respuesta" value={pendingRequests} urgent={pendingRequests > 0} />
           <StatCard href="/advertiser" label="Aceptadas" sublabel="listas" value={acceptedRequests} accent={acceptedRequests > 0} />
           <ActionCard href="/advertiser/planificar" label="Planificador IA" cta="Planificar →" badge="IA" />
+          <ActionCard href="/advertiser/creativo" label="Validar creativo" cta="Validar →" badge="IA" />
         </div>
 
         <div className="grid gap-2 sm:grid-cols-2">
           <QuickLink href="/explorar" label="Explorar catálogo de espacios" />
           <QuickLink href="/advertiser" label="Ver mis solicitudes" />
-          <QuickLink href="/advertiser/creativo" label="Validar creatividad" />
+          <QuickLink href="/advertiser/creativo" label="Validar creativo" />
           <QuickLink href="/explorar/last-minute" label="Últimas oportunidades" />
         </div>
       </div>
