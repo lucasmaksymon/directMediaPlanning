@@ -6,13 +6,13 @@
  *   SEED_ADMIN_PASSWORD
  *   SEED_RESET=true   (obligatorio para borrar y recrear)
  *
- * Carga:
- *   - 1 usuario admin
- *   - Proveedores del Drive Media Kits 2026 (sin login)
- *   - Paquetes LED AMBA en draft (precio a confirmar, sin fotos)
+ * Antes (opcional): npx tsx scripts/import-drive-kits.ts
+ *   → genera prisma/data/drive-inventory.json + public/inventory/*
  *
  * Ejecutar: SEED_RESET=true npm run db:seed
  */
+import * as fs from "fs";
+import * as path from "path";
 import {
   InventoryFormat,
   InventoryStatus,
@@ -29,7 +29,7 @@ function d(amount: string | number) {
   return new Prisma.Decimal(amount);
 }
 
-/** Proveedores reales — carpetas Media Kits 2026 (sin PPT UNIFICADO ni archivos sueltos). */
+/** Proveedores reales — carpetas Media Kits 2026. */
 const PROVIDERS: { companyName: string; description: string }[] = [
   { companyName: "ATACAMA", description: "Parque OOH — media kit 2026." },
   { companyName: "BAMBU", description: "Parque OOH — media kit 2026." },
@@ -62,6 +62,29 @@ const PROVIDERS: { companyName: string; description: string }[] = [
   { companyName: "VOLMEDIA", description: "Parque OOH — media kit 2026." },
   { companyName: "WALLSTREET", description: "Parque OOH — media kit 2026." },
 ];
+
+type DriveUnit = {
+  providerName: string;
+  name: string;
+  locationLabel: string;
+  description: string;
+  format: "digital_ooh" | "static_ooh" | "digital_package";
+  basePriceAmount: string;
+  priceModel: "fixed_list" | "negotiable" | "package";
+  status: "published" | "draft";
+  imagePath: string | null;
+  metadata?: Record<string, string>;
+};
+
+function loadDriveInventory(): DriveUnit[] {
+  const p = path.join(__dirname, "data", "drive-inventory.json");
+  if (!fs.existsSync(p)) {
+    console.warn("Sin prisma/data/drive-inventory.json — solo proveedores. Corré: npm run import:drive");
+    return [];
+  }
+  const raw = JSON.parse(fs.readFileSync(p, "utf8")) as { units: DriveUnit[] };
+  return raw.units ?? [];
+}
 
 async function clearAll() {
   await prisma.playLog.deleteMany();
@@ -102,20 +125,19 @@ async function main() {
   }
 
   if (!adminEmail || !adminPassword) {
-    throw new Error(
-      "Seed abortado: faltan SEED_ADMIN_EMAIL y/o SEED_ADMIN_PASSWORD.",
-    );
+    throw new Error("Seed abortado: faltan SEED_ADMIN_EMAIL y/o SEED_ADMIN_PASSWORD.");
   }
 
   if (adminPassword.length < 8) {
     throw new Error("SEED_ADMIN_PASSWORD debe tener al menos 8 caracteres.");
   }
 
+  const driveUnits = loadDriveInventory();
+
   console.log("Limpiando base…");
   await clearAll();
 
   const passwordHash = await hash(adminPassword, 10);
-
   const admin = await prisma.user.create({
     data: {
       email: adminEmail.toLowerCase(),
@@ -123,64 +145,77 @@ async function main() {
       passwordHash,
     },
   });
-
   console.log(`Admin: ${admin.email}`);
 
-  const packagesProvider = await prisma.providerProfile.create({
-    data: {
-      companyName: "NextMedia Paquetes",
-      description:
-        "Paquetes y circuitos de plataforma (LED AMBA). Tarifas a confirmar desde media kits.",
-    },
-  });
+  const providerIds = new Map<string, string>();
 
   for (const p of PROVIDERS) {
-    await prisma.providerProfile.create({
+    const row = await prisma.providerProfile.create({
       data: {
         companyName: p.companyName,
         description: p.description,
       },
     });
+    providerIds.set(p.companyName, row.id);
   }
 
-  // Placeholder mínimo: schema exige basePriceAmount > 0; status draft = no sale en explorar.
-  const placeholderPrice = d("1");
+  // Ensure any provider names from JSON exist
+  for (const u of driveUnits) {
+    if (!providerIds.has(u.providerName)) {
+      const row = await prisma.providerProfile.create({
+        data: {
+          companyName: u.providerName,
+          description: "Parque OOH — media kit 2026.",
+        },
+      });
+      providerIds.set(u.providerName, row.id);
+    }
+  }
 
-  await prisma.inventoryUnit.createMany({
-    data: [
-      {
-        providerId: packagesProvider.id,
-        name: "Paquete Pantallas LED AMBA",
-        format: InventoryFormat.digital_package,
-        locationLabel: "AMBA",
-        description:
-          "Referencia a paquetes LED AMBA (media kits 2026). Precio y unidades a confirmar por operaciones.",
-        basePriceAmount: placeholderPrice,
-        currency: "ARS",
-        priceModel: PriceModel.negotiable,
-        status: InventoryStatus.draft,
-        imageUrls: [],
-      },
-      {
-        providerId: packagesProvider.id,
-        name: "Paquete Pantallas LED AMBA (editable)",
-        format: InventoryFormat.digital_package,
-        locationLabel: "AMBA",
-        description:
-          "Referencia al PPT editable de paquetes LED. Precio y composición a confirmar.",
-        basePriceAmount: placeholderPrice,
-        currency: "ARS",
-        priceModel: PriceModel.negotiable,
-        status: InventoryStatus.draft,
-        imageUrls: [],
-      },
-    ],
-  });
+  const formatMap = {
+    digital_ooh: InventoryFormat.digital_ooh,
+    static_ooh: InventoryFormat.static_ooh,
+    digital_package: InventoryFormat.digital_package,
+  };
+  const priceMap = {
+    fixed_list: PriceModel.fixed_list,
+    negotiable: PriceModel.negotiable,
+    package: PriceModel.package,
+  };
+  const statusMap = {
+    published: InventoryStatus.published,
+    draft: InventoryStatus.draft,
+  };
 
-  console.log(`Proveedores medios: ${PROVIDERS.length}`);
-  console.log(`Proveedor paquetes: ${packagesProvider.companyName}`);
-  console.log("Unidades draft (paquetes LED AMBA): 2");
-  console.log("Seed OK. /explorar queda vacío hasta publicar inventario con precio real.");
+  let created = 0;
+  const batch: Prisma.InventoryUnitCreateManyInput[] = [];
+  for (const u of driveUnits) {
+    const providerId = providerIds.get(u.providerName);
+    if (!providerId) continue;
+    batch.push({
+      providerId,
+      name: u.name.slice(0, 200),
+      format: formatMap[u.format] ?? InventoryFormat.static_ooh,
+      locationLabel: u.locationLabel.slice(0, 240),
+      description: u.description || null,
+      basePriceAmount: d(u.basePriceAmount || "1"),
+      currency: "ARS",
+      priceModel: priceMap[u.priceModel] ?? PriceModel.negotiable,
+      status: statusMap[u.status] ?? InventoryStatus.draft,
+      imageUrls: u.imagePath ? [u.imagePath] : [],
+      metadata: u.metadata ?? undefined,
+    });
+    created++;
+    if (batch.length >= 100) {
+      await prisma.inventoryUnit.createMany({ data: batch });
+      batch.length = 0;
+    }
+  }
+  if (batch.length) await prisma.inventoryUnit.createMany({ data: batch });
+
+  console.log(`Proveedores: ${providerIds.size}`);
+  console.log(`Unidades desde Drive: ${created}`);
+  console.log("Seed OK.");
 }
 
 main()

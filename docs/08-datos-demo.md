@@ -10,23 +10,19 @@ Cargados con [`prisma/seed.ts`](../prisma/seed.ts). El seed **borra toda la base
 | `SEED_ADMIN_PASSWORD` | Sí | Mínimo 8 caracteres |
 | `SEED_RESET` | Sí (`true`) | Debe ser exactamente `true` para permitir el wipe |
 
-## Comando
+## Inventario desde Drive
 
 ```bash
-SEED_RESET=true \
-SEED_ADMIN_EMAIL="admin@tudominio.com" \
-SEED_ADMIN_PASSWORD="tu-password-seguro" \
-npm run db:seed
+npm run import:drive   # genera prisma/data/drive-inventory.json + public/inventory/**
+SEED_RESET=true SEED_ADMIN_EMAIL="..." SEED_ADMIN_PASSWORD="..." npm run db:seed
 ```
 
-En Render: migrar con `prisma migrate deploy` y correr el seed **una sola vez** desde el shell (con las env ya configuradas).
+En Render: deployar con el JSON (y fotos si van en el repo) y correr el seed **una vez** en el shell. Luego `SEED_RESET=false`.
 
 ## Qué crea
 
 | Entidad | Detalle |
 |---------|---------|
 | Admin | 1 usuario `role=admin` |
-| Proveedores medios | ~30 `ProviderProfile` sin login (nombres del Drive Media Kits 2026) |
-| Paquetes | Proveedor `NextMedia Paquetes` + 2 unidades `digital_package` en **draft** (precio placeholder, negociable) |
-
-No crea anunciantes, agencias, medios con login, reservas ni inventario publicado. `/explorar` queda vacío hasta que operaciones publique unidades con tarifas reales.
+| Proveedores | ~30 del Drive Media Kits 2026 |
+| Unidades | ~1000+ desde slides de Lotes / PPT UNIFICADO (dirección, tarifa, foto) |

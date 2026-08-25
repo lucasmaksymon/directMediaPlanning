@@ -132,6 +132,8 @@ npm run db:seed
 
 `SEED_RESET=true` borra y recrea toda la base — usalo solo en el primer setup o un reset consciente (p. ej. shell de Render).
 
+Inventario real: `npm run import:drive` genera `prisma/data/drive-inventory.json` + fotos en `public/inventory/` a partir del Drive de media kits.
+
 ---
 
 ## Scripts
