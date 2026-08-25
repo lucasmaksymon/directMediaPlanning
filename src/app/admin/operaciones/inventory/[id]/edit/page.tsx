@@ -3,7 +3,8 @@ import { auth } from "@/auth";
 import { listInternalProviders } from "@/lib/ops-access";
 import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
-import { adminOpsPage, adminOpsPageBody, adminOpsPageHeader } from "@/lib/ui-classes";
+import { adminOpsPage, adminOpsPageBody } from "@/lib/ui-classes";
+import { Breadcrumb, PageHeader } from "@/components/ui/Patterns";
 import { InventoryUnitForm } from "../../new/InventoryUnitForm";
 
 export default async function EditInventoryPage({
@@ -24,21 +25,25 @@ export default async function EditInventoryPage({
 
   return (
     <div className={adminOpsPage}>
-      <header className={adminOpsPageHeader}>
-        <Link
-          className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition hover:text-led"
-          href="/admin/operaciones/inventory"
-        >
-          <span aria-hidden>←</span> Inventario
-        </Link>
-        <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Edición
-        </p>
-        <h1 className="font-display mt-1 text-2xl font-normal uppercase tracking-wide text-foreground sm:text-3xl">
-          Editar unidad
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground sm:text-base">{unit.name}</p>
-      </header>
+      <PageHeader
+        description={unit.name}
+        eyebrow="Edición"
+        title="Editar unidad"
+        actions={
+          <Link
+            className="text-sm font-medium text-muted-foreground hover:text-led"
+            href="/admin/operaciones/inventory"
+          >
+            ← Inventario
+          </Link>
+        }
+      />
+      <Breadcrumb
+        items={[
+          { label: "Inventario", href: "/admin/operaciones/inventory" },
+          { label: unit.name },
+        ]}
+      />
       <div className={adminOpsPageBody}>
         <InventoryUnitForm
           providers={providers}

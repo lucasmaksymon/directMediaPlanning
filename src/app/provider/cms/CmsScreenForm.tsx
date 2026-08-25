@@ -2,8 +2,9 @@
 
 import { useActionState } from "react";
 import { createScreen } from "@/app/actions/cms";
-import { fieldClass, labelClass, btnPrimary, surfaceCard } from "@/lib/ui-classes";
+import { fieldClass, labelClass, surfaceCard } from "@/lib/ui-classes";
 import { cn } from "@/lib/cn";
+import { Alert, Button } from "@/components/ui";
 
 export function CmsScreenForm({ providerId: _providerId }: { providerId: string }) {
   const [state, action, pending] = useActionState(
@@ -12,7 +13,7 @@ export function CmsScreenForm({ providerId: _providerId }: { providerId: string 
   );
 
   return (
-    <form action={action} className={cn(surfaceCard(), "p-5 space-y-4")}>
+    <form action={action} className={cn(surfaceCard(), "space-y-4 p-5")}>
       <h2 className="font-semibold">Registrar pantalla</h2>
       <div>
         <label className={labelClass} htmlFor="name">Nombre</label>
@@ -20,7 +21,7 @@ export function CmsScreenForm({ providerId: _providerId }: { providerId: string 
       </div>
       <div>
         <label className={labelClass} htmlFor="platform">Plataforma</label>
-        <select className={cn(fieldClass, "mt-1")} id="platform" name="platform" defaultValue="web">
+        <select className={cn(fieldClass, "mt-1")} defaultValue="web" id="platform" name="platform">
           <option value="web">Web</option>
           <option value="android">Android</option>
           <option value="tizen">Tizen</option>
@@ -28,10 +29,14 @@ export function CmsScreenForm({ providerId: _providerId }: { providerId: string 
         </select>
       </div>
       {state?.ok && state.deviceKey && (
-        <p className="text-sm text-led">Pantalla creada. Device key: <code className="font-mono">{state.deviceKey}</code></p>
+        <Alert variant="success">
+          Pantalla creada. Device key: <code className="font-mono">{state.deviceKey}</code>
+        </Alert>
       )}
-      {state && !state.ok && <p className="text-sm text-signal">{state.error}</p>}
-      <button className={btnPrimary} disabled={pending} type="submit">{pending ? "Creando…" : "Crear pantalla"}</button>
+      {state && !state.ok && <Alert variant="error">{state.error}</Alert>}
+      <Button disabled={pending} type="submit">
+        {pending ? "Creando…" : "Crear pantalla"}
+      </Button>
     </form>
   );
 }

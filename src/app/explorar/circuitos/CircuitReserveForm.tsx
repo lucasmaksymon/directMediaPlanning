@@ -2,8 +2,9 @@
 
 import { useActionState } from "react";
 import { createCircuitReservation, type CircuitReservationState } from "@/app/actions/circuit-reservation";
-import { fieldClass, labelClass, btnPrimary } from "@/lib/ui-classes";
+import { fieldClass, labelClass } from "@/lib/ui-classes";
 import { cn } from "@/lib/cn";
+import { Alert, Button } from "@/components/ui";
 
 export function CircuitReserveForm({ circuitId }: { circuitId: string }) {
   const bound = createCircuitReservation.bind(null, circuitId);
@@ -18,20 +19,32 @@ export function CircuitReserveForm({ circuitId }: { circuitId: string }) {
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className={labelClass} htmlFor={`starts-${circuitId}`}>Desde</label>
-          <input className={cn(fieldClass, "mt-1")} id={`starts-${circuitId}`} name="startsAt" required type="date" />
+          <input
+            className={cn(fieldClass, "mt-1")}
+            id={`starts-${circuitId}`}
+            name="startsAt"
+            required
+            type="date"
+          />
         </div>
         <div>
           <label className={labelClass} htmlFor={`ends-${circuitId}`}>Hasta</label>
-          <input className={cn(fieldClass, "mt-1")} id={`ends-${circuitId}`} name="endsAt" required type="date" />
+          <input
+            className={cn(fieldClass, "mt-1")}
+            id={`ends-${circuitId}`}
+            name="endsAt"
+            required
+            type="date"
+          />
         </div>
       </div>
-      {state?.error && <p className="text-sm text-signal">{state.error}</p>}
+      {state?.error && <Alert variant="error">{state.error}</Alert>}
       {state?.ok && (
-        <p className="text-sm text-led">Solicitud enviada para {state.created} espacio(s).</p>
+        <Alert variant="success">Solicitud enviada para {state.created} espacio(s).</Alert>
       )}
-      <button className={btnPrimary} disabled={pending || state?.ok} type="submit">
+      <Button disabled={pending || state?.ok} type="submit">
         {pending ? "Enviando…" : "Solicitar reserva del circuito"}
-      </button>
+      </Button>
     </form>
   );
 }

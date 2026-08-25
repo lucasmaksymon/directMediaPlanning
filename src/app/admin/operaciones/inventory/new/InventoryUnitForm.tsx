@@ -11,8 +11,9 @@ import { generateUnitDescription } from "@/app/actions/ai-inventory";
 import { LocationMapPicker } from "@/components/inventory/LocationMapPicker";
 import { ImageUploader } from "@/components/inventory/ImageUploader";
 import { Select } from "@/components/ui/Select";
+import { Alert, Button } from "@/components/ui";
 import { cn } from "@/lib/cn";
-import { btnPrimary, fieldClass, labelClass, surfaceCard } from "@/lib/ui-classes";
+import { fieldClass, labelClass, surfaceCard } from "@/lib/ui-classes";
 
 function parseCoord(s: string | null | undefined): number | null {
   if (s == null || s === "") return null;
@@ -290,9 +291,9 @@ export function InventoryUnitForm({
             value={aiDescription}
           />
           {aiError && (
-            <p className="mt-1.5 text-xs text-signal" role="alert">
+            <Alert className="mt-1.5 text-xs" variant="error">
               {aiError}
-            </p>
+            </Alert>
           )}
           <p className="mt-1 text-xs text-muted-foreground">
             Aparece en el catálogo público. Podés editarla libremente o generarla con IA.
@@ -330,9 +331,7 @@ export function InventoryUnitForm({
               </div>
             )}
             {!addressLoading && addressError && (
-              <p className="text-sm text-signal" role="alert">
-                {addressError}
-              </p>
+              <Alert variant="error">{addressError}</Alert>
             )}
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
               <p className="font-mono text-xs text-muted-foreground">
@@ -517,14 +516,7 @@ export function InventoryUnitForm({
       </div>
       </div>
 
-      {state?.error ? (
-        <div
-          className="shrink-0 rounded-xl border border-red-200 bg-red-50/90 px-4 py-3 text-sm text-red-900 shadow-sm dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200"
-          role="alert"
-        >
-          {state.error}
-        </div>
-      ) : null}
+      {state?.error ? <Alert variant="error">{state.error}</Alert> : null}
 
       <div className="flex shrink-0 flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-muted-foreground">
@@ -532,13 +524,9 @@ export function InventoryUnitForm({
             ? "Los cambios se aplican al guardar. El catálogo refleja el estado publicado."
             : "Podés guardar en borrador y publicar cuando esté lista."}
         </p>
-        <button
-          className={cn(btnPrimary, "px-6")}
-          disabled={pending}
-          type="submit"
-        >
+        <Button className="px-6" disabled={pending} type="submit">
           {pending ? "Guardando…" : isEdit ? "Guardar cambios" : "Guardar unidad"}
-        </button>
+        </Button>
       </div>
     </form>
   );

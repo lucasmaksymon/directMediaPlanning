@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 
 function MapLoadingPlaceholder() {
   return (
-    <div className="overflow-hidden rounded-3xl border border-dashed border-led/30 bg-gradient-to-b from-muted/80 to-muted/40 shadow-sm ring-1 ring-led/10">
+    <div className="overflow-hidden rounded-[var(--radius-lg)] border border-dashed border-led/30 bg-gradient-to-b from-muted/80 to-muted/40 shadow-sm ring-1 ring-led/10">
       <div className="flex items-center gap-2.5 border-b border-border/80 bg-card/70 px-4 py-3 backdrop-blur-sm">
         <span className="h-8 w-8 shrink-0 animate-pulse rounded-lg bg-muted-foreground/20" />
         <div className="min-w-0 flex-1 space-y-2">

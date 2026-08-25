@@ -381,7 +381,7 @@ export function ChatPlanner({ unitDetails = [] }: Props) {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-border bg-card nm-glow dark:bg-gradient-to-b dark:from-ocean dark:to-[#071012]">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--radius-lg)] border border-border bg-card ">
 
       {/* ── Mensajes ── */}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 sm:px-5 sm:py-5 space-y-5">

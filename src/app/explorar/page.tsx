@@ -8,11 +8,11 @@ export default async function ExplorarPage({
 }) {
   const sp = await searchParams;
   const flat = flattenSearchParams(sp);
-  const { units, filters } = await fetchExploreData(flat);
+  const { units, filters, providerNames } = await fetchExploreData(flat);
 
   return (
-    <main className="flex h-full flex-col overflow-hidden px-4 py-4 sm:px-6 lg:px-8 xl:px-10">
-      <ExplorarExplorer filters={filters} units={units} />
+    <main className="flex h-full min-w-0 flex-col overflow-hidden px-4 py-4 sm:px-6 lg:px-8 xl:px-10">
+      <ExplorarExplorer filters={filters} providerNames={providerNames} units={units} />
     </main>
   );
 }

@@ -2,7 +2,8 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/cn";
-import { adminPage } from "@/lib/ui-classes";
+import { adminPage, surfaceCard } from "@/lib/ui-classes";
+import { PageHeader } from "@/components/ui";
 
 export default async function ProviderHomePage() {
   const session = await auth();
@@ -13,11 +14,7 @@ export default async function ProviderHomePage() {
 
   return (
     <div className={cn(adminPage, "gap-3")}>
-      <header className="shrink-0">
-        <h1 className="font-display text-xl font-normal uppercase tracking-wide text-foreground sm:text-2xl">
-          Operaciones
-        </h1>
-      </header>
+      <PageHeader title="Operaciones" />
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {[
@@ -30,12 +27,12 @@ export default async function ProviderHomePage() {
         ].map((item) => (
           <Link
             key={item.href}
+            className={cn(surfaceCard(), "flex flex-col p-4 transition hover:border-led/40")}
             href={item.href}
-            className="flex flex-col rounded-xl border border-border bg-card p-4 transition hover:border-led/40"
           >
             <p className="text-sm font-semibold text-foreground">{item.label}</p>
             <p className="mt-1 text-xs text-muted-foreground">{item.desc}</p>
-            <span className="mt-3 text-xs font-bold text-led">Abrir →</span>
+            <span className="mt-3 text-xs font-semibold text-led">Abrir →</span>
           </Link>
         ))}
       </div>

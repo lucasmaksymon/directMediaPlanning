@@ -1,19 +1,18 @@
 "use client";
 
 import { signOut } from "next-auth/react";
+import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 
 export function SignOutMenuButton({ className }: { className?: string }) {
   return (
-    <button
-      className={cn(
-        "w-full rounded-full border border-border bg-card px-3 py-2.5 text-sm font-semibold text-foreground shadow-sm transition duration-250 hover:bg-muted",
-        className,
-      )}
-      type="button"
+    <Button
+      className={cn("w-full", className)}
       onClick={() => signOut({ callbackUrl: "/" })}
+      type="button"
+      variant="outline"
     >
       Cerrar sesión
-    </button>
+    </Button>
   );
 }

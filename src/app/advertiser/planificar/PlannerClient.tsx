@@ -109,7 +109,7 @@ export function PlannerClient({ unitDetails }: Props) {
           ) : (
             <>
               {/* Resumen IA */}
-              <div className="rounded-3xl border border-led/25 bg-led/5 p-5 nm-glow dark:bg-led/[0.06]">
+              <div className="rounded-[var(--radius-lg)] border border-led/25 bg-led/5 p-5 dark:bg-led/[0.06]">
                 <p className="text-xs font-semibold uppercase tracking-wide text-led">Estrategia sugerida por IA</p>
                 <p className="mt-2 text-sm leading-relaxed text-foreground">{result.resumen}</p>
               </div>
@@ -140,7 +140,7 @@ export function PlannerClient({ unitDetails }: Props) {
               {/* Resumen de selección + acción */}
               {selected.size > 0 && !reserveOk && (
                 <div className={cn(
-                  "rounded-3xl border p-5 nm-glow dark:bg-gradient-to-b dark:from-ocean dark:to-[#071012]",
+                  "rounded-[var(--radius-lg)] border p-5 ",
                   budgetOver
                     ? "border-signal/50 bg-signal/5"
                     : "border-border bg-card",
@@ -192,7 +192,7 @@ export function PlannerClient({ unitDetails }: Props) {
               )}
 
               {reserveOk && (
-                <div className="rounded-2xl border border-led/40 bg-led/10 px-5 py-4 text-sm font-medium text-foreground nm-glow">
+                <div className="rounded-2xl border border-led/40 bg-led/10 px-5 py-4 text-sm font-medium text-foreground">
                   ¡Solicitudes enviadas! Los medios revisarán y responderán a cada pedido.{" "}
                   <a className="font-semibold text-led underline underline-offset-2" href="/advertiser">
                     Ver mis solicitudes →

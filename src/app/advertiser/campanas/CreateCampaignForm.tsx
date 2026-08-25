@@ -1,15 +1,16 @@
 "use client";
 
 import { useActionState } from "react";
-import { createCampaign, type CampaignFormState } from "@/app/actions/campaign";
-import { fieldClass, labelClass, btnPrimary, surfaceCard } from "@/lib/ui-classes";
+import { createCampaign } from "@/app/actions/campaign";
+import { fieldClass, labelClass, surfaceCard } from "@/lib/ui-classes";
 import { cn } from "@/lib/cn";
+import { Alert, Button } from "@/components/ui";
 
 export function CreateCampaignForm() {
   const [state, action, pending] = useActionState(createCampaign, undefined);
 
   return (
-    <form action={action} className={cn(surfaceCard(), "p-5 space-y-4")}>
+    <form action={action} className={cn(surfaceCard(), "space-y-4 p-5")}>
       <h2 className="font-semibold">Nueva campaña</h2>
       <div>
         <label className={labelClass} htmlFor="name">Nombre</label>
@@ -18,7 +19,7 @@ export function CreateCampaignForm() {
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
           <label className={labelClass} htmlFor="budget">Presupuesto (ARS)</label>
-          <input className={cn(fieldClass, "mt-1")} id="budget" name="budget" type="number" min={0} />
+          <input className={cn(fieldClass, "mt-1")} id="budget" min={0} name="budget" type="number" />
         </div>
         <div>
           <label className={labelClass} htmlFor="startsAt">Inicio</label>
@@ -29,11 +30,11 @@ export function CreateCampaignForm() {
           <input className={cn(fieldClass, "mt-1")} id="endsAt" name="endsAt" type="date" />
         </div>
       </div>
-      {state?.error && <p className="text-sm text-signal">{state.error}</p>}
-      {state?.ok && <p className="text-sm text-led">Campaña creada.</p>}
-      <button className={btnPrimary} disabled={pending} type="submit">
+      {state?.error && <Alert variant="error">{state.error}</Alert>}
+      {state?.ok && <Alert variant="success">Campaña creada.</Alert>}
+      <Button disabled={pending} type="submit">
         {pending ? "Creando…" : "Crear campaña"}
-      </button>
+      </Button>
     </form>
   );
 }

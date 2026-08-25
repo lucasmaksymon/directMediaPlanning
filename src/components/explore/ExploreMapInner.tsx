@@ -46,7 +46,7 @@ export function ExploreMapInner({ units }: { units: ExploreUnitDTO[] }) {
 
   if (mappable.length === 0) {
     return (
-      <div className="flex h-[min(75dvh,900px)] min-h-[22rem] w-full flex-col items-center justify-center gap-2 rounded-3xl border border-dashed border-border bg-muted/50 px-6 text-center text-sm text-muted-foreground backdrop-blur-sm">
+      <div className="flex h-[min(75dvh,900px)] min-h-[22rem] w-full flex-col items-center justify-center gap-2 rounded-[var(--radius-lg)] border border-dashed border-border bg-muted/50 px-6 text-center text-sm text-muted-foreground backdrop-blur-sm">
         <p className="font-medium text-foreground">Sin puntos en el mapa</p>
         <p>
           Ningún resultado incluye coordenadas. Probá ampliar filtros o revisá la lista: algunos
@@ -57,7 +57,7 @@ export function ExploreMapInner({ units }: { units: ExploreUnitDTO[] }) {
   }
 
   return (
-    <div className="relative z-0 h-[min(75dvh,900px)] w-full min-h-[22rem] overflow-hidden rounded-3xl border border-led/25 shadow-sm nm-glow ring-1 ring-led/10">
+    <div className="relative z-0 h-[min(75dvh,900px)] w-full min-h-[22rem] overflow-hidden rounded-[var(--radius-lg)] border border-led/25 shadow-sm ring-1 ring-led/10">
       <MapContainer
         center={center}
         className="h-full w-full"
@@ -74,9 +74,9 @@ export function ExploreMapInner({ units }: { units: ExploreUnitDTO[] }) {
             <Popup>
               <div className="min-w-[210px] py-1">
                 <p className="font-semibold leading-snug text-carbon">{u.name}</p>
+                <p className="mt-1 text-xs font-medium text-carbon/80">{u.providerName}</p>
                 <p className="mt-1 text-xs leading-snug text-[#5a6567]">{u.locationLabel}</p>
                 <p className="mt-2 text-sm font-semibold text-carbon">{formatArs(Number(u.basePriceAmount))}</p>
-                <p className="text-xs text-[#5a6567]">{u.locationLabel}</p>
                 <Link
                   className="mt-3 inline-flex text-sm font-semibold text-[#00b6c7] underline underline-offset-2"
                   href={`/explorar/${u.id}`}

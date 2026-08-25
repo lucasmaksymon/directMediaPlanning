@@ -30,7 +30,7 @@ export default async function ProviderDisponibilidadPage({ params }: { params: P
     <div className={cn(panelPage, pageScroll, "gap-6")}>
       <div>
         <Link href="/provider/inventario" className="text-sm text-muted-foreground hover:text-led">← Mis espacios</Link>
-        <h1 className="font-display mt-2 text-2xl uppercase tracking-wide">Disponibilidad — {unit.name}</h1>
+        <h1 className="nm-page-title mt-2">Disponibilidad — {unit.name}</h1>
       </div>
       <DisponibilidadClient unitId={unit.id} initialBlocks={blocks} />
     </div>

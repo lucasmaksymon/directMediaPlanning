@@ -5,6 +5,7 @@ import { productTitle } from "@/lib/brand";
 import { formatArs } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { adminPage, surfaceCard } from "@/lib/ui-classes";
+import { PageHeader, Stat, StatRow, EmptyState } from "@/components/ui/Patterns";
 import { YieldInsights } from "./YieldInsights";
 
 export const metadata = { title: productTitle("Analíticas") };
@@ -59,68 +60,56 @@ export default async function AnalyticsPage() {
 
   return (
     <div className={cn(adminPage, "gap-3")}>
-      <header className="flex items-center justify-between">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-led">Analíticas</p>
-          <h1 className="font-display text-xl font-normal uppercase tracking-wide text-foreground sm:text-2xl">
-            Rendimiento
-          </h1>
-        </div>
-      </header>
+      <PageHeader eyebrow="Analíticas" title="Rendimiento" />
 
-      {/* KPIs compactos */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[
-          { label: "Publicadas", value: `${publishedUnits}/${totalUnits}` },
-          { label: "Ingresos 30d", value: formatArs(last30Revenue) },
-          { label: "Ingresos 90d", value: formatArs(last90Revenue) },
-          { label: "Fill rate prom.", value: `${avgFill}%` },
-        ].map((k) => (
-          <div key={k.label} className={cn(surfaceCard(), "p-4")}>
-            <p className="text-xl font-bold tabular-nums text-foreground">{k.value}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{k.label}</p>
-          </div>
-        ))}
-      </div>
+      <StatRow className="lg:grid-cols-4">
+        <Stat label="Publicadas" value={`${publishedUnits}/${totalUnits}`} />
+        <Stat label="Ingresos 30d" value={formatArs(last30Revenue)} />
+        <Stat label="Ingresos 90d" value={formatArs(last90Revenue)} />
+        <Stat label="Fill rate prom." value={`${avgFill}%`} />
+      </StatRow>
 
-      {/* Tabla por unidad */}
       <div className={cn(surfaceCard(), "min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]")}>
-        <table className="w-full text-sm">
-          <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm">
-            <tr className="text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              <th className="px-4 py-2">Espacio</th>
-              <th className="px-4 py-2">Fill rate (90d)</th>
-              <th className="px-4 py-2 hidden sm:table-cell">Ingresos (90d)</th>
-              <th className="px-4 py-2 hidden md:table-cell">Reservas</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {unitMetrics.map((u) => (
-              <tr key={u.id} className="hover:bg-muted/30 transition">
-                <td className="px-4 py-2.5 font-medium text-foreground">{u.name}</td>
-                <td className="px-4 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className={cn("h-full rounded-full", u.fillRate >= 70 ? "bg-led" : u.fillRate >= 40 ? "bg-yellow-500" : "bg-signal")}
-                        style={{ width: `${u.fillRate}%` }}
-                      />
-                    </div>
-                    <span className="text-xs tabular-nums">{u.fillRate}%</span>
-                  </div>
-                </td>
-                <td className="px-4 py-2.5 tabular-nums text-foreground hidden sm:table-cell">{formatArs(u.revenue)}</td>
-                <td className="px-4 py-2.5 tabular-nums text-muted-foreground hidden md:table-cell">{u.totalReservations}</td>
+        {unitMetrics.length === 0 ? (
+          <EmptyState
+            className="m-4 border-0 bg-transparent"
+            title="Sin unidades"
+            description="Sin unidades para mostrar."
+          />
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm">
+              <tr className="text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <th className="px-4 py-2">Espacio</th>
+                <th className="px-4 py-2">Fill rate (90d)</th>
+                <th className="px-4 py-2 hidden sm:table-cell">Ingresos (90d)</th>
+                <th className="px-4 py-2 hidden md:table-cell">Reservas</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {unitMetrics.length === 0 && (
-          <p className="px-4 py-8 text-center text-sm text-muted-foreground">Sin unidades para mostrar.</p>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {unitMetrics.map((u) => (
+                <tr key={u.id} className="hover:bg-muted/30 transition">
+                  <td className="px-4 py-2.5 font-medium text-foreground">{u.name}</td>
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className={cn("h-full rounded-full", u.fillRate >= 70 ? "bg-led" : u.fillRate >= 40 ? "bg-yellow-500" : "bg-signal")}
+                          style={{ width: `${u.fillRate}%` }}
+                        />
+                      </div>
+                      <span className="text-xs tabular-nums">{u.fillRate}%</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-2.5 tabular-nums text-foreground hidden sm:table-cell">{formatArs(u.revenue)}</td>
+                  <td className="px-4 py-2.5 tabular-nums text-muted-foreground hidden md:table-cell">{u.totalReservations}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
 
-      {/* Insights IA */}
       <YieldInsights />
     </div>
   );

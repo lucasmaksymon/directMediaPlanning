@@ -5,6 +5,7 @@ import { panelPage, pageScroll, surfaceCard } from "@/lib/ui-classes";
 import { cn } from "@/lib/cn";
 import { productTitle } from "@/lib/brand";
 import Link from "next/link";
+import { EmptyState, PageHeader } from "@/components/ui";
 import { CreateCampaignForm } from "./CreateCampaignForm";
 
 export const metadata = { title: productTitle("Mis campañas") };
@@ -21,10 +22,7 @@ export default async function CampanasPage() {
 
   return (
     <div className={cn(panelPage, pageScroll, "gap-6")}>
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-led">Campañas</p>
-        <h1 className="font-display mt-1 text-2xl uppercase tracking-wide">Mis campañas</h1>
-      </div>
+      <PageHeader eyebrow="Campañas" title="Mis campañas" />
 
       <CreateCampaignForm />
 
@@ -33,16 +31,19 @@ export default async function CampanasPage() {
           <Link
             key={c.id}
             href={`/advertiser/campanas/${c.id}`}
-            className={cn(surfaceCard(), "block p-5 hover:border-led/40 transition")}
+            className={cn(surfaceCard(), "block p-5 transition hover:border-led/40")}
           >
             <h2 className="font-semibold text-foreground">{c.name}</h2>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="mt-1 text-sm text-muted-foreground">
               {c._count.reservations} reservas · {c._count.creatives} creativos · {c.status}
             </p>
           </Link>
         ))}
         {campaigns.length === 0 && (
-          <p className="text-muted-foreground text-sm">Creá tu primera campaña para agrupar reservas y creativos.</p>
+          <EmptyState
+            description="Creá tu primera campaña para agrupar reservas y creativos."
+            title="Sin campañas"
+          />
         )}
       </div>
     </div>

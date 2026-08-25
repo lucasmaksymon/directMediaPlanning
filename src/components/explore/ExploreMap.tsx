@@ -8,7 +8,7 @@ const ExploreMapInner = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-[min(75dvh,900px)] min-h-[22rem] w-full items-center justify-center rounded-3xl border border-border bg-muted/60 text-sm text-muted-foreground">
+      <div className="flex h-[min(75dvh,900px)] min-h-[22rem] w-full items-center justify-center rounded-[var(--radius-lg)] border border-border bg-muted/60 text-sm text-muted-foreground">
         Cargando mapa…
       </div>
     ),

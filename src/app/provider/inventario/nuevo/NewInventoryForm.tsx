@@ -2,8 +2,9 @@
 
 import { useActionState } from "react";
 import { createProviderInventoryUnit, type InventoryUpsertState } from "@/app/actions/provider";
-import { fieldClass, labelClass, btnPrimary, btnSecondary, surfaceCard } from "@/lib/ui-classes";
+import { fieldClass, labelClass, btnSecondary, surfaceCard } from "@/lib/ui-classes";
 import { cn } from "@/lib/cn";
+import { Alert, Button } from "@/components/ui";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
@@ -220,21 +221,15 @@ export function NewInventoryForm() {
         </div>
       </div>
 
-      {state?.error && (
-        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-          {state.error}
-        </p>
-      )}
+      {state?.error && <Alert variant="error">{state.error}</Alert>}
       {state?.ok && (
-        <p className="text-sm font-medium text-led" role="status">
-          ¡Espacio creado! Redirigiendo a tu inventario…
-        </p>
+        <Alert variant="success">¡Espacio creado! Redirigiendo a tu inventario…</Alert>
       )}
 
       <div className="flex flex-col gap-3 sm:flex-row">
-        <button className={cn(btnPrimary, "flex-1")} disabled={pending || state?.ok} type="submit">
+        <Button className="flex-1" disabled={pending || state?.ok} type="submit">
           {pending ? "Guardando…" : "Guardar espacio"}
-        </button>
+        </Button>
         <a href="/provider/inventario" className={cn(btnSecondary, "flex-1 text-center")}>
           Cancelar
         </a>

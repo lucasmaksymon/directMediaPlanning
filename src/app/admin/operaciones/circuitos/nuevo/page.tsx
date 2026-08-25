@@ -28,7 +28,7 @@ export default async function NuevoCircuitoPage() {
         >
           <span aria-hidden>←</span> Circuitos OOH
         </Link>
-        <h1 className="font-display mt-3 text-2xl font-normal uppercase tracking-wide text-foreground sm:text-3xl">
+        <h1 className="nm-page-title mt-3">
           Nuevo circuito
         </h1>
         <p className="mt-1 text-sm leading-relaxed text-muted-foreground sm:text-base">

@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { formatArs } from "@/lib/format";
 import Link from "next/link";
 import { PayReservationButton } from "@/components/payments/PayReservationButton";
+import { Breadcrumb, EmptyState, PageHeader, SectionHeader } from "@/components/ui";
 import { PublicationOrderForm } from "./PublicationOrderForm";
 
 export default async function CampaignDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -32,38 +33,78 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
 
   return (
     <div className={cn(panelPage, pageScroll, "gap-6")}>
-      <div>
-        <Link href="/advertiser/campanas" className="text-sm text-muted-foreground hover:text-led">← Campañas</Link>
-        <h1 className="font-display mt-2 text-2xl uppercase tracking-wide">{campaign.name}</h1>
-        <p className="text-sm text-muted-foreground">Estado: {campaign.status}</p>
+      <div className="space-y-3">
+        <Breadcrumb
+          items={[
+            { label: "Campañas", href: "/advertiser/campanas" },
+            { label: campaign.name },
+          ]}
+        />
+        <PageHeader
+          description={`Estado: ${campaign.status}`}
+          title={campaign.name}
+        />
       </div>
 
-      <section className={cn(surfaceCard(), "p-5 space-y-3")}>
-        <h2 className="font-semibold">Reservas</h2>
-        {campaign.reservations.map((r) => (
-          <div key={r.id} className="border-b border-border pb-3 last:border-0">
-            <p className="font-medium">{r.inventoryUnit.name}</p>
-            <p className="text-sm text-muted-foreground">
-              {r.inventoryUnit.locationLabel} · {r.status} · {formatArs(r.agreedAmount ?? 0)}
-            </p>
-            {r.status === "accepted" && !r.payment && <PayReservationButton reservationId={r.id} />}
-            {r.proofOfPlay && <p className="text-xs text-led mt-1">PoP: {r.proofOfPlay.status}</p>}
-            {r.publicationOrder && <p className="text-xs text-muted-foreground">Orden publicación: {r.publicationOrder.status}</p>}
-            {["accepted", "confirmed", "payment_pending"].includes(r.status) && campaign.creatives.length > 0 && (
-              <PublicationOrderForm reservationId={r.id} creativeIds={campaign.creatives.map((c) => c.id)} />
-            )}
-          </div>
-        ))}
+      <section className={cn(surfaceCard(), "space-y-3 p-5")}>
+        <SectionHeader title="Reservas" />
+        {campaign.reservations.length === 0 ? (
+          <EmptyState
+            description="Todavía no hay reservas asociadas a esta campaña."
+            title="Sin reservas"
+          />
+        ) : (
+          campaign.reservations.map((r) => (
+            <div key={r.id} className="border-b border-border pb-3 last:border-0">
+              <p className="font-medium">{r.inventoryUnit.name}</p>
+              <p className="text-sm text-muted-foreground">
+                {r.inventoryUnit.locationLabel} · {r.status} · {formatArs(r.agreedAmount ?? 0)}
+              </p>
+              {r.status === "accepted" && !r.payment && <PayReservationButton reservationId={r.id} />}
+              {r.proofOfPlay && <p className="mt-1 text-xs text-led">PoP: {r.proofOfPlay.status}</p>}
+              {r.publicationOrder && (
+                <p className="text-xs text-muted-foreground">
+                  Orden publicación: {r.publicationOrder.status}
+                </p>
+              )}
+              {["accepted", "confirmed", "payment_pending"].includes(r.status) &&
+                campaign.creatives.length > 0 && (
+                  <PublicationOrderForm
+                    creativeIds={campaign.creatives.map((c) => c.id)}
+                    reservationId={r.id}
+                  />
+                )}
+            </div>
+          ))
+        )}
       </section>
 
       <section className={cn(surfaceCard(), "p-5")}>
-        <h2 className="font-semibold mb-3">Creativos</h2>
-        <Link href="/advertiser/creativos" className="text-sm text-led underline">Gestionar biblioteca →</Link>
-        <ul className="mt-3 space-y-2">
-          {campaign.creatives.map((cr) => (
-            <li key={cr.id} className="text-sm">{cr.name}</li>
-          ))}
-        </ul>
+        <SectionHeader
+          actions={
+            <Link className="text-sm text-led underline" href="/advertiser/creativos">
+              Gestionar biblioteca →
+            </Link>
+          }
+          className="mb-3"
+          title="Creativos"
+        />
+        {campaign.creatives.length === 0 ? (
+          <EmptyState
+            actionHref="/advertiser/creativos"
+            actionLabel="Ir a biblioteca"
+            description="Asociá creativos desde la biblioteca."
+            title="Sin creativos"
+          />
+        ) : (
+          <ul className="mt-3 space-y-2">
+            {campaign.creatives.map((cr) => (
+              <li key={cr.id} className="text-sm">
+                {cr.name}
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   );

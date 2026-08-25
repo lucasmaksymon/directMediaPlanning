@@ -5,6 +5,7 @@ import { buildHeaderNav } from "@/components/layout/build-nav";
 import { MobileMenu } from "@/components/layout/MobileMenu";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { PRODUCT_NAME } from "@/lib/brand";
+import { Button } from "@/components/ui/Button";
 
 export async function AppHeader() {
   const session = await auth();
@@ -12,14 +13,17 @@ export async function AppHeader() {
 
   return (
     <header
-      className="z-50 shrink-0 border-b border-border/80 bg-nav/90 backdrop-blur-md backdrop-saturate-150"
+      className="z-[var(--z-header)] shrink-0 border-b border-border bg-nav/95 backdrop-blur-md"
       suppressHydrationWarning
     >
       <div
         className="flex h-14 w-full items-center gap-3 px-4 sm:gap-4 sm:px-6 lg:px-8 xl:px-10"
         suppressHydrationWarning
       >
-        <Link className="shrink-0 font-display text-lg uppercase tracking-wide text-foreground" href="/">
+        <Link
+          className="shrink-0 font-display text-lg uppercase tracking-wide text-foreground"
+          href="/"
+        >
           <span className="hidden sm:inline">
             <span className="text-led">Next</span>Planning
           </span>
@@ -28,10 +32,10 @@ export async function AppHeader() {
           </span>
         </Link>
 
-        <nav aria-label="Principal" className="hidden min-w-0 flex-1 items-center gap-1 md:flex">
+        <nav aria-label="Principal" className="hidden min-w-0 flex-1 items-center gap-0.5 md:flex">
           {desktop.map((item) => (
             <Link
-              className="rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition duration-250 hover:bg-muted hover:text-foreground"
+              className="rounded-[var(--radius-md)] px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               href={item.href}
               key={item.href + item.label}
             >
@@ -51,17 +55,18 @@ export async function AppHeader() {
                 {session.user.email}
               </span>
               <form action={signOutAction} className="hidden sm:block">
-                <button
-                  className="rounded-full border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground shadow-sm transition duration-250 hover:bg-muted"
-                  type="submit"
-                >
+                <Button size="sm" type="submit" variant="outline">
                   Salir
-                </button>
+                </Button>
               </form>
             </>
           ) : null}
 
-          <MobileMenu items={mobilePrimary} sections={mobileSections} showSignOut={Boolean(session?.user)} />
+          <MobileMenu
+            items={mobilePrimary}
+            sections={mobileSections}
+            showSignOut={Boolean(session?.user)}
+          />
         </div>
       </div>
     </header>

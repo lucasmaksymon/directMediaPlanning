@@ -1,9 +1,10 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { surfaceCard } from "@/lib/ui-classes";
+import { panelPage, pageScroll } from "@/lib/ui-classes";
 import { cn } from "@/lib/cn";
 import { productTitle } from "@/lib/brand";
+import { PageHeader } from "@/components/ui";
 import { AgencyClientsManager } from "./AgencyClientsManager";
 
 export const metadata = { title: productTitle("Clientes · Agencia") };
@@ -33,16 +34,12 @@ export default async function AgencyClientesPage() {
   if (!agencyProfile) redirect("/agency");
 
   return (
-    <div className="space-y-8">
-      <header>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-led">Agencia</p>
-        <h1 className="font-display mt-3 text-3xl font-normal uppercase tracking-wide text-foreground">
-          Mis clientes
-        </h1>
-        <p className="mt-2 text-base text-muted-foreground">
-          Gestioná los anunciantes asociados a tu agencia. Podés ver sus campañas de forma consolidada.
-        </p>
-      </header>
+    <div className={cn(panelPage, pageScroll, "gap-6")}>
+      <PageHeader
+        description="Gestioná los anunciantes asociados a tu agencia. Podés ver sus campañas de forma consolidada."
+        eyebrow="Agencia"
+        title="Mis clientes"
+      />
       <div className="max-w-2xl">
         <AgencyClientsManager initialClients={agencyProfile.clients} />
       </div>

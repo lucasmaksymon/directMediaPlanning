@@ -7,6 +7,8 @@ import { formatArs } from "@/lib/format";
 import { reservationStatusLabel } from "@/lib/labels";
 import { productTitle } from "@/lib/brand";
 import Link from "next/link";
+import { PageHeader, Stat, StatRow, EmptyState, SectionHeader } from "@/components/ui/Patterns";
+import { buttonVariants } from "@/lib/ui-variants";
 
 export const metadata = { title: productTitle("Panel Agencia") };
 
@@ -23,15 +25,12 @@ export default async function AgencyPage() {
 
   if (!agencyProfile) {
     return (
-      <div className={cn(panelPage, pageScroll)}>
-        <h1 className="font-display text-3xl font-normal uppercase tracking-wide text-foreground">
-          Panel Agencia
-        </h1>
-        <div className={cn(surfaceCard(), "p-8 text-center")}>
-          <p className="text-muted-foreground">
-            Tu cuenta fue registrada como agencia, pero no encontramos el perfil. Contactá a soporte.
-          </p>
-        </div>
+      <div className={cn(panelPage, pageScroll, "gap-6")}>
+        <PageHeader eyebrow="Agencia" title="Panel Agencia" />
+        <EmptyState
+          title="Perfil no encontrado"
+          description="Tu cuenta fue registrada como agencia, pero no encontramos el perfil. Contactá a soporte."
+        />
       </div>
     );
   }
@@ -72,104 +71,89 @@ export default async function AgencyPage() {
   const totalCampaigns = clients.reduce((acc, c) => acc + c.advertiser.reservations.length, 0);
 
   return (
-    <div className={cn(panelPage, pageScroll, "gap-8")}>
-      <header>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-led">Agencia</p>
-        <h1 className="font-display mt-3 text-3xl font-normal uppercase tracking-wide text-foreground">
-          {agencyProfile.companyName}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Comisión estándar: {Number(agencyProfile.commissionPct)}%
-        </p>
-      </header>
+    <div className={cn(panelPage, pageScroll, "gap-6")}>
+      <PageHeader
+        eyebrow="Agencia"
+        title={agencyProfile.companyName}
+        description={`Comisión estándar: ${Number(agencyProfile.commissionPct)}%`}
+      />
 
-      {/* KPIs */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <StatRow className="lg:grid-cols-4">
+        <Link href="/agency/clientes" className="block">
+          <Stat
+            className="h-full transition hover:border-led/40"
+            label="Clientes"
+            value={clients.length}
+          />
+        </Link>
+        <Link href="/agency/clientes" className="block">
+          <Stat
+            className="h-full transition hover:border-led/40"
+            label="Campañas totales"
+            value={totalCampaigns}
+          />
+        </Link>
+        <Link href="/agency/clientes" className="block">
+          <Stat
+            className="h-full transition hover:border-led/40"
+            label="Inversión gestionada"
+            value={formatArs(totalManaged)}
+          />
+        </Link>
+        <Link href="/agency/clientes" className="block">
+          <Stat
+            accent
+            className="h-full transition hover:border-led/40"
+            label="Comisiones totales"
+            value={formatArs(totalCommissions)}
+          />
+        </Link>
+      </StatRow>
+
+      <div className="grid gap-2 sm:grid-cols-3">
         {[
-          { label: "Clientes", value: clients.length, href: "/agency/clientes" },
-          { label: "Campañas totales", value: totalCampaigns, href: "/agency/clientes" },
-          { label: "Inversión gestionada", value: formatArs(totalManaged), href: "/agency/clientes", accent: false },
-          { label: "Comisiones totales", value: formatArs(totalCommissions), href: "/agency/clientes", accent: true },
-        ].map((k) => (
+          { href: "/agency/clientes", label: "Gestionar clientes" },
+          { href: "/explorar", label: "Explorar catálogo" },
+          { href: "/agency/comparar", label: "Comparar espacios" },
+        ].map((a) => (
           <Link
-            key={k.label}
-            href={k.href}
-            className={cn(
-              surfaceCard(),
-              "flex flex-col p-5 transition duration-200 hover:border-led/40",
-            )}
+            key={a.href}
+            href={a.href}
+            className={cn(buttonVariants({ variant: "outline", size: "md" }), "justify-between")}
           >
-            <p className={cn("text-2xl font-bold tabular-nums", k.accent ? "text-led" : "text-foreground")}>
-              {k.value}
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">{k.label}</p>
+            {a.label} <span className="text-led">→</span>
           </Link>
         ))}
       </div>
 
-      {/* Accesos rápidos */}
-      <div className="grid gap-2 sm:grid-cols-3">
-        <Link
-          href="/agency/clientes"
-          className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium text-foreground transition hover:border-led/40"
-        >
-          Gestionar clientes
-          <span className="text-led">→</span>
-        </Link>
-        <Link
-          href="/explorar"
-          className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium text-foreground transition hover:border-led/40"
-        >
-          Explorar catálogo
-          <span className="text-led">→</span>
-        </Link>
-        <Link
-          href="/agency/comparar"
-          className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium text-foreground transition hover:border-led/40"
-        >
-          Comparar espacios
-          <span className="text-led">→</span>
-        </Link>
-      </div>
-
-      {/* Comisiones recientes */}
       {confirmedAgencyReservations.length > 0 && (
         <div className={cn(surfaceCard(), "p-5 sm:p-6")}>
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Comisiones acumuladas
-          </h2>
-          <div className="flex flex-wrap gap-6 mt-3">
-            <div>
-              <p className="text-3xl font-bold text-led tabular-nums">{formatArs(totalCommissions)}</p>
-              <p className="mt-1 text-xs text-muted-foreground">Total comisiones cobradas</p>
-            </div>
-            <div>
-              <p className="text-3xl font-bold tabular-nums text-foreground">{confirmedAgencyReservations.length}</p>
-              <p className="mt-1 text-xs text-muted-foreground">Reservas vía agencia</p>
-            </div>
-            <div>
-              <p className="text-3xl font-bold tabular-nums text-foreground">
-                {totalManaged > 0 ? `${Math.round((totalCommissions / totalManaged) * 100)}%` : "—"}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">Comisión efectiva promedio</p>
-            </div>
-          </div>
+          <SectionHeader title="Comisiones acumuladas" className="mb-4" />
+          <StatRow className="sm:grid-cols-3 lg:grid-cols-3">
+            <Stat accent label="Total comisiones cobradas" value={formatArs(totalCommissions)} />
+            <Stat label="Reservas vía agencia" value={confirmedAgencyReservations.length} />
+            <Stat
+              label="Comisión efectiva promedio"
+              value={
+                totalManaged > 0
+                  ? `${Math.round((totalCommissions / totalManaged) * 100)}%`
+                  : "—"
+              }
+            />
+          </StatRow>
         </div>
       )}
 
-      {/* Clientes */}
       {clients.length === 0 ? (
-        <div className={cn(surfaceCard(), "py-12 text-center")}>
-          <p className="text-muted-foreground">Aún no tenés clientes.</p>
-          <Link href="/agency/clientes" className="mt-3 inline-flex text-sm text-led font-semibold underline">
-            Agregar cliente →
-          </Link>
-        </div>
+        <EmptyState
+          title="Aún no tenés clientes"
+          description="Agregá clientes para gestionar campañas y comisiones."
+          actionLabel="Agregar cliente"
+          actionHref="/agency/clientes"
+        />
       ) : (
-        <div className="space-y-6">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Vista consolidada de clientes
-          </h2>
+        <div className="space-y-4">
+          <SectionHeader title="Vista consolidada de clientes" />
           {clients.map((c) => {
             const name = c.advertiser.advertiserProfile?.legalName ?? c.advertiser.email;
             return (

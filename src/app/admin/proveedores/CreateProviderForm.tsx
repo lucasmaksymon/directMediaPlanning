@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { createInternalProvider } from "@/app/actions/admin-providers";
-import { btnPrimary, fieldClass, labelClass, surfaceCard } from "@/lib/ui-classes";
+import { fieldClass, labelClass, surfaceCard } from "@/lib/ui-classes";
 import { cn } from "@/lib/cn";
+import { Alert, Button } from "@/components/ui";
 
 export function CreateProviderForm() {
   const [name, setName] = useState("");
@@ -42,11 +43,11 @@ export function CreateProviderForm() {
           value={name}
         />
       </div>
-      {error && <p className="text-sm text-signal">{error}</p>}
-      {success && <p className="text-sm text-led">Proveedor creado. Recargá para ver la lista.</p>}
-      <button className={btnPrimary} disabled={pending || !name.trim()} type="submit">
+      {error && <Alert variant="error">{error}</Alert>}
+      {success && <Alert variant="success">Proveedor creado. Recargá para ver la lista.</Alert>}
+      <Button disabled={pending || !name.trim()} type="submit">
         {pending ? "Guardando…" : "Crear proveedor"}
-      </button>
+      </Button>
     </form>
   );
 }

@@ -5,8 +5,9 @@ import { reservationStatusLabel } from "@/lib/labels";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/cn";
-import { adminPageHeader, advertiserPage } from "@/lib/ui-classes";
+import { advertiserPage, btnSecondary } from "@/lib/ui-classes";
 import { PayReservationButton } from "@/components/payments/PayReservationButton";
+import { PageHeader, EmptyState } from "@/components/ui/Patterns";
 
 const statusDot: Record<string, string> = {
   pending_provider: "bg-signal",
@@ -36,35 +37,33 @@ export default async function AdvertiserReservationsPage() {
 
   return (
     <div className={cn(advertiserPage, "gap-3")}>
-      <header className={cn(adminPageHeader, "flex items-center justify-between gap-4")}>
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-led">Mi cuenta</p>
-          <h1 className="font-display text-xl font-normal uppercase tracking-wide text-foreground sm:text-2xl">
-            Mis solicitudes
-          </h1>
-        </div>
-        <div className="flex shrink-0 items-center gap-3">
-          {acceptedIds.length > 0 && (
-            <a
-              href={`/api/pdf/media-plan?ids=${acceptedIds.join(",")}&format=pdf`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:border-led/50 transition"
-            >
-              Media Plan PDF
-            </a>
-          )}
-          <span className="text-xs text-muted-foreground">{reservations.length} total</span>
-        </div>
-      </header>
+      <PageHeader
+        eyebrow="Mi cuenta"
+        title="Mis solicitudes"
+        actions={
+          <>
+            {acceptedIds.length > 0 && (
+              <a
+                href={`/api/pdf/media-plan?ids=${acceptedIds.join(",")}&format=pdf`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={btnSecondary}
+              >
+                Media Plan PDF
+              </a>
+            )}
+            <span className="text-xs text-muted-foreground">{reservations.length} total</span>
+          </>
+        }
+      />
 
       {reservations.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border bg-muted/50 px-6 py-10 text-center text-sm text-muted-foreground">
-          Todavía no enviaste solicitudes.{" "}
-          <Link className="font-semibold text-foreground underline" href="/explorar">
-            Explorar catálogo
-          </Link>
-        </p>
+        <EmptyState
+          title="Todavía no enviaste solicitudes"
+          description="Explorá el catálogo y enviá tu primera solicitud."
+          actionLabel="Explorar catálogo"
+          actionHref="/explorar"
+        />
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border bg-card shadow-sm [scrollbar-gutter:stable]">
           <table className="w-full text-sm">
@@ -120,7 +119,7 @@ export default async function AdvertiserReservationsPage() {
                           href={`/api/pdf/op?id=${r.id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="whitespace-nowrap rounded-lg border border-border px-2 py-1 text-[10px] font-semibold text-foreground hover:border-led/50 transition"
+                          className="whitespace-nowrap rounded-[var(--radius-md)] border border-border px-2 py-1 text-[10px] font-medium text-foreground hover:border-led/50 transition"
                         >
                           OP PDF
                         </a>

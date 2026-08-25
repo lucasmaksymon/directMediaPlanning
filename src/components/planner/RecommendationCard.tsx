@@ -31,11 +31,11 @@ export function RecommendationCard({ unit, score, justificacion, selected, onTog
 
   return (
     <div
-      className={`relative flex flex-col gap-3 rounded-3xl border p-5 shadow-sm transition duration-250 cursor-pointer ${
+      className={`relative flex flex-col gap-3 rounded-[var(--radius-lg)] border p-5 shadow-sm transition duration-250 cursor-pointer ${
         selected
           ? "border-led bg-led/8 shadow-[0_0_24px_rgba(0,182,199,0.2)]"
-          : "border-border bg-card hover:border-led/50 dark:bg-gradient-to-b dark:from-ocean dark:to-[#071012]"
-      }`}
+          : "border-border bg-card hover:border-led/50 "
+     }`}
       onClick={() => onToggle(unit.id)}
       role="checkbox"
       aria-checked={selected}

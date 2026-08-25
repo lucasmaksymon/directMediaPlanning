@@ -9,16 +9,20 @@ type Props = {
 
 export function PlannerModeToggle({ currentMode }: Props) {
   return (
-    <div className="flex shrink-0 gap-2" role="tablist" aria-label="Modo del planificador">
+    <div
+      className="inline-flex gap-1 rounded-[var(--radius-md)] border border-border bg-muted/50 p-1"
+      role="tablist"
+      aria-label="Modo del planificador"
+    >
       <Link
         href="/advertiser/planificar"
         role="tab"
         aria-selected={currentMode === "form"}
         className={cn(
-          "rounded-full px-4 py-2 text-sm font-medium transition",
+          "rounded-[calc(var(--radius-md)-2px)] px-3 py-1.5 text-sm font-medium transition",
           currentMode === "form"
-            ? "bg-primary text-primary-foreground shadow-[0_0_20px_rgba(0,182,199,0.35)]"
-            : "border border-border bg-card text-foreground hover:bg-muted",
+            ? "bg-card text-foreground shadow-sm"
+            : "text-muted-foreground hover:text-foreground",
         )}
       >
         Formulario
@@ -28,13 +32,13 @@ export function PlannerModeToggle({ currentMode }: Props) {
         role="tab"
         aria-selected={currentMode === "chat"}
         className={cn(
-          "rounded-full px-4 py-2 text-sm font-medium transition",
+          "rounded-[calc(var(--radius-md)-2px)] px-3 py-1.5 text-sm font-medium transition",
           currentMode === "chat"
-            ? "bg-primary text-primary-foreground shadow-[0_0_20px_rgba(0,182,199,0.35)]"
-            : "border border-border bg-card text-foreground hover:bg-muted",
+            ? "bg-card text-foreground shadow-sm"
+            : "text-muted-foreground hover:text-foreground",
         )}
       >
-        Chat IA ✦
+        Chat IA
       </Link>
     </div>
   );

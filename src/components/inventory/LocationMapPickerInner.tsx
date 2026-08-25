@@ -79,7 +79,7 @@ export function LocationMapPickerInner({ latitude, longitude, onChange }: Props)
   };
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-led/25 bg-card shadow-sm nm-glow ring-1 ring-led/10 dark:bg-gradient-to-b dark:from-ocean dark:to-[#071012]">
+    <div className="overflow-hidden rounded-[var(--radius-lg)] border border-led/25 bg-card shadow-sm ring-1 ring-led/10 ">
       <div className="flex items-center gap-2.5 border-b border-border bg-muted/60 px-4 py-3 backdrop-blur-sm">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-card shadow-sm ring-1 ring-border">
           <MapPinIcon className="h-4 w-4 text-led" />

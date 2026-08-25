@@ -97,7 +97,7 @@ export function ReserveForm({
           : "El medio confirmará disponibilidad y condiciones. El pago se coordina con NextMedia."}
       </p>
       {state?.error ? (
-        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+        <p className="text-sm text-error" role="alert">
           {state.error}
         </p>
       ) : null}

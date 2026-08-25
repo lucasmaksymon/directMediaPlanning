@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { SignOutMenuButton } from "@/components/layout/SignOutMenuButton";
+import { IconButton } from "@/components/ui/IconButton";
 
 export type MobileNavItem = {
   href: string;
@@ -33,43 +35,39 @@ export function MobileMenu({ items, sections, showSignOut }: Props) {
 
   return (
     <>
-      <button
+      <IconButton
         aria-controls="app-mobile-menu"
         aria-expanded={open}
-        aria-label={open ? "Cerrar menú" : "Abrir menú"}
-        className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-sm transition duration-250 hover:bg-muted md:hidden"
-        type="button"
+        className="border border-border bg-card md:hidden"
+        label={open ? "Cerrar menú" : "Abrir menú"}
         onClick={() => setOpen(true)}
+        size="icon-sm"
+        variant="outline"
       >
-        <MenuIcon />
-      </button>
+        <Menu className="size-4" />
+      </IconButton>
 
       {open ? (
-        <div className="fixed inset-0 z-[100] md:hidden" id="app-mobile-menu" role="dialog">
+        <div className="fixed inset-0 z-[var(--z-modal)] md:hidden" id="app-mobile-menu" role="dialog">
           <button
             aria-label="Cerrar menú"
-            className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-carbon/45"
             type="button"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute inset-y-0 right-0 flex w-[min(100%,20rem)] flex-col border-l border-border bg-card shadow-2xl nm-glow">
-            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <div className="absolute inset-y-0 right-0 flex w-[min(100%,20rem)] flex-col border-l border-border bg-card shadow-[var(--shadow-md)]">
+            <div className="flex items-center justify-between border-b border-divide px-4 py-3">
               <p className="text-sm font-semibold text-foreground">Menú</p>
-              <button
-                aria-label="Cerrar"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
-                type="button"
-                onClick={() => setOpen(false)}
-              >
-                <CloseIcon />
-              </button>
+              <IconButton label="Cerrar" onClick={() => setOpen(false)} size="icon-sm">
+                <X className="size-4" />
+              </IconButton>
             </div>
-            <nav className="flex-1 overflow-y-auto px-3 py-4">
-              <ul className="space-y-1">
+            <nav className="nm-scroll flex-1 overflow-y-auto px-3 py-4">
+              <ul className="space-y-0.5">
                 {items.map((item) => (
                   <li key={item.href + item.label}>
                     <Link
-                      className="block rounded-xl px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted"
+                      className="block rounded-[var(--radius-md)] px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted"
                       href={item.href}
                       onClick={() => setOpen(false)}
                     >
@@ -80,14 +78,14 @@ export function MobileMenu({ items, sections, showSignOut }: Props) {
               </ul>
               {sections?.map((sec) => (
                 <div className="mt-6" key={sec.title}>
-                  <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                     {sec.title}
                   </p>
-                  <ul className="space-y-1">
+                  <ul className="space-y-0.5">
                     {sec.items.map((item) => (
                       <li key={item.href + item.label}>
                         <Link
-                          className="block rounded-xl px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted"
+                          className="block rounded-[var(--radius-md)] px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted"
                           href={item.href}
                           onClick={() => setOpen(false)}
                         >
@@ -100,7 +98,7 @@ export function MobileMenu({ items, sections, showSignOut }: Props) {
               ))}
             </nav>
             {showSignOut ? (
-              <div className="border-t border-border p-3">
+              <div className="border-t border-divide p-3">
                 <SignOutMenuButton />
               </div>
             ) : null}
@@ -108,21 +106,5 @@ export function MobileMenu({ items, sections, showSignOut }: Props) {
         </div>
       ) : null}
     </>
-  );
-}
-
-function MenuIcon() {
-  return (
-    <svg aria-hidden className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-      <path strokeLinecap="round" d="M4 7h16M4 12h16M4 17h16" />
-    </svg>
-  );
-}
-
-function CloseIcon() {
-  return (
-    <svg aria-hidden className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-      <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
-    </svg>
   );
 }

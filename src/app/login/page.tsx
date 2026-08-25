@@ -4,6 +4,7 @@ import { ClientOnly } from "@/components/ClientOnly";
 import { CLIENT_BRAND, PRODUCT_NAME } from "@/lib/brand";
 import { pageScroll } from "@/lib/ui-classes";
 import { cn } from "@/lib/cn";
+import { LoadingState } from "@/components/ui/Patterns";
 import { LoginForm } from "./LoginForm";
 
 export default function LoginPage() {
@@ -11,21 +12,21 @@ export default function LoginPage() {
     <main
       className={cn(
         pageScroll,
-        "mx-auto flex max-w-lg flex-col justify-center px-4 py-12 sm:px-6 lg:px-8",
+        "mx-auto flex max-w-md flex-col justify-center px-4 py-12 sm:px-6",
       )}
       suppressHydrationWarning
     >
       <div className="mb-8" suppressHydrationWarning>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-led">{CLIENT_BRAND}</p>
-        <h1 className="font-display mt-2 text-3xl font-normal uppercase tracking-wide text-foreground">
-          Iniciar sesión
-        </h1>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-led">
+          {CLIENT_BRAND}
+        </p>
+        <h1 className="nm-page-title mt-2">Iniciar sesión</h1>
+        <p className="nm-secondary mt-3">
           Accedé a tu cuenta de {PRODUCT_NAME} con email y contraseña.
         </p>
       </div>
-      <Suspense fallback={<p className="text-sm text-muted-foreground">Cargando…</p>}>
-        <ClientOnly fallback={<p className="text-sm text-muted-foreground">Cargando…</p>}>
+      <Suspense fallback={<LoadingState />}>
+        <ClientOnly fallback={<LoadingState />}>
           <LoginForm />
         </ClientOnly>
       </Suspense>

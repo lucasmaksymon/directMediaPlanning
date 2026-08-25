@@ -28,7 +28,7 @@ export default async function EditInventoryPage({ params }: { params: Promise<{ 
         <Link href="/provider/inventario" className="text-sm text-muted-foreground hover:text-led">
           ← Mis espacios
         </Link>
-        <h1 className="font-display mt-2 text-2xl font-normal uppercase tracking-wide">Editar espacio</h1>
+        <h1 className="nm-page-title mt-2">Editar espacio</h1>
       </div>
       <EditInventoryForm unit={unit} />
     </div>

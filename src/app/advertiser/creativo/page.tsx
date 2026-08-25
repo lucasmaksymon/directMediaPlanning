@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
-import { adminPageHeader, advertiserPage } from "@/lib/ui-classes";
+import { advertiserPage } from "@/lib/ui-classes";
+import { PageHeader } from "@/components/ui";
 import { CreativoClient } from "./CreativoClient";
 
 export const metadata = {
@@ -24,18 +25,11 @@ export default async function CreativoPage() {
 
   return (
     <div className={cn(advertiserPage, "gap-5")}>
-      <header className={cn(adminPageHeader, "space-y-2")}>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-led">
-          Creativo · IA
-        </p>
-        <h1 className="font-display text-2xl font-normal uppercase tracking-wide text-foreground sm:text-3xl">
-          Validar creativo
-        </h1>
-        <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Subí tu arte final y la IA analiza contraste, legibilidad y mensaje para vía pública.
-          También podés generar un mockup orientativo del espacio.
-        </p>
-      </header>
+      <PageHeader
+        description="Subí tu arte final y la IA analiza contraste, legibilidad y mensaje para vía pública. También podés generar un mockup orientativo del espacio."
+        eyebrow="Creativo · IA"
+        title="Validar creativo"
+      />
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <CreativoClient units={units} />

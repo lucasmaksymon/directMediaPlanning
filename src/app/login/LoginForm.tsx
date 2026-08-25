@@ -3,8 +3,10 @@
 import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { useState } from "react";
-import { fieldClass, labelClass, btnPrimary } from "@/lib/ui-classes";
-import { cn } from "@/lib/cn";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
+import { Alert } from "@/components/ui/Overlay";
 
 export function LoginForm() {
   const searchParams = useSearchParams();
@@ -38,33 +40,21 @@ export function LoginForm() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-md space-y-6">
+    <div className="w-full space-y-6">
       {registered ? (
-        <p className="rounded-2xl border border-led/40 bg-led/10 px-4 py-3 text-sm leading-relaxed text-foreground">
+        <Alert variant="success">
           Tu cuenta está lista. Iniciá sesión con el email y la contraseña que elegiste.
-        </p>
+        </Alert>
       ) : null}
       <form className="space-y-4" onSubmit={onSubmit}>
-        <div>
-          <label className={labelClass} htmlFor="email">
-            Email
-          </label>
-          <input
-            autoComplete="email"
-            className={cn(fieldClass, "mt-1.5")}
-            id="email"
-            name="email"
-            required
-            type="email"
-          />
+        <div className="space-y-1.5">
+          <Label htmlFor="email">Email</Label>
+          <Input autoComplete="email" id="email" name="email" required type="email" />
         </div>
-        <div>
-          <label className={labelClass} htmlFor="password">
-            Contraseña
-          </label>
-          <input
+        <div className="space-y-1.5">
+          <Label htmlFor="password">Contraseña</Label>
+          <Input
             autoComplete="current-password"
-            className={cn(fieldClass, "mt-1.5")}
             id="password"
             name="password"
             required
@@ -72,13 +62,13 @@ export function LoginForm() {
           />
         </div>
         {error ? (
-          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+          <Alert variant="error" role="alert">
             {error}
-          </p>
+          </Alert>
         ) : null}
-        <button className={cn(btnPrimary, "w-full")} disabled={pending} type="submit">
+        <Button className="w-full" disabled={pending} type="submit">
           {pending ? "Ingresando…" : "Iniciar sesión"}
-        </button>
+        </Button>
       </form>
     </div>
   );

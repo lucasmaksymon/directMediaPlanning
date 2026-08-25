@@ -7,12 +7,14 @@ export type ExploreUnitDTO = {
   name: string;
   locationLabel: string;
   basePriceAmount: string;
+  providerName: string;
   lat: number | null;
   lng: number | null;
 };
 
 export type ExploreFilters = {
   q: string;
+  proveedor: string;
   desde: string;
   hasta: string;
   vista: "lista" | "mapa" | "ambos";
@@ -29,6 +31,7 @@ function buildTextSearch(q: string): Prisma.InventoryUnitWhereInput[] {
   return variants.flatMap((v) => [
     { name: { contains: v, mode: "insensitive" as const } },
     { locationLabel: { contains: v, mode: "insensitive" as const } },
+    { provider: { companyName: { contains: v, mode: "insensitive" as const } } },
   ]);
 }
 
@@ -63,8 +66,10 @@ export function flattenSearchParams(
 export async function fetchExploreData(flat: Record<string, string>): Promise<{
   units: ExploreUnitDTO[];
   filters: ExploreFilters;
+  providerNames: string[];
 }> {
   const q = (flat.q ?? "").trim();
+  const proveedor = (flat.proveedor ?? "").trim();
   const desde = (flat.desde ?? "").trim();
   const hasta = (flat.hasta ?? "").trim();
   const vistaRaw = (flat.vista ?? "ambos").trim();
@@ -89,6 +94,13 @@ export async function fetchExploreData(flat: Record<string, string>): Promise<{
           OR: buildTextSearch(q),
         }
       : {}),
+    ...(proveedor
+      ? {
+          provider: {
+            companyName: { equals: proveedor, mode: "insensitive" },
+          },
+        }
+      : {}),
     ...(Number.isFinite(precioMaxNum) && precioMaxNum > 0
       ? { basePriceAmount: { lte: precioMaxNum } }
       : {}),
@@ -109,7 +121,14 @@ export async function fetchExploreData(flat: Record<string, string>): Promise<{
 
   const units = await prisma.inventoryUnit.findMany({
     where,
+    include: { provider: { select: { companyName: true } } },
     orderBy: { updatedAt: "desc" },
+  });
+
+  const providersWithPublished = await prisma.providerProfile.findMany({
+    where: { inventoryUnits: { some: { status: "published" } } },
+    select: { companyName: true },
+    orderBy: { companyName: "asc" },
   });
 
   const dtos: ExploreUnitDTO[] = units.map((u) => ({
@@ -117,14 +136,17 @@ export async function fetchExploreData(flat: Record<string, string>): Promise<{
     name: u.name,
     locationLabel: u.locationLabel,
     basePriceAmount: u.basePriceAmount.toString(),
+    providerName: u.provider.companyName,
     lat: u.latitude,
     lng: u.longitude,
   }));
 
   return {
     units: dtos,
+    providerNames: providersWithPublished.map((p) => p.companyName),
     filters: {
       q,
+      proveedor,
       desde,
       hasta,
       vista,

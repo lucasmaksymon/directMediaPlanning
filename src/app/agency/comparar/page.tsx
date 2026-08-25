@@ -6,6 +6,7 @@ import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { btnPrimary, panelPage, pageScroll, surfaceCard } from "@/lib/ui-classes";
 import { productTitle } from "@/lib/brand";
+import { EmptyState, PageHeader } from "@/components/ui";
 
 export const metadata = { title: productTitle("Comparar espacios") };
 
@@ -48,22 +49,17 @@ export default async function AgencyCompararPage({
 
   return (
     <div className={cn(panelPage, pageScroll, "gap-6")}>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-led">Agencia</p>
-          <h1 className="font-display mt-1 text-2xl font-normal uppercase tracking-wide text-foreground">
-            Comparar espacios
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Visualizá precios directos vs. precios de agencia y la comisión estimada para cada espacio.
-          </p>
-        </div>
-        <Link href="/explorar" className={cn(btnPrimary, "text-xs px-5 py-2.5")}>
-          + Agregar espacios
-        </Link>
-      </div>
+      <PageHeader
+        actions={
+          <Link className={cn(btnPrimary, "px-5 py-2.5 text-xs")} href="/explorar">
+            + Agregar espacios
+          </Link>
+        }
+        description="Visualizá precios directos vs. precios de agencia y la comisión estimada para cada espacio."
+        eyebrow="Agencia"
+        title="Comparar espacios"
+      />
 
-      {/* Leyenda */}
       {agencyProfile && (
         <div className="flex flex-wrap gap-4 text-xs">
           <div className="flex items-center gap-1.5">
@@ -76,18 +72,20 @@ export default async function AgencyCompararPage({
           </div>
           <div className="flex items-center gap-1.5">
             <span className="h-3 w-3 rounded-full bg-primary/70" />
-            <span className="text-muted-foreground">Tu comisión ({Number(agencyProfile.commissionPct)}%)</span>
+            <span className="text-muted-foreground">
+              Tu comisión ({Number(agencyProfile.commissionPct)}%)
+            </span>
           </div>
         </div>
       )}
 
       {units.length === 0 ? (
-        <div className={cn(surfaceCard(), "p-10 text-center")}>
-          <p className="text-muted-foreground">No hay espacios para comparar.</p>
-          <Link href="/explorar" className="mt-4 inline-block text-sm font-semibold text-led underline">
-            Explorar catálogo →
-          </Link>
-        </div>
+        <EmptyState
+          actionHref="/explorar"
+          actionLabel="Explorar catálogo"
+          description="No hay espacios para comparar."
+          title="Sin espacios"
+        />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {units.map((u) => {
@@ -99,7 +97,7 @@ export default async function AgencyCompararPage({
             const savingsPct = Math.round(((directPrice - agencyPrice) / directPrice) * 100);
 
             return (
-              <div key={u.id} className={cn(surfaceCard(), "p-5 space-y-4")}>
+              <div key={u.id} className={cn(surfaceCard(), "space-y-4 p-5")}>
                 <div>
                   <p className="font-semibold text-foreground">{u.name}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">{u.locationLabel}</p>
@@ -111,12 +109,12 @@ export default async function AgencyCompararPage({
                 <div className="space-y-2 rounded-xl border border-border bg-muted/40 p-3 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Precio directo</span>
-                    <span className="font-medium line-through text-muted-foreground/70">
+                    <span className="font-medium text-muted-foreground/70 line-through">
                       {formatArs(directPrice)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-foreground font-medium">Precio vía agencia</span>
+                    <span className="font-medium text-foreground">Precio vía agencia</span>
                     <span className="font-bold text-led">{formatArs(agencyPrice)}</span>
                   </div>
                   <div className="flex items-center justify-between border-t border-border pt-2">
@@ -131,8 +129,8 @@ export default async function AgencyCompararPage({
                 </div>
 
                 <Link
+                  className="block w-full rounded-[var(--radius-md)] border border-led/40 py-2 text-center text-xs font-semibold text-led transition hover:bg-led/10"
                   href={`/explorar/${u.id}`}
-                  className="block w-full rounded-full border border-led/40 py-2 text-center text-xs font-bold uppercase tracking-wide text-led transition hover:bg-led/10"
                 >
                   Ver detalle
                 </Link>
@@ -142,7 +140,6 @@ export default async function AgencyCompararPage({
         </div>
       )}
 
-      {/* Tabla resumen si hay múltiples */}
       {units.length > 1 && (
         <div className={cn(surfaceCard(), "overflow-hidden")}>
           <div className="px-5 py-4">
@@ -170,7 +167,7 @@ export default async function AgencyCompararPage({
                   const commission = directPrice - agencyPrice;
                   const savingsPct = Math.round(((directPrice - agencyPrice) / directPrice) * 100);
                   return (
-                    <tr key={u.id} className="hover:bg-muted/30 transition">
+                    <tr key={u.id} className="transition hover:bg-muted/30">
                       <td className="px-5 py-3">
                         <p className="font-medium text-foreground">{u.name}</p>
                         <p className="text-xs text-muted-foreground">{u.locationLabel}</p>
@@ -178,10 +175,10 @@ export default async function AgencyCompararPage({
                       <td className="px-5 py-3 text-right tabular-nums text-muted-foreground line-through">
                         {formatArs(directPrice)}
                       </td>
-                      <td className="px-5 py-3 text-right tabular-nums font-bold text-led">
+                      <td className="px-5 py-3 text-right font-bold tabular-nums text-led">
                         {formatArs(agencyPrice)}
                       </td>
-                      <td className="px-5 py-3 text-right tabular-nums font-semibold text-primary">
+                      <td className="px-5 py-3 text-right font-semibold tabular-nums text-primary">
                         {formatArs(commission)}
                       </td>
                       <td className="px-5 py-3 text-right">

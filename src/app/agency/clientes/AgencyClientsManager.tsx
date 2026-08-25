@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { addAgencyClient, removeAgencyClient } from "@/app/actions/agency";
 import { cn } from "@/lib/cn";
-import { btnPrimary, fieldClass, labelClass, surfaceCard } from "@/lib/ui-classes";
+import { fieldClass, labelClass, surfaceCard } from "@/lib/ui-classes";
+import { Alert, Button } from "@/components/ui";
 
 type Client = {
   id: string;
@@ -62,11 +63,11 @@ export function AgencyClientsManager({ initialClients }: { initialClients: Clien
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           />
         </div>
-        {error && <p className="text-sm text-signal">{error}</p>}
-        {success && <p className="text-sm text-led">{success}</p>}
-        <button className={btnPrimary} disabled={isPending || !email.trim()} onClick={handleAdd} type="button">
+        {error && <Alert variant="error">{error}</Alert>}
+        {success && <Alert variant="success">{success}</Alert>}
+        <Button disabled={isPending || !email.trim()} onClick={handleAdd} type="button">
           {isPending ? "Agregando…" : "Agregar cliente"}
-        </button>
+        </Button>
       </div>
 
       {/* Lista de clientes */}
