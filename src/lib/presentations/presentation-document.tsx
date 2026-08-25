@@ -6,6 +6,7 @@ import {
   View,
   StyleSheet,
   Image,
+  Link,
 } from "@react-pdf/renderer";
 import { CLIENT_BRAND } from "@/lib/brand";
 import { coverRect, pdfImagePaneSize } from "@/lib/presentations/image-layout";
@@ -210,6 +211,13 @@ function createStyles(p: PresentationPalette) {
       lineHeight: 1.35,
       flex: 1,
     },
+    specLink: {
+      fontSize: 10,
+      color: p.led,
+      lineHeight: 1.35,
+      flex: 1,
+      textDecoration: "underline",
+    },
     closingInner: {
       flex: 1,
       padding: 48,
@@ -359,7 +367,9 @@ function UnitPage({
   palette: PresentationPalette;
 }) {
   const rows = slideSpecRows(slide).map((r) =>
-    r.label === "Mapa" ? { ...r, value: "Ver en Google Maps" } : r,
+    r.label === "Mapa"
+      ? { label: r.label, value: "Ver en Google Maps", href: r.value }
+      : { label: r.label, value: r.value, href: undefined as string | undefined },
   );
   const pane = pdfImagePaneSize();
   const cover =
@@ -390,7 +400,13 @@ function UnitPage({
               ]}
             >
               <Text style={styles.specLabel}>{r.label}</Text>
-              <Text style={styles.specValue}>{r.value}</Text>
+              {r.href ? (
+                <Link src={r.href} style={styles.specLink}>
+                  {r.value}
+                </Link>
+              ) : (
+                <Text style={styles.specValue}>{r.value}</Text>
+              )}
             </View>
           ))}
         </View>

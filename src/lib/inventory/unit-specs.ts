@@ -76,6 +76,57 @@ export function mapsUrlFromCoords(
   return `https://www.google.com/maps?q=${latitude},${longitude}`;
 }
 
+/** True si el link es solo lat,lng (Google suele reverse-geocodificar mal a una calle paralela). */
+export function isLatLngMapsUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    if (!/google\.[^/]*\/maps/i.test(u.href)) return false;
+    const q = u.searchParams.get("q") || "";
+    if (/^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/.test(q.trim())) return true;
+    if (/\/maps\/place\/-?\d/.test(u.pathname)) return true;
+    if (/\/@-?\d+(\.\d+)?,-?\d+(\.\d+)?/.test(u.href)) return true;
+    return false;
+  } catch {
+    return /maps\?q=-?\d+[.,]\d+\s*,\s*-?\d+[.,]\d+/i.test(url);
+  }
+}
+
+/**
+ * Link de Maps por dirección textual (más fiable que lat/lng para OOH en CABA).
+ * Ej: "Cabildo 3422" + zona CABA → busca Av. Cabildo 3422, no un edificio en calle paralela.
+ */
+export function mapsUrlFromLocation(opts: {
+  locationLabel?: string | null;
+  zona?: string | null;
+}): string | undefined {
+  let label = (opts.locationLabel || "").trim();
+  if (label.length < 4) return undefined;
+
+  label = label
+    .split(/\s+Tipo\b/i)[0]
+    ?.split(/\s+Detalle\b/i)[0]
+    ?.split(/\s+Impactos?\b/i)[0]
+    ?.trim() || label;
+  label = label.replace(/\s+/g, " ").slice(0, 160);
+  if (label.length < 4) return undefined;
+
+  const parts: string[] = [label];
+  const zona = (opts.zona || "").trim();
+  const blob = label.toLowerCase();
+  if (zona && !blob.includes(zona.toLowerCase())) {
+    parts.push(zona);
+  }
+  const joined = parts.join(", ");
+  if (!/\bargentina\b/i.test(joined)) {
+    if (!/\b(caba|buenos aires|gba|amba)\b/i.test(joined)) {
+      parts.push("Buenos Aires");
+    }
+    parts.push("Argentina");
+  }
+
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parts.join(", "))}`;
+}
+
 export function detectCaras(text: string): string {
   if (/doble\s*faz|doble\s*cara|2\s*caras|dos\s*caras|bifaz/i.test(text)) {
     return "Doble";
@@ -183,8 +234,15 @@ export function parseUnitSpecs(unit: SpecSource): InventoryUnitSpecs {
 
   const zona = meta.zona || "";
 
+  const addressMapsUrl = mapsUrlFromLocation({
+    locationLabel: unit.locationLabel,
+    zona: zona || meta.zona,
+  });
+  const explicitMapsUrl =
+    meta.mapsUrl && !isLatLngMapsUrl(meta.mapsUrl) ? meta.mapsUrl : undefined;
   const mapsUrl =
-    meta.mapsUrl ||
+    addressMapsUrl ||
+    explicitMapsUrl ||
     mapsUrlFromCoords(unit.latitude, unit.longitude);
 
   const isDigital =
@@ -241,7 +299,12 @@ export function enrichMetadataWithSpecs(
   assign("spot", specs.spot);
   assign("encendido", specs.encendido);
   assign("resolucion", specs.resolucion);
-  assign("mapsUrl", specs.mapsUrl);
+  // Preferir siempre link por dirección: lat/lng en CABA suele caer en calle paralela.
+  if (specs.mapsUrl) {
+    if (!next.mapsUrl || isLatLngMapsUrl(next.mapsUrl)) {
+      next.mapsUrl = specs.mapsUrl;
+    }
+  }
 
   if (specs.medida && next.medida && next.medida.length > 40) {
     next.medida = specs.medida;

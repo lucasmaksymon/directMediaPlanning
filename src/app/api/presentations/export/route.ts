@@ -48,7 +48,7 @@ const bodySchema = z.object({
         spot: z.string().max(200).optional(),
         encendido: z.string().max(200).optional(),
         resolucion: z.string().max(200).optional(),
-        mapsUrl: z.string().max(500).optional(),
+        mapsUrl: z.string().max(2000).optional(),
       }),
     )
     .min(1)
