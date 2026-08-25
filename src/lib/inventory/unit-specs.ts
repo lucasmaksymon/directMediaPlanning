@@ -148,7 +148,7 @@ export function mapsUrlFromLocation(opts: {
   locationLabel?: string | null;
   zona?: string | null;
 }): string | undefined {
-  let label = cleanLocationLabel(opts.locationLabel || "");
+  const label = cleanLocationLabel(opts.locationLabel || "");
   if (label.length < 4) return undefined;
 
   const parts: string[] = [label];
