@@ -259,34 +259,26 @@ function createStyles(p: PresentationPalette) {
       marginBottom: 28,
     },
     contactCard: {
+      width: 440,
+      alignSelf: "center",
       borderWidth: 1,
       borderColor: p.border,
       borderRadius: 14,
       paddingVertical: 16,
       paddingHorizontal: 22,
-      minWidth: 360,
-      maxWidth: "70%",
     },
     contactRow: {
-      flexDirection: "row",
-      alignItems: "center",
       marginBottom: 8,
-      gap: 8,
-    },
-    contactBullet: {
-      fontSize: 10,
-      color: p.led,
-      width: 12,
     },
     contactText: {
-      fontSize: 10,
+      fontSize: 11,
       color: p.onDark,
-      flex: 1,
+      lineHeight: 1.45,
     },
     contactTextAccent: {
-      fontSize: 10,
+      fontSize: 11,
       color: p.led,
-      flex: 1,
+      lineHeight: 1.45,
     },
     footer: {
       position: "absolute",
@@ -466,20 +458,17 @@ function ClosingPage({
         <View style={styles.contactCard}>
           {deck.contactAddress ? (
             <View style={styles.contactRow}>
-              <Text style={styles.contactBullet}>•</Text>
-              <Text style={styles.contactText}>{deck.contactAddress}</Text>
+              <Text style={styles.contactText}>•  {deck.contactAddress}</Text>
             </View>
           ) : null}
           {deck.contactEmail ? (
             <View style={styles.contactRow}>
-              <Text style={styles.contactBullet}>•</Text>
-              <Text style={styles.contactTextAccent}>{deck.contactEmail}</Text>
+              <Text style={styles.contactTextAccent}>•  {deck.contactEmail}</Text>
             </View>
           ) : null}
           {deck.contactWeb ? (
             <View style={[styles.contactRow, { marginBottom: 0 }]}>
-              <Text style={styles.contactBullet}>•</Text>
-              <Text style={styles.contactTextAccent}>{deck.contactWeb}</Text>
+              <Text style={styles.contactTextAccent}>•  {deck.contactWeb}</Text>
             </View>
           ) : null}
         </View>
