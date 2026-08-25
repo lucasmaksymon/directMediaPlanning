@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ExploreMap } from "@/components/explore/ExploreMap";
 import { ExploreUnitCard } from "@/components/explore/ExploreUnitCard";
 import { SearchAutocomplete } from "@/components/explore/SearchAutocomplete";
-import type { ExploreFilters, ExploreUnitDTO } from "@/lib/explore-query";
+import type { ExploreFilters, ExploreMapMarker, ExploreUnitDTO } from "@/lib/explore-query";
 import { buildExploreHref } from "@/lib/explore-query";
 import { GEO_SUGGESTIONS } from "@/lib/geo-suggestions";
 import { cn } from "@/lib/cn";
@@ -14,15 +14,42 @@ import { btnPrimary, btnSecondary, fieldClass, labelClass } from "@/lib/ui-class
 import { EmptyState, FilterBar } from "@/components/ui/Patterns";
 
 type Props = {
-  units: ExploreUnitDTO[];
+  initialUnits: ExploreUnitDTO[];
+  markers: ExploreMapMarker[];
+  total: number;
+  hasMore: boolean;
   filters: ExploreFilters;
   providerNames: string[];
 };
 
-export function ExplorarExplorer({ units, filters, providerNames }: Props) {
+const FORMAT_OPTIONS = [
+  { value: "digital_ooh", label: "Digital OOH" },
+  { value: "static_ooh", label: "OOH estático" },
+  { value: "digital_package", label: "Paquete digital" },
+];
+
+export function ExplorarExplorer({
+  initialUnits,
+  markers,
+  total,
+  hasMore: initialHasMore,
+  filters,
+  providerNames,
+}: Props) {
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
   const router = useRouter();
   const [compareMode, setCompareMode] = useState(false);
+  const [units, setUnits] = useState(initialUnits);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setUnits(initialUnits);
+    setPage(1);
+    setHasMore(initialHasMore);
+  }, [initialUnits, initialHasMore]);
 
   function toggleCompare(id: string) {
     setCompareIds((prev) => {
@@ -37,6 +64,7 @@ export function ExplorarExplorer({ units, filters, providerNames }: Props) {
     () => ({
       q: filters.q || undefined,
       proveedor: filters.proveedor || undefined,
+      formato: filters.formato || undefined,
       desde: filters.desde || undefined,
       hasta: filters.hasta || undefined,
       precio_max: filters.precioMax || undefined,
@@ -44,14 +72,53 @@ export function ExplorarExplorer({ units, filters, providerNames }: Props) {
     [filters],
   );
 
-  const providerOptions = providerNames;
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const next = page + 1;
+      const qs = new URLSearchParams();
+      if (filters.q) qs.set("q", filters.q);
+      if (filters.proveedor) qs.set("proveedor", filters.proveedor);
+      if (filters.formato) qs.set("formato", filters.formato);
+      if (filters.desde) qs.set("desde", filters.desde);
+      if (filters.hasta) qs.set("hasta", filters.hasta);
+      if (filters.precioMax) qs.set("precio_max", filters.precioMax);
+      qs.set("page", String(next));
+      const res = await fetch(`/api/explore/units?${qs.toString()}`);
+      if (!res.ok) throw new Error("fetch failed");
+      const data = (await res.json()) as {
+        units: ExploreUnitDTO[];
+        hasMore: boolean;
+        page: number;
+      };
+      setUnits((prev) => {
+        const seen = new Set(prev.map((u) => u.id));
+        return [...prev, ...data.units.filter((u) => !seen.has(u.id))];
+      });
+      setPage(data.page);
+      setHasMore(data.hasMore);
+    } catch {
+      /* ignore */
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [filters, hasMore, loadingMore, page]);
 
-  const withCoords = units.filter(
-    (u) => u.lat != null && u.lng != null && Number.isFinite(u.lat) && Number.isFinite(u.lng),
-  );
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || filters.vista === "mapa") return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) void loadMore();
+      },
+      { root: el.parentElement, rootMargin: "240px" },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [loadMore, filters.vista]);
 
   const vista = filters.vista;
-
   const inputCls = cn(fieldClass, "h-8 py-1.5 text-sm");
   const labelCls = cn(labelClass, "mb-1 text-[10px] uppercase tracking-wide");
 
@@ -70,41 +137,18 @@ export function ExplorarExplorer({ units, filters, providerNames }: Props) {
               inputClassName={inputCls}
               name="q"
               placeholder="Ubicación, barrio, nombre…"
-              suggestions={(() => {
-                const dbTokens = Array.from(
-                  new Set(
-                    units.flatMap((u) =>
-                      (u.locationLabel ?? "")
-                        .split(",")
-                        .map((s) => s.trim())
-                        .filter((s) => s.length > 2),
-                    ),
-                  ),
-                );
-
-                const staticLabels = new Set(GEO_SUGGESTIONS.map((g) => g.label.toLowerCase()));
-
-                return [
-                  ...GEO_SUGGESTIONS.map((g) => ({
-                    label: g.label,
-                    sublabel: g.sublabel,
-                    value: g.label,
-                  })),
-                  ...dbTokens
-                    .filter((t) => !staticLabels.has(t.toLowerCase()))
-                    .map((geo) => ({ label: geo, sublabel: "Zona", value: geo })),
-                  ...units.map((u) => ({
-                    label: u.name,
-                    sublabel: `${u.providerName} · ${u.locationLabel}`,
-                    value: u.name,
-                  })),
-                  ...providerOptions.map((p) => ({
-                    label: p,
-                    sublabel: "Proveedor",
-                    value: p,
-                  })),
-                ];
-              })()}
+              suggestions={[
+                ...GEO_SUGGESTIONS.map((g) => ({
+                  label: g.label,
+                  sublabel: g.sublabel,
+                  value: g.label,
+                })),
+                ...providerNames.map((p) => ({
+                  label: p,
+                  sublabel: "Proveedor",
+                  value: p,
+                })),
+              ]}
             />
           </div>
 
@@ -145,20 +189,36 @@ export function ExplorarExplorer({ units, filters, providerNames }: Props) {
               name="proveedor"
             >
               <option value="">Todos</option>
-              {providerOptions.map((p) => (
+              {providerNames.map((p) => (
                 <option key={p} value={p}>
                   {p}
                 </option>
               ))}
-              {filters.proveedor && !providerOptions.includes(filters.proveedor) && (
-                <option value={filters.proveedor}>{filters.proveedor}</option>
-              )}
+            </select>
+          </div>
+
+          <div className="w-40">
+            <label className={labelCls} htmlFor="formato">
+              Formato
+            </label>
+            <select
+              className={cn(inputCls, "nm-select nm-select-compact")}
+              defaultValue={filters.formato}
+              id="formato"
+              name="formato"
+            >
+              <option value="">Todos</option>
+              {FORMAT_OPTIONS.map((f) => (
+                <option key={f.value} value={f.value}>
+                  {f.label}
+                </option>
+              ))}
             </select>
           </div>
 
           <div className="w-32">
             <label className={labelCls} htmlFor="precio_max">
-              Precio máx. (ARS)
+              Precio máx.
             </label>
             <input
               className={inputCls}
@@ -185,12 +245,13 @@ export function ExplorarExplorer({ units, filters, providerNames }: Props) {
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
-          <span className="font-semibold text-foreground">{units.length}</span>{" "}
-          {units.length === 1 ? "espacio" : "espacios"}
-          {withCoords.length > 0 && (
+          Mostrando{" "}
+          <span className="font-semibold text-foreground">{units.length}</span> de{" "}
+          <span className="font-semibold text-foreground">{total}</span>
+          {markers.length > 0 && (
             <>
               {" "}
-              · <span className="text-foreground/80">{withCoords.length}</span> en mapa
+              · <span className="text-foreground/80">{markers.length}</span> en mapa
             </>
           )}
         </p>
@@ -236,8 +297,7 @@ export function ExplorarExplorer({ units, filters, providerNames }: Props) {
       {compareMode && compareIds.size > 0 && (
         <div className="sticky bottom-3 z-20 flex items-center justify-between rounded-[var(--radius-lg)] border border-led/40 bg-card/95 px-4 py-2 shadow-[var(--shadow-md)] backdrop-blur-sm">
           <p className="text-xs font-medium text-foreground">
-            {compareIds.size} espacio{compareIds.size !== 1 ? "s" : ""} seleccionado
-            {compareIds.size !== 1 ? "s" : ""}
+            {compareIds.size} seleccionado{compareIds.size !== 1 ? "s" : ""}
           </p>
           <div className="flex gap-2">
             <button
@@ -260,7 +320,7 @@ export function ExplorarExplorer({ units, filters, providerNames }: Props) {
         </div>
       )}
 
-      {units.length === 0 ? (
+      {total === 0 ? (
         <EmptyState
           className="items-center text-center"
           description="Probá otras fechas, quitá el tope de precio o ampliá la búsqueda."
@@ -301,11 +361,28 @@ export function ExplorarExplorer({ units, filters, providerNames }: Props) {
                   <ExploreUnitCard u={u} />
                 </li>
               ))}
+              <li className="col-span-full">
+                <div ref={sentinelRef} className="flex justify-center py-3">
+                  {loadingMore ? (
+                    <p className="nm-caption">Cargando más…</p>
+                  ) : hasMore ? (
+                    <button
+                      className="text-xs font-semibold text-led underline"
+                      onClick={() => void loadMore()}
+                      type="button"
+                    >
+                      Cargar más
+                    </button>
+                  ) : units.length > 0 ? (
+                    <p className="nm-caption">Fin de resultados</p>
+                  ) : null}
+                </div>
+              </li>
             </ul>
           )}
           {(vista === "mapa" || vista === "ambos") && (
             <div className="min-h-0 min-w-0 overflow-hidden">
-              <ExploreMap units={units} />
+              <ExploreMap markers={markers} />
             </div>
           )}
         </div>

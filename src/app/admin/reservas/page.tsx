@@ -5,39 +5,141 @@ import { formatArs } from "@/lib/format";
 import { reservationStatusLabel } from "@/lib/labels";
 import { AdminReservationStatus } from "./AdminReservationStatus";
 import { cn } from "@/lib/cn";
-import { adminPage, surfaceCard, tableScroll } from "@/lib/ui-classes";
+import {
+  adminPage,
+  btnPrimary,
+  fieldClass,
+  labelClass,
+  surfaceCard,
+  tableScroll,
+} from "@/lib/ui-classes";
 import { productTitle } from "@/lib/brand";
-import { EmptyState, PageHeader } from "@/components/ui/Patterns";
+import { EmptyState, FilterBar, PageHeader } from "@/components/ui/Patterns";
+import { PagePager } from "@/components/ui/PagePager";
+import Link from "next/link";
+import { Prisma, type ReservationStatus } from "@prisma/client";
+import {
+  ADMIN_PAGE_SIZE,
+  firstSearchParam,
+  pageToSkip,
+  parsePage,
+  totalPages,
+  withPageParam,
+} from "@/lib/pagination";
 
 export const metadata = { title: productTitle("Reservas") };
 
-export default async function AdminReservasPage() {
+const STATUS_OPTIONS = Object.keys(reservationStatusLabel) as ReservationStatus[];
+
+export default async function AdminReservasPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const session = await auth();
   if (!session?.user || session.user.role !== "admin") redirect("/");
 
-  const reservations = await prisma.reservation.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      inventoryUnit: {
-        select: { name: true, provider: { select: { companyName: true } } },
+  const sp = await searchParams;
+  const q = firstSearchParam(sp, "q");
+  const status = firstSearchParam(sp, "status") as ReservationStatus | "";
+  const page = parsePage(sp.page);
+  const limit = ADMIN_PAGE_SIZE;
+
+  const where: Prisma.ReservationWhereInput = {
+    ...(status && STATUS_OPTIONS.includes(status) ? { status } : {}),
+    ...(q
+      ? {
+          OR: [
+            { inventoryUnit: { name: { contains: q, mode: "insensitive" } } },
+            { inventoryUnit: { provider: { companyName: { contains: q, mode: "insensitive" } } } },
+            { advertiser: { email: { contains: q, mode: "insensitive" } } },
+          ],
+        }
+      : {}),
+  };
+
+  const [total, reservations] = await Promise.all([
+    prisma.reservation.count({ where }),
+    prisma.reservation.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: pageToSkip(page, limit),
+      take: limit,
+      select: {
+        id: true,
+        status: true,
+        startsAt: true,
+        endsAt: true,
+        agreedAmount: true,
+        inventoryUnit: {
+          select: { name: true, provider: { select: { companyName: true } } },
+        },
+        advertiser: { select: { email: true } },
       },
-      advertiser: { select: { email: true } },
-    },
-  });
+    }),
+  ]);
+
+  const pages = totalPages(total, limit);
+  const filterState = { q: q || undefined, status: status || undefined };
 
   return (
     <div className={cn(adminPage, "gap-3")}>
-      <PageHeader
-        actions={
-          <span className="text-xs text-muted-foreground">{reservations.length} total</span>
-        }
-        title="Reservas"
+      <PageHeader title="Reservas" />
+
+      <form method="GET">
+        <FilterBar>
+          <div className="min-w-[12rem] flex-1">
+            <label className={cn(labelClass, "mb-1 text-[10px] uppercase tracking-wide")} htmlFor="q">
+              Buscar
+            </label>
+            <input
+              className={cn(fieldClass, "h-8 py-1.5 text-sm")}
+              defaultValue={q}
+              id="q"
+              name="q"
+              placeholder="Espacio, medio, email…"
+            />
+          </div>
+          <div className="w-48">
+            <label className={cn(labelClass, "mb-1 text-[10px] uppercase tracking-wide")} htmlFor="status">
+              Estado
+            </label>
+            <select
+              className={cn(fieldClass, "nm-select nm-select-compact h-8 py-1.5 text-sm")}
+              defaultValue={status}
+              id="status"
+              name="status"
+            >
+              <option value="">Todos</option>
+              {STATUS_OPTIONS.map((s) => (
+                <option key={s} value={s}>
+                  {reservationStatusLabel[s] ?? s}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-end gap-2">
+            <button className={cn(btnPrimary, "h-8 min-h-8 px-4 text-xs")} type="submit">
+              Filtrar
+            </button>
+            <Link className="text-xs text-muted-foreground underline" href="/admin/reservas">
+              Limpiar
+            </Link>
+          </div>
+        </FilterBar>
+      </form>
+
+      <PagePager
+        hrefForPage={(p) => withPageParam("/admin/reservas", filterState, p)}
+        page={page}
+        pageCount={pages}
+        total={total}
       />
 
       {reservations.length === 0 ? (
         <EmptyState
-          description="Todavía no hay solicitudes de reserva en la plataforma."
-          title="Sin reservas"
+          description="No hay reservas con estos filtros."
+          title="Sin resultados"
         />
       ) : (
         <div className={cn(surfaceCard(), tableScroll, "min-h-0 flex-1")}>

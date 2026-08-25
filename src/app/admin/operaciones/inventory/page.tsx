@@ -4,9 +4,19 @@ import { formatArs } from "@/lib/format";
 import { inventoryStatusLabel } from "@/lib/labels";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import { adminPage, btnPrimary, surfaceCard, tableScroll } from "@/lib/ui-classes";
+import { Prisma, type InventoryStatus } from "@prisma/client";
+import { adminPage, btnPrimary, fieldClass, labelClass, surfaceCard, tableScroll } from "@/lib/ui-classes";
 import { cn } from "@/lib/cn";
-import { EmptyState, PageHeader } from "@/components/ui/Patterns";
+import { EmptyState, FilterBar, PageHeader } from "@/components/ui/Patterns";
+import { PagePager } from "@/components/ui/PagePager";
+import {
+  ADMIN_PAGE_SIZE,
+  firstSearchParam,
+  pageToSkip,
+  parsePage,
+  totalPages,
+  withPageParam,
+} from "@/lib/pagination";
 
 const statusDot: Record<string, string> = {
   published: "bg-led",
@@ -14,39 +24,155 @@ const statusDot: Record<string, string> = {
   paused: "bg-signal",
 };
 
-export default async function ProviderInventoryPage() {
+const STATUSES: InventoryStatus[] = ["published", "draft", "paused"];
+
+export default async function AdminInventoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const session = await auth();
   if (!session?.user) redirect("/login");
   if (session.user.role !== "admin") redirect("/");
 
-  const units = await prisma.inventoryUnit.findMany({
-    orderBy: { updatedAt: "desc" },
-    include: { provider: { select: { companyName: true } } },
-  });
+  const sp = await searchParams;
+  const q = firstSearchParam(sp, "q");
+  const status = firstSearchParam(sp, "status") as InventoryStatus | "";
+  const proveedor = firstSearchParam(sp, "proveedor");
+  const page = parsePage(sp.page);
+  const limit = ADMIN_PAGE_SIZE;
+
+  const where: Prisma.InventoryUnitWhereInput = {
+    ...(q
+      ? {
+          OR: [
+            { name: { contains: q, mode: "insensitive" } },
+            { locationLabel: { contains: q, mode: "insensitive" } },
+            { provider: { companyName: { contains: q, mode: "insensitive" } } },
+          ],
+        }
+      : {}),
+    ...(status && STATUSES.includes(status) ? { status } : {}),
+    ...(proveedor
+      ? { provider: { companyName: { equals: proveedor, mode: "insensitive" } } }
+      : {}),
+  };
+
+  const [total, units, providers] = await Promise.all([
+    prisma.inventoryUnit.count({ where }),
+    prisma.inventoryUnit.findMany({
+      where,
+      orderBy: { updatedAt: "desc" },
+      skip: pageToSkip(page, limit),
+      take: limit,
+      select: {
+        id: true,
+        name: true,
+        locationLabel: true,
+        basePriceAmount: true,
+        status: true,
+        provider: { select: { companyName: true } },
+      },
+    }),
+    prisma.providerProfile.findMany({
+      where: { inventoryUnits: { some: {} } },
+      select: { companyName: true },
+      orderBy: { companyName: "asc" },
+    }),
+  ]);
+
+  const pages = totalPages(total, limit);
+  const filterState = {
+    q: q || undefined,
+    status: status || undefined,
+    proveedor: proveedor || undefined,
+  };
 
   return (
     <div className={cn(adminPage, "gap-3")}>
       <PageHeader
         actions={
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground">{units.length} unidades</span>
-            <Link
-              className={cn(btnPrimary, "px-3 py-1.5 text-xs")}
-              href="/admin/operaciones/inventory/new"
-            >
-              + Nueva unidad
-            </Link>
-          </div>
+          <Link className={cn(btnPrimary, "px-3 py-1.5 text-xs")} href="/admin/operaciones/inventory/new">
+            + Nueva unidad
+          </Link>
         }
         title="Inventario"
+      />
+
+      <form method="GET">
+        <FilterBar>
+          <div className="min-w-[12rem] flex-1">
+            <label className={cn(labelClass, "mb-1 text-[10px] uppercase tracking-wide")} htmlFor="q">
+              Buscar
+            </label>
+            <input
+              className={cn(fieldClass, "h-8 py-1.5 text-sm")}
+              defaultValue={q}
+              id="q"
+              name="q"
+              placeholder="Nombre, ubicación, proveedor…"
+            />
+          </div>
+          <div className="w-40">
+            <label className={cn(labelClass, "mb-1 text-[10px] uppercase tracking-wide")} htmlFor="status">
+              Estado
+            </label>
+            <select
+              className={cn(fieldClass, "nm-select nm-select-compact h-8 py-1.5 text-sm")}
+              defaultValue={status}
+              id="status"
+              name="status"
+            >
+              <option value="">Todos</option>
+              {STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {inventoryStatusLabel[s] ?? s}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="w-48">
+            <label className={cn(labelClass, "mb-1 text-[10px] uppercase tracking-wide")} htmlFor="proveedor">
+              Proveedor
+            </label>
+            <select
+              className={cn(fieldClass, "nm-select nm-select-compact h-8 py-1.5 text-sm")}
+              defaultValue={proveedor}
+              id="proveedor"
+              name="proveedor"
+            >
+              <option value="">Todos</option>
+              {providers.map((p) => (
+                <option key={p.companyName} value={p.companyName}>
+                  {p.companyName}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-end gap-2">
+            <button className={cn(btnPrimary, "h-8 min-h-8 px-4 text-xs")} type="submit">
+              Filtrar
+            </button>
+            <Link className="text-xs text-muted-foreground underline" href="/admin/operaciones/inventory">
+              Limpiar
+            </Link>
+          </div>
+        </FilterBar>
+      </form>
+
+      <PagePager
+        hrefForPage={(p) => withPageParam("/admin/operaciones/inventory", filterState, p)}
+        page={page}
+        pageCount={pages}
+        total={total}
       />
 
       {units.length === 0 ? (
         <EmptyState
           actionHref="/admin/operaciones/inventory/new"
           actionLabel="Crear primera unidad"
-          description="Aún no hay espacios cargados en el inventario."
-          title="Sin unidades"
+          description="No hay unidades con estos filtros."
+          title="Sin resultados"
         />
       ) : (
         <div className={cn(surfaceCard(), tableScroll, "min-h-0 flex-1")}>
@@ -58,7 +184,7 @@ export default async function ProviderInventoryPage() {
                 <th className="hidden px-4 py-2 sm:table-cell">Ubicación</th>
                 <th className="hidden px-4 py-2 md:table-cell">Precio base</th>
                 <th className="px-4 py-2">Estado</th>
-                <th className="px-4 py-2"></th>
+                <th className="px-4 py-2" />
               </tr>
             </thead>
             <tbody className="divide-y divide-border">

@@ -1,6 +1,7 @@
-import { Prisma, ReservationStatus } from "@prisma/client";
+import { Prisma, ReservationStatus, type InventoryFormat } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { normalizeText } from "@/lib/normalize-text";
+import { DEFAULT_PAGE_SIZE, pageToSkip, parseLimit, parsePage } from "@/lib/pagination";
 
 export type ExploreUnitDTO = {
   id: string;
@@ -12,20 +13,25 @@ export type ExploreUnitDTO = {
   lng: number | null;
 };
 
+export type ExploreMapMarker = {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+};
+
 export type ExploreFilters = {
   q: string;
   proveedor: string;
+  formato: string;
   desde: string;
   hasta: string;
   vista: "lista" | "mapa" | "ambos";
   precioMax: string;
 };
 
-/**
- * Genera condiciones OR para búsqueda de texto insensible a acentos.
- * Busca con el valor original Y con la versión sin acentos (para cubrir
- * "Cordoba" → "Córdoba" y viceversa).
- */
+const FORMATS: InventoryFormat[] = ["digital_ooh", "static_ooh", "digital_package"];
+
 function buildTextSearch(q: string): Prisma.InventoryUnitWhereInput[] {
   const variants = Array.from(new Set([q, normalizeText(q)])).filter(Boolean);
   return variants.flatMap((v) => [
@@ -63,13 +69,13 @@ export function flattenSearchParams(
   return out;
 }
 
-export async function fetchExploreData(flat: Record<string, string>): Promise<{
-  units: ExploreUnitDTO[];
+export function buildExploreWhere(flat: Record<string, string>): {
+  where: Prisma.InventoryUnitWhereInput;
   filters: ExploreFilters;
-  providerNames: string[];
-}> {
+} {
   const q = (flat.q ?? "").trim();
   const proveedor = (flat.proveedor ?? "").trim();
+  const formato = (flat.formato ?? "").trim();
   const desde = (flat.desde ?? "").trim();
   const hasta = (flat.hasta ?? "").trim();
   const vistaRaw = (flat.vista ?? "ambos").trim();
@@ -89,17 +95,12 @@ export async function fetchExploreData(flat: Record<string, string>): Promise<{
 
   const where: Prisma.InventoryUnitWhereInput = {
     status: "published",
-    ...(q
-      ? {
-          OR: buildTextSearch(q),
-        }
-      : {}),
+    ...(q ? { OR: buildTextSearch(q) } : {}),
     ...(proveedor
-      ? {
-          provider: {
-            companyName: { equals: proveedor, mode: "insensitive" },
-          },
-        }
+      ? { provider: { companyName: { equals: proveedor, mode: "insensitive" } } }
+      : {}),
+    ...(FORMATS.includes(formato as InventoryFormat)
+      ? { format: formato as InventoryFormat }
       : {}),
     ...(Number.isFinite(precioMaxNum) && precioMaxNum > 0
       ? { basePriceAmount: { lte: precioMaxNum } }
@@ -119,34 +120,12 @@ export async function fetchExploreData(flat: Record<string, string>): Promise<{
       : {}),
   };
 
-  const units = await prisma.inventoryUnit.findMany({
-    where,
-    include: { provider: { select: { companyName: true } } },
-    orderBy: { updatedAt: "desc" },
-  });
-
-  const providersWithPublished = await prisma.providerProfile.findMany({
-    where: { inventoryUnits: { some: { status: "published" } } },
-    select: { companyName: true },
-    orderBy: { companyName: "asc" },
-  });
-
-  const dtos: ExploreUnitDTO[] = units.map((u) => ({
-    id: u.id,
-    name: u.name,
-    locationLabel: u.locationLabel,
-    basePriceAmount: u.basePriceAmount.toString(),
-    providerName: u.provider.companyName,
-    lat: u.latitude,
-    lng: u.longitude,
-  }));
-
   return {
-    units: dtos,
-    providerNames: providersWithPublished.map((p) => p.companyName),
+    where,
     filters: {
       q,
       proveedor,
+      formato: FORMATS.includes(formato as InventoryFormat) ? formato : "",
       desde,
       hasta,
       vista,
@@ -155,10 +134,122 @@ export async function fetchExploreData(flat: Record<string, string>): Promise<{
   };
 }
 
-/** Arma la URL del catálogo con los mismos nombres de query que el formulario (`proveedor`, `desde`, …). */
+function toDto(u: {
+  id: string;
+  name: string;
+  locationLabel: string;
+  basePriceAmount: { toString(): string };
+  latitude: number | null;
+  longitude: number | null;
+  provider: { companyName: string };
+}): ExploreUnitDTO {
+  return {
+    id: u.id,
+    name: u.name,
+    locationLabel: u.locationLabel,
+    basePriceAmount: u.basePriceAmount.toString(),
+    providerName: u.provider.companyName,
+    lat: u.latitude,
+    lng: u.longitude,
+  };
+}
+
+export async function fetchExplorePage(
+  flat: Record<string, string>,
+  opts?: { page?: number; limit?: number },
+): Promise<{
+  units: ExploreUnitDTO[];
+  total: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
+  filters: ExploreFilters;
+}> {
+  const { where, filters } = buildExploreWhere(flat);
+  const page = opts?.page ?? parsePage(flat.page);
+  const limit = opts?.limit ?? parseLimit(flat.limit, DEFAULT_PAGE_SIZE);
+
+  const [total, rows] = await Promise.all([
+    prisma.inventoryUnit.count({ where }),
+    prisma.inventoryUnit.findMany({
+      where,
+      orderBy: { updatedAt: "desc" },
+      skip: pageToSkip(page, limit),
+      take: limit,
+      select: {
+        id: true,
+        name: true,
+        locationLabel: true,
+        basePriceAmount: true,
+        latitude: true,
+        longitude: true,
+        provider: { select: { companyName: true } },
+      },
+    }),
+  ]);
+
+  return {
+    units: rows.map(toDto),
+    total,
+    page,
+    limit,
+    hasMore: pageToSkip(page, limit) + rows.length < total,
+    filters,
+  };
+}
+
+/** Markers livianos para el mapa (sin precios ni joins pesados). */
+export async function fetchExploreMarkers(
+  flat: Record<string, string>,
+  max = 800,
+): Promise<ExploreMapMarker[]> {
+  const { where } = buildExploreWhere(flat);
+  const rows = await prisma.inventoryUnit.findMany({
+    where: {
+      ...where,
+      latitude: { not: null },
+      longitude: { not: null },
+    },
+    select: { id: true, name: true, latitude: true, longitude: true },
+    take: max,
+  });
+  return rows
+    .filter((r) => r.latitude != null && r.longitude != null)
+    .map((r) => ({ id: r.id, name: r.name, lat: r.latitude!, lng: r.longitude! }));
+}
+
+export async function fetchExploreData(flat: Record<string, string>): Promise<{
+  units: ExploreUnitDTO[];
+  markers: ExploreMapMarker[];
+  total: number;
+  hasMore: boolean;
+  filters: ExploreFilters;
+  providerNames: string[];
+}> {
+  const [pageData, markers, providersWithPublished] = await Promise.all([
+    fetchExplorePage(flat, { page: 1 }),
+    flat.vista === "lista" ? Promise.resolve([] as ExploreMapMarker[]) : fetchExploreMarkers(flat),
+    prisma.providerProfile.findMany({
+      where: { inventoryUnits: { some: { status: "published" } } },
+      select: { companyName: true },
+      orderBy: { companyName: "asc" },
+    }),
+  ]);
+
+  return {
+    units: pageData.units,
+    markers,
+    total: pageData.total,
+    hasMore: pageData.hasMore,
+    filters: pageData.filters,
+    providerNames: providersWithPublished.map((p) => p.companyName),
+  };
+}
+
 export function buildExploreHref(parts: {
   q?: string;
   proveedor?: string;
+  formato?: string;
   desde?: string;
   hasta?: string;
   vista?: string;
@@ -167,6 +258,7 @@ export function buildExploreHref(parts: {
   const params = new URLSearchParams();
   if (parts.q) params.set("q", parts.q);
   if (parts.proveedor) params.set("proveedor", parts.proveedor);
+  if (parts.formato) params.set("formato", parts.formato);
   if (parts.desde) params.set("desde", parts.desde);
   if (parts.hasta) params.set("hasta", parts.hasta);
   if (parts.vista) params.set("vista", parts.vista);

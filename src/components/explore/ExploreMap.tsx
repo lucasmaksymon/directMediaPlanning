@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { ExploreUnitDTO } from "@/lib/explore-query";
+import type { ExploreMapMarker } from "@/lib/explore-query";
 
 const ExploreMapInner = dynamic(
   () => import("./ExploreMapInner").then((m) => m.ExploreMapInner),
@@ -15,6 +15,6 @@ const ExploreMapInner = dynamic(
   },
 );
 
-export function ExploreMap({ units }: { units: ExploreUnitDTO[] }) {
-  return <ExploreMapInner units={units} />;
+export function ExploreMap({ markers }: { markers: ExploreMapMarker[] }) {
+  return <ExploreMapInner markers={markers} />;
 }

@@ -18,40 +18,71 @@ export default async function AnalyticsPage() {
   const now = new Date();
   const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const activeStatuses = ["accepted", "payment_pending", "confirmed"] as const;
 
-  const units = await prisma.inventoryUnit.findMany({
-    include: {
-      reservations: {
-        where: { status: { in: ["accepted", "payment_pending", "confirmed"] } },
-        orderBy: { createdAt: "desc" },
+  const [totalUnits, publishedUnits, rev30, rev90, topUnits] = await Promise.all([
+    prisma.inventoryUnit.count(),
+    prisma.inventoryUnit.count({ where: { status: "published" } }),
+    prisma.reservation.aggregate({
+      where: {
+        status: { in: [...activeStatuses] },
+        startsAt: { gte: thirtyDaysAgo },
       },
-    },
-  });
+      _sum: { agreedAmount: true },
+    }),
+    prisma.reservation.aggregate({
+      where: {
+        status: { in: [...activeStatuses] },
+        startsAt: { gte: ninetyDaysAgo },
+      },
+      _sum: { agreedAmount: true },
+    }),
+    prisma.inventoryUnit.findMany({
+      where: { status: { in: ["published", "paused", "draft"] } },
+      take: 40,
+      orderBy: { updatedAt: "desc" },
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        basePriceAmount: true,
+        reservations: {
+          where: {
+            status: { in: [...activeStatuses] },
+            startsAt: { gte: ninetyDaysAgo },
+          },
+          select: { startsAt: true, endsAt: true, agreedAmount: true },
+        },
+      },
+    }),
+  ]);
 
-  const totalUnits = units.length;
-  const publishedUnits = units.filter((u) => u.status === "published").length;
+  const last30Revenue = Number(rev30._sum.agreedAmount ?? 0);
+  const last90Revenue = Number(rev90._sum.agreedAmount ?? 0);
 
-  const allReservations = units.flatMap((u) => u.reservations);
-  const last90Revenue = allReservations
-    .filter((r) => new Date(r.startsAt) >= ninetyDaysAgo)
-    .reduce((acc, r) => acc + Number(r.agreedAmount ?? 0), 0);
-  const last30Revenue = allReservations
-    .filter((r) => new Date(r.startsAt) >= thirtyDaysAgo)
-    .reduce((acc, r) => acc + Number(r.agreedAmount ?? 0), 0);
-
-  // Fill rate por unidad (últimos 90 días)
-  const unitMetrics = units.map((u) => {
-    const activeResv = u.reservations.filter((r) => new Date(r.startsAt) >= ninetyDaysAgo);
-    const occupiedDays = activeResv.reduce((acc, r) => {
-      const start = Math.max(new Date(r.startsAt).getTime(), ninetyDaysAgo.getTime());
-      const end = Math.min(new Date(r.endsAt).getTime(), now.getTime());
-      if (end <= start) return acc;
-      return acc + Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-    }, 0);
-    const fillRate = Math.min(100, Math.round((occupiedDays / 90) * 100));
-    const revenue = activeResv.reduce((acc, r) => acc + Number(r.agreedAmount ?? u.basePriceAmount), 0);
-    return { id: u.id, name: u.name, fillRate, revenue, totalReservations: u.reservations.length, status: u.status };
-  }).sort((a, b) => b.revenue - a.revenue);
+  const unitMetrics = topUnits
+    .map((u) => {
+      const occupiedDays = u.reservations.reduce((acc, r) => {
+        const start = Math.max(new Date(r.startsAt).getTime(), ninetyDaysAgo.getTime());
+        const end = Math.min(new Date(r.endsAt).getTime(), now.getTime());
+        if (end <= start) return acc;
+        return acc + Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+      }, 0);
+      const fillRate = Math.min(100, Math.round((occupiedDays / 90) * 100));
+      const revenue = u.reservations.reduce(
+        (acc, r) => acc + Number(r.agreedAmount ?? u.basePriceAmount),
+        0,
+      );
+      return {
+        id: u.id,
+        name: u.name,
+        fillRate,
+        revenue,
+        totalReservations: u.reservations.length,
+        status: u.status,
+      };
+    })
+    .sort((a, b) => b.revenue - a.revenue);
 
   const avgFill =
     unitMetrics.length > 0
@@ -60,7 +91,11 @@ export default async function AnalyticsPage() {
 
   return (
     <div className={cn(adminPage, "gap-3")}>
-      <PageHeader eyebrow="Analíticas" title="Rendimiento" />
+      <PageHeader
+        description="KPIs agregados; tabla limitada a las 40 unidades más recientes."
+        eyebrow="Analíticas"
+        title="Rendimiento"
+      />
 
       <StatRow className="lg:grid-cols-4">
         <Stat label="Publicadas" value={`${publishedUnits}/${totalUnits}`} />
@@ -73,36 +108,26 @@ export default async function AnalyticsPage() {
         {unitMetrics.length === 0 ? (
           <EmptyState
             className="m-4 border-0 bg-transparent"
-            title="Sin unidades"
             description="Sin unidades para mostrar."
+            title="Sin unidades"
           />
         ) : (
           <table className="w-full text-sm">
             <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm">
               <tr className="text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                <th className="px-4 py-2">Espacio</th>
-                <th className="px-4 py-2">Fill rate (90d)</th>
-                <th className="px-4 py-2 hidden sm:table-cell">Ingresos (90d)</th>
-                <th className="px-4 py-2 hidden md:table-cell">Reservas</th>
+                <th className="px-4 py-2">Unidad</th>
+                <th className="px-4 py-2">Fill 90d</th>
+                <th className="px-4 py-2">Ingresos 90d</th>
+                <th className="px-4 py-2">Reservas</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {unitMetrics.map((u) => (
-                <tr key={u.id} className="hover:bg-muted/30 transition">
-                  <td className="px-4 py-2.5 font-medium text-foreground">{u.name}</td>
-                  <td className="px-4 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
-                        <div
-                          className={cn("h-full rounded-full", u.fillRate >= 70 ? "bg-led" : u.fillRate >= 40 ? "bg-yellow-500" : "bg-signal")}
-                          style={{ width: `${u.fillRate}%` }}
-                        />
-                      </div>
-                      <span className="text-xs tabular-nums">{u.fillRate}%</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-2.5 tabular-nums text-foreground hidden sm:table-cell">{formatArs(u.revenue)}</td>
-                  <td className="px-4 py-2.5 tabular-nums text-muted-foreground hidden md:table-cell">{u.totalReservations}</td>
+                <tr key={u.id} className="hover:bg-muted/40">
+                  <td className="px-4 py-2.5 font-medium">{u.name}</td>
+                  <td className="px-4 py-2.5 tabular-nums">{u.fillRate}%</td>
+                  <td className="px-4 py-2.5 tabular-nums">{formatArs(u.revenue)}</td>
+                  <td className="px-4 py-2.5 tabular-nums">{u.totalReservations}</td>
                 </tr>
               ))}
             </tbody>
