@@ -5,6 +5,9 @@ export type PresentationHighlight = {
   enabled?: boolean;
 };
 
+/** cover = llena el panel (recorta); contain = imagen completa (bandas). Nunca deforma. */
+export type PresentationImageFit = "cover" | "contain";
+
 export type PresentationSlideInput = {
   unitId: string;
   slideTitle: string;
@@ -19,6 +22,7 @@ export type PresentationSlideInput = {
   encendido?: string;
   resolucion?: string;
   mapsUrl?: string;
+  imageFit?: PresentationImageFit;
 };
 
 export type PresentationExportRequest = {

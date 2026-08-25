@@ -26,8 +26,10 @@ import { normalizePresentationTheme } from "@/lib/presentations/theme";
 import type {
   InventoryUnitForPresentation,
   PresentationHighlight,
+  PresentationImageFit,
   PresentationSlideInput,
 } from "@/lib/presentations/types";
+import { normalizeImageFit } from "@/lib/presentations/image-layout";
 import { btnPrimary, btnSecondary, fieldClass, surfaceCard } from "@/lib/ui-classes";
 
 const compactField = cn(fieldClass, "h-8 px-2.5 py-1 text-xs");
@@ -297,12 +299,17 @@ function SlidePreview({
           ))}
         </dl>
       </div>
-      <div className="relative w-[55%] bg-surface-secondary">
+      <div className="relative w-[55%] overflow-hidden bg-card">
         {slide.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             alt={slide.unitName}
-            className="h-full w-full object-cover"
+            className={cn(
+              "absolute inset-0 h-full w-full",
+              normalizeImageFit(slide.imageFit) === "contain"
+                ? "object-contain"
+                : "object-cover",
+            )}
             src={slide.imageUrl}
           />
         ) : (
@@ -339,6 +346,7 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
   const [previewKind, setPreviewKind] = useState<"cover" | "unit" | "closing">("cover");
   const [exporting, setExporting] = useState<"pdf" | "pptx" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [defaultImageFit, setDefaultImageFit] = useState<PresentationImageFit>("cover");
 
   const providers = useMemo(() => {
     const set = new Set(units.map((u) => u.provider.companyName));
@@ -374,6 +382,7 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
         ...prev,
         {
           ...defaults,
+          imageFit: defaultImageFit,
           imageUrl: unit.imageUrls[0] ?? null,
           unitName: unit.name,
           providerName: unit.provider.companyName,
@@ -465,6 +474,7 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
             encendido: s.encendido || undefined,
             resolucion: s.resolucion || undefined,
             mapsUrl: s.mapsUrl || undefined,
+            imageFit: normalizeImageFit(s.imageFit),
           })),
         }),
       });
@@ -752,6 +762,48 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
                     <p className="min-w-0 truncate text-[10px] text-muted-foreground">
                       {activeSlide.unitName} · {activeSlide.providerName}
                     </p>
+                  </div>
+                  <div className="col-span-2 flex flex-wrap items-center gap-2 lg:col-span-4">
+                    <span className={compactLabel}>Imagen</span>
+                    {(
+                      [
+                        ["cover", "Recortada"],
+                        ["contain", "Completa"],
+                      ] as const
+                    ).map(([mode, label]) => {
+                      const active = normalizeImageFit(activeSlide.imageFit) === mode;
+                      return (
+                        <button
+                          key={mode}
+                          type="button"
+                          className={cn(
+                            "rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition",
+                            active
+                              ? "bg-led text-black"
+                              : "bg-muted text-muted-foreground hover:text-foreground",
+                          )}
+                          onClick={() => {
+                            updateActiveSlide({ imageFit: mode });
+                            setDefaultImageFit(mode);
+                          }}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                    {slides.length > 1 ? (
+                      <button
+                        type="button"
+                        className="ml-auto text-[10px] font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                        onClick={() => {
+                          const fit = normalizeImageFit(activeSlide.imageFit);
+                          setSlides((prev) => prev.map((s) => ({ ...s, imageFit: fit })));
+                          setDefaultImageFit(fit);
+                        }}
+                      >
+                        Aplicar a todos
+                      </button>
+                    ) : null}
                   </div>
                   {(
                     [

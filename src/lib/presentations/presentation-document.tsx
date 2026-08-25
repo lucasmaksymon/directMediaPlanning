@@ -9,7 +9,7 @@ import {
   Link,
 } from "@react-pdf/renderer";
 import { CLIENT_BRAND } from "@/lib/brand";
-import { coverRect, pdfImagePaneSize } from "@/lib/presentations/image-layout";
+import { fitRect, normalizeImageFit, pdfImagePaneSize } from "@/lib/presentations/image-layout";
 import { slideSpecRows } from "@/lib/presentations/slide-data";
 import {
   getPresentationPalette,
@@ -140,7 +140,7 @@ function createStyles(p: PresentationPalette) {
     imagePane: {
       width: "55%",
       height: "100%",
-      backgroundColor: p.surfaceSecondary,
+      backgroundColor: p.card,
       overflow: "hidden",
       position: "relative",
     },
@@ -149,7 +149,7 @@ function createStyles(p: PresentationPalette) {
       height: "100%",
       justifyContent: "center",
       alignItems: "center",
-      backgroundColor: p.surfaceSecondary,
+      backgroundColor: p.card,
     },
     specsPane: {
       width: "45%",
@@ -373,9 +373,10 @@ function UnitPage({
       : { label: r.label, value: r.value, href: undefined as string | undefined },
   );
   const pane = pdfImagePaneSize();
-  const cover =
+  const fit = normalizeImageFit(slide.imageFit);
+  const layout =
     slide.imageSrc && slide.imageWidth && slide.imageHeight
-      ? coverRect(slide.imageWidth, slide.imageHeight, pane.width, pane.height)
+      ? fitRect(fit, slide.imageWidth, slide.imageHeight, pane.width, pane.height)
       : null;
 
   return (
@@ -417,15 +418,18 @@ function UnitPage({
             <Image
               src={slide.imageSrc}
               style={
-                cover
+                layout
                   ? {
                       position: "absolute",
-                      left: cover.x,
-                      top: cover.y,
-                      width: cover.width,
-                      height: cover.height,
+                      left: layout.x,
+                      top: layout.y,
+                      width: layout.width,
+                      height: layout.height,
                     }
-                  : { width: "100%", height: "100%" }
+                  : {
+                      width: "100%",
+                      height: "100%",
+                    }
               }
             />
           ) : (

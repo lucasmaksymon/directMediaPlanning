@@ -1,6 +1,7 @@
 import PptxGenJS from "pptxgenjs";
 import { CLIENT_BRAND } from "@/lib/brand";
 import { imageForPptx } from "@/lib/presentations/image-for-pptx";
+import { normalizeImageFit } from "@/lib/presentations/image-layout";
 import { slideSpecRows } from "@/lib/presentations/slide-data";
 import { getPresentationPptxPalette } from "@/lib/presentations/theme";
 import type { PresentationDeck } from "@/lib/presentations/types";
@@ -162,25 +163,27 @@ export async function buildPresentationPptx(deck: PresentationDeck): Promise<Buf
     });
 
     const img = await imageForPptx(slide.imageSrc);
+    // Mismo fondo que el panel de specs (izquierda)
+    s.addShape(pptx.ShapeType.rect, {
+      x: IMG_X,
+      y: 0,
+      w: IMG_W,
+      h: SLIDE_H,
+      fill: { color: c.card },
+    });
     if (img) {
       try {
         const natural = naturalSizeForCover(slide.imageWidth, slide.imageHeight);
+        const fit = normalizeImageFit(slide.imageFit);
         s.addImage({
           ...img,
           x: IMG_X,
           y: 0,
           w: natural.w,
           h: natural.h,
-          sizing: { type: "cover", w: IMG_W, h: SLIDE_H },
+          sizing: { type: fit, w: IMG_W, h: SLIDE_H },
         });
       } catch {
-        s.addShape(pptx.ShapeType.rect, {
-          x: IMG_X,
-          y: 0,
-          w: IMG_W,
-          h: SLIDE_H,
-          fill: { color: c.surfaceSecondary },
-        });
         s.addText("Sin imagen", {
           x: IMG_X,
           y: 3.4,
@@ -191,13 +194,6 @@ export async function buildPresentationPptx(deck: PresentationDeck): Promise<Buf
         });
       }
     } else {
-      s.addShape(pptx.ShapeType.rect, {
-        x: IMG_X,
-        y: 0,
-        w: IMG_W,
-        h: SLIDE_H,
-        fill: { color: c.surfaceSecondary },
-      });
       s.addText("Sin imagen", {
         x: IMG_X,
         y: 3.4,

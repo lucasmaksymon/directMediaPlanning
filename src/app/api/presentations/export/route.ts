@@ -50,6 +50,7 @@ const bodySchema = z.object({
         encendido: z.string().max(200).optional(),
         resolucion: z.string().max(200).optional(),
         mapsUrl: z.string().max(2000).optional(),
+        imageFit: z.enum(["cover", "contain"]).optional(),
       }),
     )
     .min(1)
