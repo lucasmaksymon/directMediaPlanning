@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/Badge";
 import { Drawer } from "@/components/ui/Overlay";
@@ -26,6 +26,8 @@ export type RoleShellProps = {
   footer?: ReactNode;
 };
 
+const COLLAPSE_KEY = "nm-role-shell-collapsed";
+
 function isActive(pathname: string, item: RoleNavItem) {
   if (item.match) return item.match(pathname);
   if (item.exact) return pathname === item.href;
@@ -36,10 +38,12 @@ function NavLinks({
   nav,
   pathname,
   onNavigate,
+  collapsed,
 }: {
   nav: RoleNavItem[];
   pathname: string;
   onNavigate?: () => void;
+  collapsed?: boolean;
 }) {
   return (
     <nav aria-label="Secciones" className="flex flex-col gap-0.5">
@@ -48,7 +52,8 @@ function NavLinks({
         return (
           <Link
             className={cn(
-              "rounded-[var(--radius-md)] px-3 py-2 text-sm font-medium transition-colors duration-[var(--duration-fast)]",
+              "rounded-[var(--radius-md)] text-sm font-medium transition-colors duration-[var(--duration-fast)]",
+              collapsed ? "flex justify-center px-2 py-2.5" : "px-3 py-2",
               active
                 ? "bg-primary-subtle font-semibold text-foreground"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -56,22 +61,34 @@ function NavLinks({
             href={item.href}
             key={item.href + item.label}
             onClick={onNavigate}
+            title={collapsed ? item.label : undefined}
           >
-            <span className="flex items-center gap-2">
+            {collapsed ? (
               <span
-                aria-hidden
                 className={cn(
-                  "h-4 w-0.5 shrink-0 rounded-full transition-colors",
-                  active ? "bg-primary" : "bg-transparent",
+                  "flex h-6 w-6 items-center justify-center rounded-md text-[11px] font-bold",
+                  active ? "text-led" : "text-muted-foreground",
                 )}
-              />
-              <span className="min-w-0 truncate">{item.label}</span>
-              {item.badge ? (
-                <Badge className="ml-auto shrink-0" variant="brand">
-                  {item.badge}
-                </Badge>
-              ) : null}
-            </span>
+              >
+                {item.label.trim().charAt(0).toUpperCase()}
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <span
+                  aria-hidden
+                  className={cn(
+                    "h-4 w-0.5 shrink-0 rounded-full transition-colors",
+                    active ? "bg-primary" : "bg-transparent",
+                  )}
+                />
+                <span className="min-w-0 truncate">{item.label}</span>
+                {item.badge ? (
+                  <Badge className="ml-auto shrink-0" variant="brand">
+                    {item.badge}
+                  </Badge>
+                ) : null}
+              </span>
+            )}
           </Link>
         );
       })}
@@ -82,18 +99,63 @@ function NavLinks({
 export function RoleShell({ title, nav, children, footer }: RoleShellProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    try {
+      setCollapsed(localStorage.getItem(COLLAPSE_KEY) === "1");
+    } catch {
+      /* ignore */
+    }
+    setHydrated(true);
+  }, []);
+
+  function toggleCollapsed() {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(COLLAPSE_KEY, next ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }
 
   return (
     <div className="flex min-h-0 flex-1 w-full overflow-hidden">
-      <aside className="hidden h-full w-56 shrink-0 flex-col border-r border-border bg-sidebar lg:flex">
-        <div className="nm-scroll flex flex-1 flex-col overflow-y-auto px-3 py-5">
-          <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            {title}
-          </p>
-          <div className="mt-3">
-            <NavLinks nav={nav} pathname={pathname} />
-          </div>
-          {footer ? <div className="mt-auto border-t border-divide pt-4 px-1">{footer}</div> : null}
+      <aside
+        className={cn(
+          "hidden h-full shrink-0 flex-col border-r border-border bg-sidebar transition-[width] duration-200 ease-out lg:flex",
+          hydrated && collapsed ? "w-14" : "w-56",
+        )}
+      >
+        <div className="flex shrink-0 items-center gap-1 border-b border-divide px-2 py-2">
+          {!collapsed ? (
+            <p className="min-w-0 flex-1 truncate px-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              {title}
+            </p>
+          ) : (
+            <span className="flex-1" />
+          )}
+          <IconButton
+            label={collapsed ? "Expandir menú" : "Colapsar menú"}
+            onClick={toggleCollapsed}
+            size="icon-sm"
+          >
+            {collapsed ? (
+              <PanelLeftOpen className="size-4" />
+            ) : (
+              <PanelLeftClose className="size-4" />
+            )}
+          </IconButton>
+        </div>
+        <div className="nm-scroll flex flex-1 flex-col overflow-y-auto px-2 py-3">
+          <NavLinks collapsed={hydrated && collapsed} nav={nav} pathname={pathname} />
+          {footer && !(hydrated && collapsed) ? (
+            <div className="mt-auto border-t border-divide px-1 pt-4">{footer}</div>
+          ) : null}
         </div>
       </aside>
 

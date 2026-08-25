@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
+import { cn } from "@/lib/cn";
 import { adminOpsPage, adminOpsPageBody, adminOpsPageHeader } from "@/lib/ui-classes";
 import { PresentationBuilder } from "./PresentationBuilder";
 
@@ -22,6 +23,8 @@ export default async function AdminPresentacionesPage() {
       imageUrls: true,
       metadata: true,
       format: true,
+      latitude: true,
+      longitude: true,
       provider: { select: { companyName: true } },
     },
     orderBy: [{ provider: { companyName: "asc" } }, { name: "asc" }],
@@ -33,11 +36,11 @@ export default async function AdminPresentacionesPage() {
   }));
 
   return (
-    <div className={adminOpsPage}>
+    <div className={cn(adminOpsPage, "gap-2 py-3")}>
       <header className={adminOpsPageHeader}>
-        <h1 className="nm-page-title">Presentaciones</h1>
-        <p className="mt-1 text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Armá un deck para compradores: elegí carteles, previsualizá y exportá PDF o PowerPoint.
+        <h1 className="nm-page-title text-xl">Presentaciones</h1>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Elegí carteles, previsualizá y exportá PDF o PowerPoint.
         </p>
       </header>
       <div className={adminOpsPageBody}>

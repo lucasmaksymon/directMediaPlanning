@@ -22,6 +22,7 @@ import {
   UserRole,
 } from "@prisma/client";
 import { hash } from "bcryptjs";
+import { enrichMetadataWithSpecs } from "../src/lib/inventory/unit-specs";
 
 const prisma = new PrismaClient();
 
@@ -207,7 +208,15 @@ async function main() {
       imageUrls: u.imagePath ? [u.imagePath] : [],
       latitude: u.latitude ?? undefined,
       longitude: u.longitude ?? undefined,
-      metadata: u.metadata ?? undefined,
+      metadata: enrichMetadataWithSpecs(u.metadata ?? {}, {
+        name: u.name,
+        description: u.description,
+        locationLabel: u.locationLabel,
+        format: u.format,
+        latitude: u.latitude,
+        longitude: u.longitude,
+        metadata: u.metadata,
+      }),
     });
     created++;
     if (batch.length >= 100) {

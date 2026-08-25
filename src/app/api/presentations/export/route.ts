@@ -14,6 +14,8 @@ export const runtime = "nodejs";
 const bodySchema = z.object({
   format: z.enum(["pdf", "pptx"]),
   title: z.string().min(1).max(200),
+  titleHighlight: z.string().max(120).default(""),
+  eyebrow: z.string().max(120).default(""),
   subtitle: z.string().max(500).default(""),
   theme: z.enum(["light", "dark"]).optional(),
   highlights: z
@@ -26,17 +28,27 @@ const bodySchema = z.object({
     .max(3)
     .default([]),
   closingLine: z.string().max(300).optional(),
-  contactLines: z.array(z.string().max(200)).max(6).optional(),
+  closingLineAccent: z.string().max(200).optional(),
+  closingBadge: z.string().max(80).optional(),
+  contactAddress: z.string().max(240).optional(),
+  contactEmail: z.string().max(120).optional(),
+  contactWeb: z.string().max(120).optional(),
   slides: z
     .array(
       z.object({
         unitId: z.string().min(1),
         slideTitle: z.string().min(1).max(120),
         location: z.string().max(300),
+        zona: z.string().max(120).optional(),
         medida: z.string().max(200).optional(),
+        visibilidad: z.string().max(300).optional(),
+        caras: z.string().max(80).optional(),
+        impacto: z.string().max(200).optional(),
+        frecuencia: z.string().max(200).optional(),
+        spot: z.string().max(200).optional(),
         encendido: z.string().max(200).optional(),
-        exposicion: z.string().max(200).optional(),
         resolucion: z.string().max(200).optional(),
+        mapsUrl: z.string().max(500).optional(),
       }),
     )
     .min(1)
@@ -105,17 +117,19 @@ export async function POST(req: Request) {
 
   const deck: PresentationDeck = {
     title: input.title.trim(),
+    titleHighlight: input.titleHighlight.trim(),
+    eyebrow: input.eyebrow.trim() || "Circuitos digitales premium",
     subtitle: input.subtitle.trim(),
     highlights: input.highlights.filter((h) => h.value.trim() || h.label.trim()),
     slides,
-    closingLine:
-      input.closingLine?.trim() ||
-      "Creamos conexiones que generan resultados",
-    contactLines:
-      input.contactLines?.filter((l) => l.trim()) ?? [
-        "admin@nextmedia.com.ar",
-        "nextmedia.com.ar",
-      ],
+    closingLine: input.closingLine?.trim() || "Creamos conexiones que",
+    closingLineAccent: input.closingLineAccent?.trim() || "generan resultados",
+    closingBadge: input.closingBadge?.trim() || "Contacto Comercial",
+    contactAddress:
+      input.contactAddress?.trim() ||
+      "Alicia Moreau de Justo 1150, 4to Of. 410B, CABA",
+    contactEmail: input.contactEmail?.trim() || "admin@nextmedia.com.ar",
+    contactWeb: input.contactWeb?.trim() || "nextmedia.com.ar",
     generatedAt: new Date().toLocaleDateString("es-AR", {
       year: "numeric",
       month: "long",

@@ -7,20 +7,32 @@ export type PresentationSlideInput = {
   unitId: string;
   slideTitle: string;
   location: string;
+  zona?: string;
   medida?: string;
+  visibilidad?: string;
+  caras?: string;
+  impacto?: string;
+  frecuencia?: string;
+  spot?: string;
   encendido?: string;
-  exposicion?: string;
   resolucion?: string;
+  mapsUrl?: string;
 };
 
 export type PresentationExportRequest = {
   format: "pdf" | "pptx";
   title: string;
+  titleHighlight?: string;
+  eyebrow?: string;
   subtitle: string;
   highlights: PresentationHighlight[];
   slides: PresentationSlideInput[];
   closingLine?: string;
-  contactLines?: string[];
+  closingLineAccent?: string;
+  closingBadge?: string;
+  contactAddress?: string;
+  contactEmail?: string;
+  contactWeb?: string;
   theme?: "light" | "dark";
 };
 
@@ -35,11 +47,17 @@ export type PresentationSlideResolved = PresentationSlideInput & {
 
 export type PresentationDeck = {
   title: string;
+  titleHighlight: string;
+  eyebrow: string;
   subtitle: string;
   highlights: PresentationHighlight[];
   slides: PresentationSlideResolved[];
   closingLine: string;
-  contactLines: string[];
+  closingLineAccent: string;
+  closingBadge: string;
+  contactAddress: string;
+  contactEmail: string;
+  contactWeb: string;
   generatedAt: string;
   theme: "light" | "dark";
 };
@@ -52,5 +70,7 @@ export type InventoryUnitForPresentation = {
   imageUrls: string[];
   metadata: unknown;
   format: string;
+  latitude?: number | null;
+  longitude?: number | null;
   provider: { companyName: string };
 };

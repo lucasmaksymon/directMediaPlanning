@@ -10,6 +10,7 @@ import * as https from "https";
 import * as http from "http";
 import { createWriteStream } from "fs";
 import { execFileSync } from "child_process";
+import { enrichMetadataWithSpecs } from "../src/lib/inventory/unit-specs";
 
 const ROOT_FOLDER_ID = "13RXXIfvxVwDqBNHMW6_N_MssWqV0EkhD";
 const WORK = path.join(process.cwd(), ".tmp", "drive-import");
@@ -260,6 +261,29 @@ function parseSlideToUnit(
     .filter(Boolean)
     .join("\n");
 
+  const metadata = enrichMetadataWithSpecs(
+    {
+      tipo,
+      zona: zonePart,
+      medida,
+      visual,
+      valorRaw: valor,
+    },
+    {
+      name: name || ubicacion.slice(0, 120),
+      description,
+      locationLabel: ubicacion.slice(0, 240),
+      format,
+      metadata: {
+        tipo,
+        zona: zonePart,
+        medida,
+        visual,
+        valorRaw: valor,
+      },
+    },
+  );
+
   return {
     providerName,
     name: name || ubicacion.slice(0, 120),
@@ -270,13 +294,7 @@ function parseSlideToUnit(
     priceModel: model,
     status: "published" as const,
     sourceFile,
-    metadata: {
-      tipo,
-      zona: zonePart,
-      medida,
-      visual,
-      valorRaw: valor,
-    },
+    metadata,
   };
 }
 

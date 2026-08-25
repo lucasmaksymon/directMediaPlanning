@@ -28,7 +28,10 @@ import type {
   PresentationHighlight,
   PresentationSlideInput,
 } from "@/lib/presentations/types";
-import { btnPrimary, btnSecondary, fieldClass, labelClass, surfaceCard } from "@/lib/ui-classes";
+import { btnPrimary, btnSecondary, fieldClass, surfaceCard } from "@/lib/ui-classes";
+
+const compactField = cn(fieldClass, "h-8 px-2.5 py-1 text-xs");
+const compactLabel = "block text-[10px] font-medium tracking-wide text-muted-foreground";
 
 type UnitCard = InventoryUnitForPresentation & {
   basePriceAmount?: string;
@@ -41,9 +44,9 @@ type EditableSlide = PresentationSlideInput & {
 };
 
 const DEFAULT_HIGHLIGHTS: PresentationHighlight[] = [
-  { value: "", label: "Pantallas" },
-  { value: "100%", label: "Cobertura estratégica" },
-  { value: "", label: "Contenido dinámico" },
+  { value: "14", label: "Paquetes LED" },
+  { value: "AMBA", label: "Cobertura estratégica" },
+  { value: "100%", label: "Contenido dinámico" },
 ];
 
 function SortableOrderItem({
@@ -69,19 +72,19 @@ function SortableOrderItem({
         transition,
       }}
       className={cn(
-        "flex w-full items-start gap-2 rounded-xl border px-2 py-2 text-left",
+        "flex w-full items-start gap-1.5 rounded-lg border px-1.5 py-1.5 text-left",
         active ? "border-led/50 bg-led/8" : "border-border bg-muted/20",
         isDragging && "z-10 border-led bg-card shadow-[var(--shadow-md)] opacity-95",
       )}
     >
       <button
         type="button"
-        className="mt-0.5 flex h-7 w-6 shrink-0 cursor-grab items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground active:cursor-grabbing touch-none"
+        className="mt-0.5 flex h-6 w-5 shrink-0 cursor-grab items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground active:cursor-grabbing touch-none"
         aria-label={`Arrastrar ${slide.slideTitle}`}
         {...attributes}
         {...listeners}
       >
-        <svg viewBox="0 0 12 16" className="h-3.5 w-2.5" fill="currentColor" aria-hidden>
+        <svg viewBox="0 0 12 16" className="h-3 w-2" fill="currentColor" aria-hidden>
           <circle cx="3" cy="3" r="1.2" />
           <circle cx="9" cy="3" r="1.2" />
           <circle cx="3" cy="8" r="1.2" />
@@ -91,13 +94,13 @@ function SortableOrderItem({
         </svg>
       </button>
       <button type="button" onClick={onSelect} className="min-w-0 flex-1 text-left">
-        <div className="flex items-start gap-2">
-          <span className="mt-0.5 w-5 shrink-0 text-center text-[11px] font-bold tabular-nums text-muted-foreground">
+        <div className="flex items-start gap-1.5">
+          <span className="mt-0.5 w-4 shrink-0 text-center text-[10px] font-bold tabular-nums text-muted-foreground">
             {index + 1}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-medium">{slide.slideTitle}</p>
-            <p className="truncate text-[11px] text-muted-foreground">{slide.location}</p>
+            <p className="truncate text-[11px] font-medium">{slide.slideTitle}</p>
+            <p className="truncate text-[10px] text-muted-foreground">{slide.location}</p>
           </div>
         </div>
       </button>
@@ -108,53 +111,79 @@ function SortableOrderItem({
 function SlidePreview({
   kind,
   title,
+  titleHighlight,
+  eyebrow,
   subtitle,
   highlights,
   slide,
   closingLine,
-  contactLines,
+  closingLineAccent,
+  closingBadge,
+  contactAddress,
+  contactEmail,
+  contactWeb,
 }: {
   kind: "cover" | "unit" | "closing";
   title: string;
+  titleHighlight: string;
+  eyebrow: string;
   subtitle: string;
   highlights: PresentationHighlight[];
   slide: EditableSlide | null;
   closingLine: string;
-  contactLines: string[];
+  closingLineAccent: string;
+  closingBadge: string;
+  contactAddress: string;
+  contactEmail: string;
+  contactWeb: string;
 }) {
   if (kind === "cover") {
     return (
-      <div className="flex aspect-video w-full flex-col justify-between overflow-hidden rounded-[var(--radius-lg)] border border-border bg-background p-6 shadow-[var(--shadow-sm)] sm:p-8">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-led" />
-            <p className="text-[10px] font-semibold tracking-[0.16em] text-led uppercase">
+      <div className="relative flex h-full w-full flex-col justify-between overflow-hidden rounded-[var(--radius-lg)] border border-led/40 bg-[#081820] p-3 text-[#f7f9fa] shadow-[var(--shadow-md)] sm:p-4">
+        <div className="min-h-0">
+          <div className="flex items-start justify-between gap-3">
+            {eyebrow ? (
+              <span className="rounded-full border border-led px-2.5 py-0.5 text-[9px] font-semibold tracking-[0.12em] text-led uppercase">
+                {eyebrow}
+              </span>
+            ) : (
+              <span />
+            )}
+            <p className="shrink-0 text-xs font-semibold tracking-wide text-[#f7f9fa]">
               {CLIENT_BRAND}
             </p>
           </div>
-          <h3 className="mt-4 max-w-[90%] text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-            {title || "Título de la presentación"}
-          </h3>
-          {subtitle ? (
-            <p className="mt-3 max-w-[80%] text-sm leading-relaxed text-muted-foreground">
-              {subtitle}
-            </p>
-          ) : null}
-          <div className="mt-8 grid grid-cols-3 gap-3">
-            {highlights
-              .filter((h) => h.value.trim() || h.label.trim())
-              .slice(0, 3)
-              .map((h, i) => (
-                <div
-                  key={i}
-                  className="relative overflow-hidden rounded-[var(--radius-lg)] border border-border bg-card px-3 py-3 pl-3.5"
-                >
-                  <span className="absolute inset-y-0 left-0 w-[3px] bg-led" aria-hidden />
-                  <p className="text-lg font-semibold tabular-nums text-led">{h.value || "—"}</p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">{h.label || "Dato"}</p>
-                </div>
-              ))}
+          <div className="mt-3 max-w-[90%] sm:mt-4">
+            <h3 className="text-xl font-semibold leading-tight tracking-tight text-[#f7f9fa] sm:text-2xl">
+              {title || "Propuesta de paquetes"}
+            </h3>
+            {titleHighlight ? (
+              <p className="mt-0.5 text-xl font-semibold leading-tight tracking-tight text-led sm:text-2xl">
+                {titleHighlight}
+              </p>
+            ) : null}
+            {subtitle ? (
+              <p className="mt-2 max-w-[95%] text-[11px] leading-relaxed text-[rgba(247,249,250,0.72)] sm:text-xs">
+                {subtitle}
+              </p>
+            ) : null}
           </div>
+        </div>
+        <div className="mt-3 grid shrink-0 grid-cols-3 gap-2">
+          {highlights
+            .filter((h) => h.value.trim() || h.label.trim())
+            .slice(0, 3)
+            .map((h, i) => (
+              <div
+                key={i}
+                className="rounded-[var(--radius-md)] border border-led/80 bg-[#081820] px-2 py-1.5"
+              >
+                <p className="text-base font-semibold tabular-nums text-led sm:text-lg">
+                  {h.value || "—"}
+                </p>
+                <p className="mt-0.5 text-[10px] text-[#f7f9fa]">{h.label || "Dato"}</p>
+              </div>
+            ))}
         </div>
       </div>
     );
@@ -162,19 +191,39 @@ function SlidePreview({
 
   if (kind === "closing") {
     return (
-      <div className="flex aspect-video w-full flex-col items-center justify-center overflow-hidden rounded-[var(--radius-lg)] bg-ocean p-8 text-center shadow-[var(--shadow-sm)]">
-        <p className="text-[11px] font-semibold tracking-[0.16em] text-led uppercase">
-          {CLIENT_BRAND}
-        </p>
-        <p className="mt-3 text-3xl font-semibold tracking-tight text-[var(--foreground)] dark:text-[#f7f9fa]">
-          <span className="text-led">Next</span>
-          <span className="text-[#f7f9fa]">Planning</span>
-        </p>
-        <p className="mt-3 max-w-md text-sm text-[rgba(247,249,250,0.66)]">{closingLine}</p>
-        <div className="mt-6 space-y-1 text-xs text-[rgba(247,249,250,0.66)]">
-          {contactLines.filter(Boolean).map((l, i) => (
-            <p key={i}>{l}</p>
-          ))}
+      <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden rounded-[var(--radius-lg)] bg-ocean p-5 text-center shadow-[var(--shadow-sm)]">
+        {closingBadge ? (
+          <span className="absolute top-3 right-3 rounded-full border border-led px-2.5 py-0.5 text-[9px] font-semibold text-led">
+            {closingBadge}
+          </span>
+        ) : null}
+        <div className="max-w-3xl">
+          <p className="text-xl font-semibold tracking-tight text-[#f7f9fa] uppercase sm:text-2xl">
+            {closingLine}
+          </p>
+          <p className="mt-0.5 text-xl font-semibold tracking-tight text-led uppercase sm:text-2xl">
+            {closingLineAccent}
+          </p>
+        </div>
+        <div className="mt-5 w-full max-w-md rounded-[var(--radius-lg)] border border-led/25 px-4 py-3 text-left">
+          {contactAddress ? (
+            <p className="flex gap-2 text-[11px] text-[#f7f9fa]">
+              <span className="text-led">●</span>
+              <span>{contactAddress}</span>
+            </p>
+          ) : null}
+          {contactEmail ? (
+            <p className="mt-1.5 flex gap-2 text-[11px] text-led">
+              <span>●</span>
+              <span>{contactEmail}</span>
+            </p>
+          ) : null}
+          {contactWeb ? (
+            <p className="mt-1.5 flex gap-2 text-[11px] text-led">
+              <span>●</span>
+              <span>{contactWeb}</span>
+            </p>
+          ) : null}
         </div>
       </div>
     );
@@ -182,21 +231,62 @@ function SlidePreview({
 
   if (!slide) {
     return (
-      <div className="flex aspect-video w-full items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-border bg-muted/40 text-sm text-muted-foreground">
+      <div className="flex h-full w-full items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-border bg-muted/40 text-sm text-muted-foreground">
         Seleccioná un cartel para previsualizar
       </div>
     );
   }
 
   const rows = [
+    { label: "Ubicación", value: slide.location },
     { label: "Medida", value: slide.medida },
-    { label: "Resolución", value: slide.resolucion },
+    { label: "Visibilidad", value: slide.visibilidad },
+    { label: "Caras", value: slide.caras },
+    { label: "Impacto", value: slide.impacto },
+    { label: "Frecuencia", value: slide.frecuencia },
+    { label: "Spot", value: slide.spot },
     { label: "Encendido", value: slide.encendido },
-    { label: "Exposición", value: slide.exposicion },
+    { label: "Resolución", value: slide.resolucion },
+    { label: "Mapa", value: slide.mapsUrl },
   ].filter((r) => r.value?.trim());
 
   return (
-    <div className="flex aspect-video w-full overflow-hidden rounded-[var(--radius-lg)] border border-border bg-background shadow-[var(--shadow-sm)]">
+    <div className="flex h-full w-full overflow-hidden rounded-[var(--radius-lg)] border border-border bg-background shadow-[var(--shadow-sm)]">
+      <div className="flex w-[45%] flex-col justify-center gap-2 overflow-y-auto bg-card p-3 sm:p-4">
+        {slide.zona ? (
+          <span className="w-fit rounded-full border border-led/30 bg-led/10 px-2 py-0.5 text-[9px] font-semibold text-led">
+            {slide.zona}
+          </span>
+        ) : slide.providerName ? (
+          <p className="text-[11px] font-semibold text-led">{slide.providerName}</p>
+        ) : null}
+        <div>
+          <p className="text-sm font-semibold tracking-tight text-foreground sm:text-base">
+            {slide.slideTitle}
+          </p>
+        </div>
+        <dl className="space-y-1 border-t border-border pt-2">
+          {rows.map((r) => (
+            <div key={r.label} className="flex gap-2">
+              <dt className="w-[4.75rem] shrink-0 text-[10px] font-semibold text-led">{r.label}</dt>
+              <dd className="min-w-0 flex-1 break-words text-[11px] text-foreground sm:text-xs">
+                {r.label === "Mapa" ? (
+                  <a
+                    href={r.value}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-led underline underline-offset-2"
+                  >
+                    Ver en Google Maps
+                  </a>
+                ) : (
+                  r.value
+                )}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
       <div className="relative w-[55%] bg-surface-secondary">
         {slide.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -211,44 +301,27 @@ function SlidePreview({
           </div>
         )}
       </div>
-      <div className="flex w-[45%] flex-col justify-center gap-3 bg-card p-5 sm:p-6">
-        {slide.providerName ? (
-          <p className="text-xs font-semibold text-led">{slide.providerName}</p>
-        ) : null}
-        <div>
-          <p className="text-base font-semibold tracking-tight text-foreground sm:text-lg">
-            {slide.slideTitle}
-          </p>
-          {slide.location ? (
-            <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{slide.location}</p>
-          ) : null}
-        </div>
-        <dl className="space-y-2.5 border-t border-border pt-3">
-          {rows.map((r) => (
-            <div key={r.label}>
-              <dt className="text-[11px] text-muted-foreground">{r.label}</dt>
-              <dd className="mt-0.5 text-sm font-medium text-foreground">{r.value}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
     </div>
   );
 }
 
 export function PresentationBuilder({ units }: { units: UnitCard[] }) {
   const { resolvedTheme } = useTheme();
-  const [title, setTitle] = useState("Propuesta de paquetes pantallas LED");
+  const [title, setTitle] = useState("Propuesta de paquetes");
+  const [titleHighlight, setTitleHighlight] = useState("Pantallas LED");
+  const [eyebrow, setEyebrow] = useState("Circuitos digitales premium");
   const [subtitle, setSubtitle] = useState(
-    "Circuito integral de vía pública con nodos de alto tráfico en CABA y GBA.",
+    "Circuito integral de vía pública con nodos de alto tráfico vehicular y peatonal en CABA y GBA.",
   );
   const [highlights, setHighlights] = useState<PresentationHighlight[]>(DEFAULT_HIGHLIGHTS);
-  const [closingLine, setClosingLine] = useState(
-    "Creamos conexiones que generan resultados",
+  const [closingLine, setClosingLine] = useState("Creamos conexiones que");
+  const [closingLineAccent, setClosingLineAccent] = useState("generan resultados");
+  const [closingBadge, setClosingBadge] = useState("Contacto Comercial");
+  const [contactAddress, setContactAddress] = useState(
+    "Alicia Moreau de Justo 1150, 4to Of. 410B, CABA",
   );
-  const [contactLine, setContactLine] = useState(
-    "admin@nextmedia.com.ar · nextmedia.com.ar",
-  );
+  const [contactEmail, setContactEmail] = useState("admin@nextmedia.com.ar");
+  const [contactWeb, setContactWeb] = useState("nextmedia.com.ar");
   const [query, setQuery] = useState("");
   const [providerFilter, setProviderFilter] = useState("");
   const [slides, setSlides] = useState<EditableSlide[]>([]);
@@ -356,21 +429,30 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
           format,
           theme: normalizePresentationTheme(resolvedTheme),
           title: title.trim(),
+          titleHighlight: titleHighlight.trim(),
+          eyebrow: eyebrow.trim(),
           subtitle: subtitle.trim(),
           highlights: highlights.filter((h) => h.value.trim() || h.label.trim()),
           closingLine: closingLine.trim(),
-          contactLines: contactLine
-            .split("·")
-            .map((l) => l.trim())
-            .filter(Boolean),
+          closingLineAccent: closingLineAccent.trim(),
+          closingBadge: closingBadge.trim(),
+          contactAddress: contactAddress.trim(),
+          contactEmail: contactEmail.trim(),
+          contactWeb: contactWeb.trim(),
           slides: slides.map((s) => ({
             unitId: s.unitId,
             slideTitle: s.slideTitle,
             location: s.location,
+            zona: s.zona || undefined,
             medida: s.medida || undefined,
+            visibilidad: s.visibilidad || undefined,
+            caras: s.caras || undefined,
+            impacto: s.impacto || undefined,
+            frecuencia: s.frecuencia || undefined,
+            spot: s.spot || undefined,
             encendido: s.encendido || undefined,
-            exposicion: s.exposicion || undefined,
             resolucion: s.resolucion || undefined,
+            mapsUrl: s.mapsUrl || undefined,
           })),
         }),
       });
@@ -396,35 +478,37 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4">
-      <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(280px,340px)_minmax(0,1fr)_minmax(280px,340px)]">
+    <div className="flex h-full min-h-0 flex-col gap-2">
+      <div className="grid min-h-0 flex-1 gap-2 xl:grid-cols-[minmax(220px,260px)_minmax(0,1fr)_minmax(220px,260px)]">
         {/* Catálogo */}
-        <section className={cn(surfaceCard(), "flex min-h-[18rem] flex-col gap-3 p-4 xl:min-h-0")}>
-          <div>
+        <section className={cn(surfaceCard(), "flex min-h-[14rem] flex-col gap-2 p-3 xl:min-h-0")}>
+          <div className="flex items-baseline justify-between gap-2">
             <h2 className="text-sm font-semibold text-foreground">Carteles</h2>
-            <p className="text-xs text-muted-foreground">
-              {selectedIds.size} seleccionados · {filtered.length} visibles
+            <p className="text-[11px] tabular-nums text-muted-foreground">
+              {selectedIds.size}/{filtered.length}
             </p>
           </div>
-          <input
-            className={fieldClass}
-            placeholder="Buscar por nombre, zona o medio…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <select
-            className={cn(fieldClass, "nm-select")}
-            value={providerFilter}
-            onChange={(e) => setProviderFilter(e.target.value)}
-          >
-            <option value="">Todos los medios</option>
-            {providers.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
-          <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1 [scrollbar-gutter:stable]">
+          <div className="grid gap-1.5">
+            <input
+              className={compactField}
+              placeholder="Buscar…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <select
+              className={cn(compactField, "nm-select")}
+              value={providerFilter}
+              onChange={(e) => setProviderFilter(e.target.value)}
+            >
+              <option value="">Todos los medios</option>
+              {providers.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1 [scrollbar-gutter:stable]">
             {filtered.slice(0, 200).map((u) => {
               const selected = selectedIds.has(u.id);
               return (
@@ -433,21 +517,21 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
                   type="button"
                   onClick={() => toggleUnit(u)}
                   className={cn(
-                    "flex w-full items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition-all",
+                    "flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-left transition-all",
                     selected
                       ? "border-led/50 bg-led/8"
                       : "border-border bg-muted/30 hover:border-led/20",
                   )}
                 >
-                  <div className="h-10 w-14 shrink-0 overflow-hidden rounded-md bg-muted">
+                  <div className="h-8 w-11 shrink-0 overflow-hidden rounded-md bg-muted">
                     {u.imageUrls[0] ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img alt="" className="h-full w-full object-cover" src={u.imageUrls[0]} />
                     ) : null}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-medium text-foreground">{u.name}</p>
-                    <p className="truncate text-[11px] text-muted-foreground">
+                    <p className="truncate text-[11px] font-medium text-foreground">{u.name}</p>
+                    <p className="truncate text-[10px] text-muted-foreground">
                       {u.provider.companyName} · {u.locationLabel}
                     </p>
                   </div>
@@ -463,8 +547,8 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
         </section>
 
         {/* Preview + config */}
-        <section className="flex min-h-0 flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-2">
+        <section className="flex min-h-0 flex-col gap-2 overflow-hidden">
+          <div className="flex shrink-0 flex-wrap items-center gap-1.5">
             {(
               [
                 ["cover", "Portada"],
@@ -477,7 +561,7 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
                 type="button"
                 onClick={() => setPreviewKind(k)}
                 className={cn(
-                  "rounded-full px-3 py-1 text-xs font-semibold transition",
+                  "rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition",
                   previewKind === k
                     ? "bg-led text-black"
                     : "bg-muted text-muted-foreground hover:text-foreground",
@@ -490,18 +574,18 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
               <div className="ml-auto flex items-center gap-1">
                 <button
                   type="button"
-                  className={cn(btnSecondary, "px-2 py-1 text-xs")}
+                  className={cn(btnSecondary, "h-7 px-2 py-0 text-xs")}
                   disabled={activeIndex <= 0}
                   onClick={() => setActiveIndex((i) => Math.max(0, i - 1))}
                 >
                   ←
                 </button>
-                <span className="text-xs tabular-nums text-muted-foreground">
+                <span className="text-[11px] tabular-nums text-muted-foreground">
                   {activeIndex + 1}/{slides.length}
                 </span>
                 <button
                   type="button"
-                  className={cn(btnSecondary, "px-2 py-1 text-xs")}
+                  className={cn(btnSecondary, "h-7 px-2 py-0 text-xs")}
                   disabled={activeIndex >= slides.length - 1}
                   onClick={() => setActiveIndex((i) => Math.min(slides.length - 1, i + 1))}
                 >
@@ -511,116 +595,153 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
             ) : null}
           </div>
 
-          <SlidePreview
-            kind={previewKind}
-            title={title}
-            subtitle={subtitle}
-            highlights={highlights}
-            slide={activeSlide}
-            closingLine={closingLine}
-            contactLines={contactLine
-              .split("·")
-              .map((l) => l.trim())
-              .filter(Boolean)}
-          />
+          <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden [container-type:size]">
+            <div className="aspect-video h-[min(100%,calc(100cqw*9/16))] w-[min(100%,calc(100cqh*16/9))]">
+              <SlidePreview
+                kind={previewKind}
+                title={title}
+                titleHighlight={titleHighlight}
+                eyebrow={eyebrow}
+                subtitle={subtitle}
+                highlights={highlights}
+                slide={activeSlide}
+                closingLine={closingLine}
+                closingLineAccent={closingLineAccent}
+                closingBadge={closingBadge}
+                contactAddress={contactAddress}
+                contactEmail={contactEmail}
+                contactWeb={contactWeb}
+              />
+            </div>
+          </div>
 
-          <div className={cn(surfaceCard(), "grid gap-3 p-4 sm:grid-cols-2")}>
+          <div className={cn(surfaceCard(), "grid shrink-0 gap-x-2 gap-y-1.5 p-2.5 sm:grid-cols-2")}>
             {previewKind === "cover" ? (
               <>
                 <div className="sm:col-span-2">
-                  <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                  <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
                     Datos de portada
                   </p>
                 </div>
                 <div className="sm:col-span-2">
-                  <label className={labelClass} htmlFor="pres-title">
-                    Título
+                  <label className={compactLabel} htmlFor="pres-eyebrow">
+                    Pill / eyebrow
+                  </label>
+                  <input
+                    id="pres-eyebrow"
+                    className={cn(compactField, "mt-0.5")}
+                    value={eyebrow}
+                    onChange={(e) => setEyebrow(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className={compactLabel} htmlFor="pres-title">
+                    Título (línea 1)
                   </label>
                   <input
                     id="pres-title"
-                    className={cn(fieldClass, "mt-1.5")}
+                    className={cn(compactField, "mt-0.5")}
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                   />
                 </div>
+                <div>
+                  <label className={compactLabel} htmlFor="pres-title-accent">
+                    Título accent (línea 2)
+                  </label>
+                  <input
+                    id="pres-title-accent"
+                    className={cn(compactField, "mt-0.5")}
+                    value={titleHighlight}
+                    onChange={(e) => setTitleHighlight(e.target.value)}
+                  />
+                </div>
                 <div className="sm:col-span-2">
-                  <label className={labelClass} htmlFor="pres-sub">
+                  <label className={compactLabel} htmlFor="pres-sub">
                     Subtítulo
                   </label>
                   <textarea
                     id="pres-sub"
-                    className={cn(fieldClass, "mt-1.5 min-h-[64px] resize-none")}
+                    className={cn(compactField, "mt-0.5 min-h-[2.5rem] resize-none py-1.5")}
                     value={subtitle}
                     onChange={(e) => setSubtitle(e.target.value)}
                   />
                 </div>
-                {highlights.map((h, i) => (
-                  <div key={i} className="grid grid-cols-2 gap-2 sm:col-span-2 sm:grid-cols-2">
-                    <div>
-                      <label className={labelClass}>Dato {i + 1}</label>
-                      <input
-                        className={cn(fieldClass, "mt-1.5")}
-                        value={h.value}
-                        onChange={(e) =>
-                          setHighlights((prev) =>
-                            prev.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)),
-                          )
-                        }
-                      />
+                <div className="grid grid-cols-3 gap-1.5 sm:col-span-2">
+                  {highlights.map((h, i) => (
+                    <div key={i} className="grid gap-1">
+                      <div>
+                        <label className={compactLabel}>Dato {i + 1}</label>
+                        <input
+                          className={cn(compactField, "mt-0.5")}
+                          value={h.value}
+                          onChange={(e) =>
+                            setHighlights((prev) =>
+                              prev.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)),
+                            )
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className={compactLabel}>Etiqueta</label>
+                        <input
+                          className={cn(compactField, "mt-0.5")}
+                          value={h.label}
+                          onChange={(e) =>
+                            setHighlights((prev) =>
+                              prev.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)),
+                            )
+                          }
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className={labelClass}>Etiqueta</label>
-                      <input
-                        className={cn(fieldClass, "mt-1.5")}
-                        value={h.label}
-                        onChange={(e) =>
-                          setHighlights((prev) =>
-                            prev.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)),
-                          )
-                        }
-                      />
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </>
             ) : null}
 
             {previewKind === "unit" ? (
               activeSlide ? (
-                <>
-                  <div className="sm:col-span-2">
-                    <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-                      Datos del cartel {activeIndex + 1} / {slides.length}
+                <div className="sm:col-span-2 grid grid-cols-2 gap-x-2 gap-y-1 lg:grid-cols-4">
+                  <div className="col-span-2 flex items-baseline justify-between gap-2 lg:col-span-4">
+                    <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+                      Cartel {activeIndex + 1}/{slides.length}
                     </p>
-                    <p className="mt-1 truncate text-xs text-muted-foreground">
+                    <p className="min-w-0 truncate text-[10px] text-muted-foreground">
                       {activeSlide.unitName} · {activeSlide.providerName}
                     </p>
                   </div>
                   {(
                     [
-                      ["slideTitle", "Título slide"],
-                      ["location", "Ubicación"],
-                      ["medida", "Medida"],
-                      ["resolucion", "Resolución"],
-                      ["encendido", "Encendido"],
-                      ["exposicion", "Exposición"],
+                      ["slideTitle", "Título", "col-span-2 lg:col-span-3"],
+                      ["zona", "Zona", ""],
+                      ["location", "Ubicación", "col-span-2 lg:col-span-4"],
+                      ["medida", "Medida", ""],
+                      ["visibilidad", "Visibilidad", ""],
+                      ["caras", "Caras", ""],
+                      ["impacto", "Impacto", ""],
+                      ["frecuencia", "Frecuencia", ""],
+                      ["spot", "Spot", ""],
+                      ["encendido", "Encendido", ""],
+                      ["resolucion", "Resolución", ""],
+                      ["mapsUrl", "Link mapa", "col-span-2 lg:col-span-4"],
                     ] as const
-                  ).map(([key, label]) => (
-                    <div key={key} className={key === "slideTitle" || key === "location" ? "sm:col-span-2" : undefined}>
-                      <label className={labelClass} htmlFor={`slide-${key}`}>
+                  ).map(([key, label, span]) => (
+                    <div key={key} className={span || undefined}>
+                      <label className={compactLabel} htmlFor={`slide-${key}`}>
                         {label}
                       </label>
                       <input
                         id={`slide-${key}`}
-                        className={cn(fieldClass, "mt-1.5")}
+                        className={cn(compactField, "mt-0.5")}
                         value={activeSlide[key] ?? ""}
                         onChange={(e) => updateActiveSlide({ [key]: e.target.value })}
                       />
                     </div>
                   ))}
-                </>
+                </div>
               ) : (
-                <p className="sm:col-span-2 py-4 text-center text-sm text-muted-foreground">
+                <p className="sm:col-span-2 py-2 text-center text-xs text-muted-foreground">
                   Seleccioná un cartel del listado o del orden a la derecha para editar sus datos.
                 </p>
               )
@@ -629,31 +750,74 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
             {previewKind === "closing" ? (
               <>
                 <div className="sm:col-span-2">
-                  <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                  <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
                     Datos de cierre
                   </p>
                 </div>
-                <div className="sm:col-span-2">
-                  <label className={labelClass} htmlFor="pres-closing">
-                    Mensaje
+                <div>
+                  <label className={compactLabel} htmlFor="pres-closing">
+                    Slogan (línea 1)
                   </label>
                   <input
                     id="pres-closing"
-                    className={cn(fieldClass, "mt-1.5")}
+                    className={cn(compactField, "mt-0.5")}
                     value={closingLine}
                     onChange={(e) => setClosingLine(e.target.value)}
                   />
                 </div>
-                <div className="sm:col-span-2">
-                  <label className={labelClass} htmlFor="pres-contact">
-                    Contacto
+                <div>
+                  <label className={compactLabel} htmlFor="pres-closing-accent">
+                    Slogan accent (línea 2)
                   </label>
                   <input
-                    id="pres-contact"
-                    className={cn(fieldClass, "mt-1.5")}
-                    value={contactLine}
-                    onChange={(e) => setContactLine(e.target.value)}
-                    placeholder="email · web"
+                    id="pres-closing-accent"
+                    className={cn(compactField, "mt-0.5")}
+                    value={closingLineAccent}
+                    onChange={(e) => setClosingLineAccent(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className={compactLabel} htmlFor="pres-closing-badge">
+                    Badge
+                  </label>
+                  <input
+                    id="pres-closing-badge"
+                    className={cn(compactField, "mt-0.5")}
+                    value={closingBadge}
+                    onChange={(e) => setClosingBadge(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className={compactLabel} htmlFor="pres-address">
+                    Dirección
+                  </label>
+                  <input
+                    id="pres-address"
+                    className={cn(compactField, "mt-0.5")}
+                    value={contactAddress}
+                    onChange={(e) => setContactAddress(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className={compactLabel} htmlFor="pres-email">
+                    Email
+                  </label>
+                  <input
+                    id="pres-email"
+                    className={cn(compactField, "mt-0.5")}
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className={compactLabel} htmlFor="pres-web">
+                    Web
+                  </label>
+                  <input
+                    id="pres-web"
+                    className={cn(compactField, "mt-0.5")}
+                    value={contactWeb}
+                    onChange={(e) => setContactWeb(e.target.value)}
                   />
                 </div>
               </>
@@ -662,21 +826,14 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
         </section>
 
         {/* Orden */}
-        <section className={cn(surfaceCard(), "flex min-h-[18rem] flex-col gap-3 p-4 xl:min-h-0")}>
-          <div>
-            <h2 className="text-sm font-semibold text-foreground">
-              Orden{" "}
-              <span className="font-normal text-muted-foreground">({slides.length})</span>
-            </h2>
-            {slides.length > 1 ? (
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
-                Arrastrá para reordenar
-              </p>
-            ) : null}
+        <section className={cn(surfaceCard(), "flex min-h-[14rem] flex-col gap-2 p-3 xl:min-h-0")}>
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 className="text-sm font-semibold text-foreground">Orden</h2>
+            <span className="text-[11px] tabular-nums text-muted-foreground">{slides.length}</span>
           </div>
-          <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1 [scrollbar-gutter:stable]">
+          <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1 [scrollbar-gutter:stable]">
             {slides.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">
+              <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-[11px] text-muted-foreground">
                 Elegí carteles del listado para armar el deck.
               </p>
             ) : (
@@ -689,7 +846,7 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
                   items={slides.map((s) => s.unitId)}
                   strategy={verticalListSortingStrategy}
                 >
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     {slides.map((s, i) => (
                       <SortableOrderItem
                         key={s.unitId}
@@ -710,20 +867,20 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
         </section>
       </div>
 
-      <div className="flex shrink-0 flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border pt-2">
         {error ? (
-          <p className="text-sm text-signal" role="alert">
+          <p className="text-xs text-signal" role="alert">
             {error}
           </p>
         ) : (
-          <p className="text-xs text-muted-foreground">
-            Exporta portada + {slides.length} carteles + cierre · PDF o PowerPoint
+          <p className="text-[11px] text-muted-foreground">
+            Portada + {slides.length} carteles + cierre
           </p>
         )}
-        <div className="flex flex-wrap gap-2 sm:justify-end">
+        <div className="flex flex-wrap gap-1.5 sm:justify-end">
           <button
             type="button"
-            className={cn(btnSecondary, "min-w-[8rem]")}
+            className={cn(btnSecondary, "h-8 min-w-[7rem] px-3 text-xs")}
             disabled={!!exporting || slides.length === 0}
             onClick={() => exportDeck("pptx")}
           >
@@ -731,7 +888,7 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
           </button>
           <button
             type="button"
-            className={cn(btnPrimary, "min-w-[8rem]")}
+            className={cn(btnPrimary, "h-8 min-w-[7rem] px-3 text-xs")}
             disabled={!!exporting || slides.length === 0}
             onClick={() => exportDeck("pdf")}
           >

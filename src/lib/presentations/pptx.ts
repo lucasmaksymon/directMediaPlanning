@@ -1,14 +1,15 @@
 import PptxGenJS from "pptxgenjs";
-import { CLIENT_BRAND, PRODUCT_NAME } from "@/lib/brand";
+import { CLIENT_BRAND } from "@/lib/brand";
 import { imageForPptx } from "@/lib/presentations/image-for-pptx";
 import { slideSpecRows } from "@/lib/presentations/slide-data";
 import { getPresentationPptxPalette } from "@/lib/presentations/theme";
 import type { PresentationDeck } from "@/lib/presentations/types";
 
 const IMG_W = 7.33;
+const IMG_X = 13.333 - IMG_W; // foto a la derecha
 const SLIDE_H = 7.5;
-const SPEC_X = 7.7;
-const SPEC_W = 5.1;
+const SPEC_X = 0.55;
+const SPEC_W = IMG_X - SPEC_X - 0.35;
 
 /** pptxgenjs sizing:cover usa options.w/h como “tamaño natural”; hay que pasar el aspect real. */
 function naturalSizeForCover(width?: number | null, height?: number | null) {
@@ -29,105 +30,110 @@ export async function buildPresentationPptx(deck: PresentationDeck): Promise<Buf
   pptx.title = deck.title;
 
   {
+    // Portada — siempre ocean (mock comercial), independiente del tema de fichas
     const s = pptx.addSlide();
-    s.background = { color: c.canvas };
+    s.background = { color: c.ocean };
 
-    s.addShape(pptx.ShapeType.ellipse, {
-      x: 0.7,
-      y: 0.72,
-      w: 0.16,
-      h: 0.16,
-      fill: { color: c.led },
-      line: { color: c.led },
-    });
-    s.addText(CLIENT_BRAND.toUpperCase(), {
-      x: 1.0,
-      y: 0.65,
-      w: 10,
-      h: 0.3,
-      fontSize: 11,
-      color: c.led,
-      bold: true,
-      charSpacing: 3,
-      fontFace: "Arial",
-    });
-    s.addText(deck.title, {
-      x: 0.7,
-      y: 1.35,
-      w: 11,
-      h: 1.4,
-      fontSize: 34,
-      color: c.foreground,
-      bold: true,
-      fontFace: "Arial",
-    });
-    if (deck.subtitle) {
-      s.addText(deck.subtitle, {
+    if (deck.eyebrow) {
+      const pillW = Math.min(5.8, Math.max(3.2, deck.eyebrow.length * 0.16 + 1.2));
+      s.addShape(pptx.ShapeType.roundRect, {
         x: 0.7,
-        y: 2.9,
-        w: 10,
-        h: 0.8,
-        fontSize: 14,
-        color: c.muted,
+        y: 0.55,
+        w: pillW,
+        h: 0.38,
+        fill: { color: c.ocean },
+        line: { color: c.led, width: 1.25 },
+        rectRadius: 0.19,
+      });
+      s.addText(deck.eyebrow.toUpperCase(), {
+        x: 0.7,
+        y: 0.58,
+        w: pillW,
+        h: 0.32,
+        fontSize: 10,
+        color: c.led,
+        bold: true,
+        charSpacing: 2,
+        align: "center",
         fontFace: "Arial",
       });
     }
+    s.addText(CLIENT_BRAND, {
+      x: 9.2,
+      y: 0.55,
+      w: 3.4,
+      h: 0.35,
+      fontSize: 14,
+      color: c.onDark,
+      bold: true,
+      align: "right",
+      fontFace: "Arial",
+    });
+
+    s.addText(deck.title, {
+      x: 0.7,
+      y: 2.1,
+      w: 10.5,
+      h: 0.7,
+      fontSize: 36,
+      color: c.onDark,
+      bold: true,
+      fontFace: "Arial",
+    });
+    if (deck.titleHighlight) {
+      s.addText(deck.titleHighlight, {
+        x: 0.7,
+        y: 2.75,
+        w: 10.5,
+        h: 0.7,
+        fontSize: 36,
+        color: c.led,
+        bold: true,
+        fontFace: "Arial",
+      });
+    }
+    if (deck.subtitle) {
+      s.addText(deck.subtitle, {
+        x: 0.7,
+        y: 3.6,
+        w: 9.5,
+        h: 0.8,
+        fontSize: 14,
+        color: c.onDarkMuted,
+        fontFace: "Arial",
+      });
+    }
+
     deck.highlights.slice(0, 3).forEach((h, i) => {
-      const x = 0.7 + i * 4.0;
+      const x = 0.7 + i * 3.5;
       s.addShape(pptx.ShapeType.roundRect, {
         x,
-        y: 4.5,
-        w: 3.7,
-        h: 1.4,
-        fill: { color: c.card },
-        line: { color: c.border, width: 1 },
+        y: 5.35,
+        w: 3.2,
+        h: 1.35,
+        fill: { color: c.ocean },
+        line: { color: c.led, width: 1.25 },
         rectRadius: 0.12,
       });
-      s.addShape(pptx.ShapeType.rect, {
-        x,
-        y: 4.5,
-        w: 0.08,
-        h: 1.4,
-        fill: { color: c.led },
-      });
       s.addText(h.value || "—", {
-        x: x + 0.3,
-        y: 4.7,
-        w: 3.2,
+        x: x + 0.2,
+        y: 5.55,
+        w: 2.8,
         h: 0.5,
-        fontSize: 22,
+        fontSize: 24,
         color: c.led,
         bold: true,
         fontFace: "Arial",
       });
       s.addText(h.label, {
-        x: x + 0.3,
-        y: 5.25,
-        w: 3.2,
+        x: x + 0.2,
+        y: 6.1,
+        w: 2.8,
         h: 0.35,
-        fontSize: 11,
-        color: c.muted,
+        fontSize: 12,
+        color: c.onDark,
         fontFace: "Arial",
       });
-    });
-    s.addText(PRODUCT_NAME, {
-      x: 0.7,
-      y: 6.95,
-      w: 4,
-      h: 0.25,
-      fontSize: 10,
-      color: c.muted,
-      fontFace: "Arial",
-    });
-    s.addText(deck.generatedAt, {
-      x: 8.5,
-      y: 6.95,
-      w: 4.1,
-      h: 0.25,
-      fontSize: 10,
-      color: c.muted,
-      align: "right",
-      fontFace: "Arial",
     });
   }
 
@@ -137,9 +143,9 @@ export async function buildPresentationPptx(deck: PresentationDeck): Promise<Buf
     s.background = { color: c.canvas };
 
     s.addShape(pptx.ShapeType.rect, {
-      x: IMG_W,
+      x: 0,
       y: 0,
-      w: 13.333 - IMG_W,
+      w: IMG_X,
       h: SLIDE_H,
       fill: { color: c.card },
     });
@@ -150,7 +156,7 @@ export async function buildPresentationPptx(deck: PresentationDeck): Promise<Buf
         const natural = naturalSizeForCover(slide.imageWidth, slide.imageHeight);
         s.addImage({
           ...img,
-          x: 0,
+          x: IMG_X,
           y: 0,
           w: natural.w,
           h: natural.h,
@@ -158,14 +164,14 @@ export async function buildPresentationPptx(deck: PresentationDeck): Promise<Buf
         });
       } catch {
         s.addShape(pptx.ShapeType.rect, {
-          x: 0,
+          x: IMG_X,
           y: 0,
           w: IMG_W,
           h: SLIDE_H,
           fill: { color: c.surfaceSecondary },
         });
         s.addText("Sin imagen", {
-          x: 0,
+          x: IMG_X,
           y: 3.4,
           w: IMG_W,
           h: 0.4,
@@ -175,14 +181,14 @@ export async function buildPresentationPptx(deck: PresentationDeck): Promise<Buf
       }
     } else {
       s.addShape(pptx.ShapeType.rect, {
-        x: 0,
+        x: IMG_X,
         y: 0,
         w: IMG_W,
         h: SLIDE_H,
         fill: { color: c.surfaceSecondary },
       });
       s.addText("Sin imagen", {
-        x: 0,
+        x: IMG_X,
         y: 3.4,
         w: IMG_W,
         h: 0.4,
@@ -191,66 +197,63 @@ export async function buildPresentationPptx(deck: PresentationDeck): Promise<Buf
       });
     }
 
-    let y = 1.2;
-    if (slide.providerName) {
-      s.addText(slide.providerName, {
+    let y = 0.85;
+    if (slide.zona || slide.providerName) {
+      s.addText(slide.zona || slide.providerName, {
         x: SPEC_X,
         y,
         w: SPEC_W,
-        h: 0.3,
+        h: 0.28,
         fontSize: 11,
         color: c.led,
         bold: true,
         fontFace: "Arial",
       });
-      y += 0.35;
+      y += 0.32;
     }
     s.addText(slide.slideTitle, {
       x: SPEC_X,
       y,
       w: SPEC_W,
-      h: 0.7,
-      fontSize: 18,
+      h: 0.55,
+      fontSize: 16,
       color: c.foreground,
       bold: true,
       fontFace: "Arial",
     });
-    y += 0.75;
-    if (slide.location) {
-      s.addText(slide.location, {
-        x: SPEC_X,
-        y,
-        w: SPEC_W,
-        h: 0.45,
-        fontSize: 12,
-        color: c.muted,
-        fontFace: "Arial",
-      });
-      y += 0.55;
-    }
+    y += 0.65;
 
-    const rows = slideSpecRows(slide).filter((r) => r.label !== "Ubicación");
+    const rows = slideSpecRows(slide).map((r) =>
+      r.label === "Mapa"
+        ? { ...r, value: "Ver en Google Maps", href: r.value }
+        : { ...r, href: undefined as string | undefined },
+    );
     rows.forEach((row) => {
       s.addText(row.label, {
         x: SPEC_X,
         y,
-        w: SPEC_W,
-        h: 0.22,
+        w: 1.35,
+        h: 0.38,
         fontSize: 10,
-        color: c.muted,
-        fontFace: "Arial",
-      });
-      s.addText(row.value, {
-        x: SPEC_X,
-        y: y + 0.22,
-        w: SPEC_W,
-        h: 0.4,
-        fontSize: 13,
-        color: c.foreground,
+        color: c.led,
         bold: true,
         fontFace: "Arial",
+        valign: "middle",
       });
-      y += 0.75;
+      s.addText(row.value, {
+        x: SPEC_X + 1.4,
+        y,
+        w: SPEC_W - 1.4,
+        h: 0.38,
+        fontSize: 11,
+        color: c.foreground,
+        fontFace: "Arial",
+        valign: "middle",
+        ...(row.href
+          ? { hyperlink: { url: row.href, tooltip: "Abrir en Google Maps" } }
+          : {}),
+      });
+      y += 0.48;
     });
 
     s.addText(CLIENT_BRAND, {
@@ -263,7 +266,7 @@ export async function buildPresentationPptx(deck: PresentationDeck): Promise<Buf
       fontFace: "Arial",
     });
     s.addText(`${index + 1} / ${deck.slides.length}`, {
-      x: 11,
+      x: IMG_X - 2.2,
       y: 6.95,
       w: 1.8,
       h: 0.25,
@@ -277,49 +280,100 @@ export async function buildPresentationPptx(deck: PresentationDeck): Promise<Buf
   {
     const s = pptx.addSlide();
     s.background = { color: c.ocean };
-    s.addText(CLIENT_BRAND.toUpperCase(), {
+
+    if (deck.closingBadge) {
+      const badgeW = Math.min(3.6, Math.max(2.4, deck.closingBadge.length * 0.14 + 1.1));
+      s.addShape(pptx.ShapeType.roundRect, {
+        x: 13.333 - badgeW - 0.55,
+        y: 0.45,
+        w: badgeW,
+        h: 0.36,
+        fill: { color: c.ocean },
+        line: { color: c.led, width: 1.25 },
+        rectRadius: 0.18,
+      });
+      s.addText(deck.closingBadge, {
+        x: 13.333 - badgeW - 0.55,
+        y: 0.48,
+        w: badgeW,
+        h: 0.3,
+        fontSize: 10,
+        color: c.led,
+        bold: true,
+        align: "center",
+        fontFace: "Arial",
+      });
+    }
+
+    s.addText(deck.closingLine.toUpperCase(), {
       x: 1,
-      y: 2.2,
+      y: 2.35,
       w: 11.3,
-      h: 0.35,
-      fontSize: 12,
-      color: c.led,
-      bold: true,
-      align: "center",
-      charSpacing: 3,
-      fontFace: "Arial",
-    });
-    s.addText(PRODUCT_NAME, {
-      x: 1,
-      y: 2.7,
-      w: 11.3,
-      h: 0.6,
-      fontSize: 32,
+      h: 0.55,
+      fontSize: 30,
       color: c.onDark,
       bold: true,
       align: "center",
       fontFace: "Arial",
     });
-    s.addText(deck.closingLine, {
-      x: 2,
-      y: 3.5,
-      w: 9.3,
-      h: 0.7,
-      fontSize: 14,
-      color: c.onDarkMuted,
+    s.addText(deck.closingLineAccent.toUpperCase(), {
+      x: 1,
+      y: 2.9,
+      w: 11.3,
+      h: 0.55,
+      fontSize: 30,
+      color: c.led,
+      bold: true,
       align: "center",
       fontFace: "Arial",
     });
-    deck.contactLines.forEach((line, i) => {
-      s.addText(line, {
-        x: 2,
-        y: 4.5 + i * 0.35,
-        w: 9.3,
-        h: 0.3,
-        fontSize: 12,
-        color: c.onDarkMuted,
-        align: "center",
+
+    s.addShape(pptx.ShapeType.roundRect, {
+      x: 3.4,
+      y: 4.0,
+      w: 6.5,
+      h: 1.85,
+      fill: { color: c.ocean },
+      line: { color: "1A3A40", width: 1.25 },
+      rectRadius: 0.14,
+    });
+
+    const contacts = [
+      { text: deck.contactAddress, accent: false },
+      { text: deck.contactEmail, accent: true },
+      { text: deck.contactWeb, accent: true },
+    ].filter((x) => x.text);
+
+    contacts.forEach((row, i) => {
+      const y = 4.25 + i * 0.45;
+      s.addText("●", {
+        x: 3.65,
+        y,
+        w: 0.3,
+        h: 0.35,
+        fontSize: 10,
+        color: c.led,
+        valign: "middle",
         fontFace: "Arial",
+      });
+      s.addText(row.text, {
+        x: 4.0,
+        y,
+        w: 5.6,
+        h: 0.35,
+        fontSize: 12,
+        color: row.accent ? c.led : c.onDark,
+        valign: "middle",
+        fontFace: "Arial",
+        ...(row.accent && row.text.includes("@")
+          ? { hyperlink: { url: `mailto:${row.text}` } }
+          : row.accent
+            ? {
+                hyperlink: {
+                  url: row.text.startsWith("http") ? row.text : `https://${row.text}`,
+                },
+              }
+            : {}),
       });
     });
   }
