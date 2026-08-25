@@ -73,6 +73,8 @@ type DriveUnit = {
   priceModel: "fixed_list" | "negotiable" | "package";
   status: "published" | "draft";
   imagePath: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   metadata?: Record<string, string>;
 };
 
@@ -203,6 +205,8 @@ async function main() {
       priceModel: priceMap[u.priceModel] ?? PriceModel.negotiable,
       status: statusMap[u.status] ?? InventoryStatus.draft,
       imageUrls: u.imagePath ? [u.imagePath] : [],
+      latitude: u.latitude ?? undefined,
+      longitude: u.longitude ?? undefined,
       metadata: u.metadata ?? undefined,
     });
     created++;
