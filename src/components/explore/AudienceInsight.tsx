@@ -5,7 +5,14 @@ import { cn } from "@/lib/cn";
 import { surfaceCard } from "@/lib/ui-classes";
 
 type Insight = {
-  pois: { transit: number; commerce: number; education: number; health: number; entertainment: number; total: number };
+  pois: {
+    transit: number;
+    commerce: number;
+    education: number;
+    health: number;
+    entertainment: number;
+    total: number;
+  };
   weeklyAudience: number;
   cpm: number;
   aiInsight: string;
@@ -27,65 +34,43 @@ export function AudienceInsight({ unitId }: { unitId: string }) {
       .finally(() => setLoading(false));
   }, [unitId]);
 
-  if (loading) return (
-    <div className={cn(surfaceCard(), "p-6 animate-pulse")}>
-      <p className="h-4 w-40 rounded bg-muted" />
-      <p className="mt-3 h-3 w-full rounded bg-muted" />
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className={cn(surfaceCard(), "animate-pulse p-4")}>
+        <p className="h-3 w-32 rounded bg-muted" />
+        <p className="mt-3 h-8 w-24 rounded bg-muted" />
+      </div>
+    );
+  }
 
   if (error || !data) return null;
 
   return (
-    <div className={cn(surfaceCard(), "p-6 space-y-5")}>
-      <div className="flex items-center gap-2">
-        <span className="text-lg">📊</span>
-        <h3 className="font-semibold text-foreground">Estimación de audiencia</h3>
-      </div>
+    <div className={cn(surfaceCard(), "space-y-3 p-4")}>
+      <h3 className="nm-card-title text-sm">Estimación de audiencia</h3>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-3 gap-2">
         <div>
-          <p className="text-2xl font-bold text-led tabular-nums">
+          <p className="text-lg font-semibold tabular-nums text-led">
             {data.weeklyAudience.toLocaleString("es-AR")}
           </p>
-          <p className="text-xs text-muted-foreground">Personas / semana (est.)</p>
+          <p className="nm-caption">Pers. / sem.</p>
         </div>
         <div>
-          <p className="text-2xl font-bold text-foreground tabular-nums">
+          <p className="text-lg font-semibold tabular-nums text-foreground">
             ${data.cpm.toLocaleString("es-AR")}
           </p>
-          <p className="text-xs text-muted-foreground">CPM referencial</p>
+          <p className="nm-caption">CPM ref.</p>
         </div>
         <div>
-          <p className="text-2xl font-bold text-foreground tabular-nums">{data.pois.total}</p>
-          <p className="text-xs text-muted-foreground">POIs en 400m</p>
+          <p className="text-lg font-semibold tabular-nums text-foreground">{data.pois.total}</p>
+          <p className="nm-caption">POIs 400m</p>
         </div>
       </div>
 
-      {/* POIs breakdown */}
-      <div className="flex flex-wrap gap-2">
-        {[
-          { label: "Transporte", value: data.pois.transit, emoji: "🚌" },
-          { label: "Comercios", value: data.pois.commerce, emoji: "🛍️" },
-          { label: "Educación", value: data.pois.education, emoji: "🎓" },
-          { label: "Salud", value: data.pois.health, emoji: "🏥" },
-          { label: "Ocio", value: data.pois.entertainment, emoji: "🎭" },
-        ].filter((p) => p.value > 0).map((p) => (
-          <span key={p.label} className="flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground">
-            {p.emoji} {p.label}: {p.value}
-          </span>
-        ))}
-      </div>
-
-      {data.aiInsight && (
-        <div className="rounded-xl border border-led/20 bg-led/5 p-4">
-          <p className="text-sm leading-relaxed text-foreground">{data.aiInsight}</p>
-        </div>
-      )}
-
-      <p className="text-[11px] text-muted-foreground">
-        Datos basados en OpenStreetMap. Estimaciones orientativas. Datos © OpenStreetMap contributors.
-      </p>
+      {data.aiInsight ? (
+        <p className="text-xs leading-relaxed text-muted-foreground">{data.aiInsight}</p>
+      ) : null}
     </div>
   );
 }

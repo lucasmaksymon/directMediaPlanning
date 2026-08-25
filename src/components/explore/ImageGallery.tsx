@@ -4,32 +4,45 @@ import { useState } from "react";
 import Image from "next/image";
 import { cn } from "@/lib/cn";
 
-export function ImageGallery({ images, unitName }: { images: string[]; unitName: string }) {
+export function ImageGallery({
+  images,
+  unitName,
+  className,
+}: {
+  images: string[];
+  unitName: string;
+  className?: string;
+}) {
+  const valid = images.filter((src) => Boolean(src?.trim()));
   const [active, setActive] = useState(0);
 
-  if (images.length === 0) return null;
+  if (valid.length === 0) return null;
+
+  const safeIndex = Math.min(active, valid.length - 1);
 
   return (
-    <div className="space-y-3">
-      <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-border bg-muted">
+    <div className={cn("w-full min-w-0 space-y-2", className)}>
+      <div className="relative h-56 w-full overflow-hidden rounded-[var(--radius-lg)] border border-border bg-muted sm:h-72 lg:h-[22rem]">
         <Image
-          src={images[active]}
-          alt={`${unitName} — imagen ${active + 1}`}
+          src={valid[safeIndex]}
+          alt={`${unitName} — imagen ${safeIndex + 1}`}
           fill
           className="object-cover"
+          sizes="(max-width: 1024px) 100vw, 42vw"
+          priority
           unoptimized
         />
       </div>
-      {images.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {images.map((src, i) => (
+      {valid.length > 1 && (
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+          {valid.map((src, i) => (
             <button
-              key={i}
+              key={`${src}-${i}`}
               onClick={() => setActive(i)}
               type="button"
               className={cn(
-                "relative h-16 w-24 shrink-0 overflow-hidden rounded-xl border-2 transition",
-                active === i ? "border-led" : "border-transparent hover:border-border",
+                "relative h-12 w-16 shrink-0 overflow-hidden rounded-[var(--radius-sm)] border-2 transition",
+                safeIndex === i ? "border-led" : "border-transparent hover:border-border",
               )}
             >
               <Image src={src} alt={`miniatura ${i + 1}`} fill className="object-cover" unoptimized />

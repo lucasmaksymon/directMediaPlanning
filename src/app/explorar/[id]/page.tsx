@@ -10,7 +10,8 @@ import { AvailabilityCalendar } from "@/components/calendar/AvailabilityCalendar
 import { ImageGallery } from "@/components/explore/ImageGallery";
 import { AudienceInsight } from "@/components/explore/AudienceInsight";
 import { CLIENT_BRAND } from "@/lib/brand";
-import { Breadcrumb, PageHeader, SectionHeader } from "@/components/ui/Patterns";
+import { Badge } from "@/components/ui/Badge";
+import { Breadcrumb, SectionHeader } from "@/components/ui/Patterns";
 
 const formatLabels: Record<string, string> = {
   digital_ooh: "Digital · vía pública",
@@ -50,11 +51,12 @@ export default async function ExplorarDetallePage({
   const isViaAgency = isAdvertiser && agencyProfile !== null && hasAgencyPrice;
   const displayPrice = isViaAgency ? unit.agencyPriceAmount! : unit.basePriceAmount;
   const directPrice = unit.basePriceAmount;
+  const hasImages = Boolean(unit.imageUrls?.length);
 
   const calendarBlocks = await getUnitCalendar(id);
 
   return (
-    <main className={cn(pageScroll, layoutPadding, "py-8 pb-12")}>
+    <main className={cn(pageScroll, layoutPadding, "py-5 pb-10 sm:py-6")}>
       <Breadcrumb
         items={[
           { label: "Catálogo", href: "/explorar" },
@@ -62,109 +64,106 @@ export default async function ExplorarDetallePage({
         ]}
       />
 
-      <article className="mt-6 space-y-4">
-        <PageHeader
-          description={unit.locationLabel}
-          title={unit.name}
-        />
-
-        {unit.imageUrls && unit.imageUrls.length > 0 && (
-          <ImageGallery images={unit.imageUrls} unitName={unit.name} />
+      {/* Hero: foto + datos clave en paralelo */}
+      <div
+        className={cn(
+          "mt-4 grid gap-6",
+          hasImages ? "lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:items-start lg:gap-8" : "",
         )}
+      >
+        {hasImages ? (
+          <ImageGallery images={unit.imageUrls} unitName={unit.name} className="lg:sticky lg:top-4" />
+        ) : null}
 
-        {unit.description && (
-          <p className="mt-4 text-base leading-relaxed text-foreground/90">{unit.description}</p>
-        )}
+        <div className="min-w-0 space-y-4">
+          <header className="space-y-1.5">
+            <h1 className="nm-page-title">{unit.name}</h1>
+            <p className="nm-secondary">{unit.locationLabel}</p>
+          </header>
 
-        <div className="flex flex-wrap gap-2">
-          {unit.instantBookEnabled && (
-            <span className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border border-led/40 bg-led/10 px-3 py-1 text-xs font-semibold text-led">
-              Confirmación inmediata
-            </span>
-          )}
-          {unit.lastMinuteEnabled && (
-            <span className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border border-signal/40 bg-signal/10 px-3 py-1 text-xs font-semibold text-signal">
-              Last Minute — {unit.lastMinuteDiscountPercent ?? 20}% OFF
-            </span>
-          )}
-          {isViaAgency && (
-            <span className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border border-led/60 bg-led/15 px-3 py-1 text-xs font-semibold text-led">
-              Precio especial vía {agencyProfile!.companyName}
-            </span>
-          )}
-        </div>
-
-        <dl className="mt-6 grid gap-4 text-sm sm:grid-cols-2">
-          <div>
-            <dt className="text-muted-foreground">
-              {isViaAgency ? "Tu precio (vía agencia)" : "Precio de referencia"}
-            </dt>
-            <dd className="mt-1 text-xl font-bold tabular-nums text-led">
-              {formatArs(displayPrice)}
-            </dd>
+          <div className="flex flex-wrap gap-1.5">
+            <Badge variant="default">{formatLabels[unit.format] ?? unit.format}</Badge>
+            {unit.instantBookEnabled && <Badge variant="brand">Confirmación inmediata</Badge>}
+            {unit.lastMinuteEnabled && (
+              <Badge variant="warning">
+                Last Minute — {unit.lastMinuteDiscountPercent ?? 20}% OFF
+              </Badge>
+            )}
             {isViaAgency && (
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Precio directo:{" "}
-                <span className="line-through">{formatArs(directPrice)}</span>
+              <Badge variant="brand">Precio vía {agencyProfile!.companyName}</Badge>
+            )}
+          </div>
+
+          <div className="rounded-[var(--radius-lg)] border border-border bg-card px-4 py-3">
+            <p className="nm-caption">
+              {isViaAgency ? "Tu precio (vía agencia)" : "Precio de referencia"}
+            </p>
+            <p className="mt-0.5 text-2xl font-semibold tabular-nums tracking-tight text-led">
+              {formatArs(displayPrice)}
+            </p>
+            {isViaAgency && (
+              <p className="nm-caption mt-1">
+                Precio directo: <span className="line-through">{formatArs(directPrice)}</span>
               </p>
             )}
             {!isViaAgency && hasAgencyPrice && isAdvertiser && (
               <p className="mt-1 text-xs text-led">
-                ¿Tenés agencia? Podés acceder a precio especial de{" "}
-                {formatArs(unit.agencyPriceAmount!)}
+                Con agencia: desde {formatArs(unit.agencyPriceAmount!)}
               </p>
             )}
           </div>
-          <div>
-            <dt className="text-muted-foreground">Formato</dt>
-            <dd className="mt-1 font-medium text-foreground">
-              {formatLabels[unit.format] ?? unit.format}
-            </dd>
-          </div>
-          <div className="sm:col-span-2">
-            <dt className="text-muted-foreground">Proveedor</dt>
-            <dd className="mt-1 font-medium text-foreground">{unit.provider.companyName}</dd>
-            <p className="mt-0.5 text-xs text-muted-foreground">Operado vía {CLIENT_BRAND}</p>
-          </div>
-        </dl>
-      </article>
 
-      {unit.latitude && unit.longitude && (
-        <div className="mt-8">
-          <AudienceInsight unitId={unit.id} />
+          <dl className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <dt className="nm-caption">Proveedor</dt>
+              <dd className="mt-0.5 font-medium text-foreground">{unit.provider.companyName}</dd>
+            </div>
+            <div>
+              <dt className="nm-caption">Operador</dt>
+              <dd className="mt-0.5 font-medium text-foreground">{CLIENT_BRAND}</dd>
+            </div>
+          </dl>
+
+          {unit.description ? (
+            <p className="text-sm leading-relaxed text-muted-foreground">{unit.description}</p>
+          ) : null}
+
+          {unit.latitude && unit.longitude ? (
+            <AudienceInsight unitId={unit.id} />
+          ) : null}
         </div>
-      )}
+      </div>
 
-      <section className={cn(surfaceCard(), "mt-10 p-6 sm:p-8")}>
-        <SectionHeader title="Disponibilidad" />
-        <div className="mt-4">
-          <AvailabilityCalendar blocks={calendarBlocks} readonly />
-        </div>
-      </section>
-
-      <section className={cn(surfaceCard(), "mt-6 p-6 sm:p-8")}>
-        <SectionHeader
-          description="Indicá el rango de fechas. El medio revisará el pedido y se pondrá en contacto para confirmar condiciones."
-          title="Solicitar disponibilidad"
-        />
-        {isViaAgency && agencyProfile && (
-          <div className="mt-3 rounded-[var(--radius-lg)] border border-led/30 bg-led/5 px-4 py-3 text-sm">
-            <p className="text-foreground">
-              Esta solicitud se enviará{" "}
-              <strong>a través de {agencyProfile.companyName}</strong> al precio de{" "}
-              <strong className="text-led">{formatArs(displayPrice)}</strong>.
-            </p>
+      {/* Acción: calendario + solicitud juntos */}
+      <div className="mt-8 grid gap-4 lg:grid-cols-2 lg:items-start">
+        <section className={cn(surfaceCard(), "p-5")}>
+          <SectionHeader title="Disponibilidad" />
+          <div className="mt-3">
+            <AvailabilityCalendar blocks={calendarBlocks} readonly />
           </div>
-        )}
-        <div className="mt-6">
-          <ReserveForm
-            agencyId={agencyProfile?.id ?? null}
-            isAdvertiser={isAdvertiser}
-            isViaAgency={isViaAgency}
-            unitId={unit.id}
+        </section>
+
+        <section className={cn(surfaceCard(), "p-5")}>
+          <SectionHeader
+            description="Indicá fechas; el medio revisa y confirma condiciones."
+            title="Solicitar"
           />
-        </div>
-      </section>
+          {isViaAgency && agencyProfile ? (
+            <div className="mt-3 rounded-[var(--radius-md)] border border-primary/30 bg-primary-subtle px-3 py-2.5 text-sm">
+              Solicitud vía <strong>{agencyProfile.companyName}</strong> a{" "}
+              <strong className="text-led">{formatArs(displayPrice)}</strong>.
+            </div>
+          ) : null}
+          <div className="mt-4">
+            <ReserveForm
+              agencyId={agencyProfile?.id ?? null}
+              isAdvertiser={isAdvertiser}
+              isViaAgency={isViaAgency}
+              unitId={unit.id}
+            />
+          </div>
+        </section>
+      </div>
     </main>
   );
 }
