@@ -72,7 +72,7 @@ export async function buildPresentationPptx(deck: PresentationDeck): Promise<Buf
 
     s.addText(deck.title, {
       x: 0.7,
-      y: 2.1,
+      y: 1.85,
       w: 10.5,
       h: 0.7,
       fontSize: 36,
@@ -83,7 +83,7 @@ export async function buildPresentationPptx(deck: PresentationDeck): Promise<Buf
     if (deck.titleHighlight) {
       s.addText(deck.titleHighlight, {
         x: 0.7,
-        y: 2.75,
+        y: 2.5,
         w: 10.5,
         h: 0.7,
         fontSize: 36,
@@ -95,43 +95,54 @@ export async function buildPresentationPptx(deck: PresentationDeck): Promise<Buf
     if (deck.subtitle) {
       s.addText(deck.subtitle, {
         x: 0.7,
-        y: 3.6,
+        y: 3.35,
         w: 9.5,
-        h: 0.8,
+        h: 0.7,
         fontSize: 14,
         color: c.onDarkMuted,
         fontFace: "Arial",
       });
     }
 
-    deck.highlights.slice(0, 3).forEach((h, i) => {
-      const x = 0.7 + i * 3.5;
+    const coverHighlights = deck.highlights
+      .filter((h) => h.enabled !== false && (h.value.trim() || h.label.trim()))
+      .slice(0, 3);
+    const kpiY = 4.35;
+    const kpiW = coverHighlights.length === 1 ? 3.2 : coverHighlights.length === 2 ? 3.4 : 3.2;
+    const kpiGap = coverHighlights.length === 2 ? 0.45 : 0.3;
+    const kpiTotal = coverHighlights.length * kpiW + Math.max(0, coverHighlights.length - 1) * kpiGap;
+    const kpiStartX = Math.max(0.7, (13.333 - kpiTotal) / 2);
+
+    coverHighlights.forEach((h, i) => {
+      const x = kpiStartX + i * (kpiW + kpiGap);
       s.addShape(pptx.ShapeType.roundRect, {
         x,
-        y: 5.35,
-        w: 3.2,
-        h: 1.35,
+        y: kpiY,
+        w: kpiW,
+        h: 1.25,
         fill: { color: c.ocean },
         line: { color: c.led, width: 1.25 },
         rectRadius: 0.12,
       });
       s.addText(h.value || "—", {
-        x: x + 0.2,
-        y: 5.55,
-        w: 2.8,
-        h: 0.5,
+        x: x + 0.15,
+        y: kpiY + 0.2,
+        w: kpiW - 0.3,
+        h: 0.48,
         fontSize: 24,
         color: c.led,
         bold: true,
+        align: "center",
         fontFace: "Arial",
       });
       s.addText(h.label, {
-        x: x + 0.2,
-        y: 6.1,
-        w: 2.8,
+        x: x + 0.15,
+        y: kpiY + 0.72,
+        w: kpiW - 0.3,
         h: 0.35,
         fontSize: 12,
         color: c.onDark,
+        align: "center",
         fontFace: "Arial",
       });
     });
@@ -346,23 +357,14 @@ export async function buildPresentationPptx(deck: PresentationDeck): Promise<Buf
 
     contacts.forEach((row, i) => {
       const y = 4.25 + i * 0.45;
-      s.addText("●", {
-        x: 3.65,
-        y,
-        w: 0.3,
-        h: 0.35,
-        fontSize: 10,
-        color: c.led,
-        valign: "middle",
-        fontFace: "Arial",
-      });
       s.addText(row.text, {
-        x: 4.0,
+        x: 3.55,
         y,
-        w: 5.6,
+        w: 6.2,
         h: 0.35,
         fontSize: 12,
         color: row.accent ? c.led : c.onDark,
+        align: "center",
         valign: "middle",
         fontFace: "Arial",
         ...(row.accent && row.text.includes("@")

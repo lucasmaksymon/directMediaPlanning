@@ -2,7 +2,7 @@ import type {
   InventoryUnitForPresentation,
   PresentationSlideInput,
 } from "@/lib/presentations/types";
-import { parseUnitSpecs } from "@/lib/inventory/unit-specs";
+import { parseUnitSpecs, cleanLocationLabel } from "@/lib/inventory/unit-specs";
 
 export function extractUnitSpecs(unit: InventoryUnitForPresentation) {
   const specs = parseUnitSpecs({
@@ -29,7 +29,7 @@ export function extractUnitSpecs(unit: InventoryUnitForPresentation) {
 
   return {
     slideTitle,
-    location: unit.locationLabel,
+    location: cleanLocationLabel(unit.locationLabel) || unit.locationLabel,
     zona: specs.zona || meta.zona || "",
     medida: specs.medida || "",
     visibilidad: specs.visibilidad || "",

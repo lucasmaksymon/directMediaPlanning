@@ -22,7 +22,7 @@ import {
   UserRole,
 } from "@prisma/client";
 import { hash } from "bcryptjs";
-import { enrichMetadataWithSpecs } from "../src/lib/inventory/unit-specs";
+import { enrichMetadataWithSpecs, cleanLocationLabel, cleanInventoryUnitName, locationLabelTail } from "../src/lib/inventory/unit-specs";
 
 const prisma = new PrismaClient();
 
@@ -195,12 +195,21 @@ async function main() {
   for (const u of driveUnits) {
     const providerId = providerIds.get(u.providerName);
     if (!providerId) continue;
+    const locationLabel = cleanLocationLabel(u.locationLabel) || u.locationLabel.slice(0, 240);
+    const name = cleanInventoryUnitName(u.name) || u.name.slice(0, 200);
+    const tail = locationLabelTail(u.locationLabel);
+    let description = (u.description || "").trim();
+    if (tail && !description) {
+      description = tail;
+    } else if (tail && description && !description.includes(tail.slice(0, 40))) {
+      description = `${description}\n${tail}`.trim();
+    }
     batch.push({
       providerId,
-      name: u.name.slice(0, 200),
+      name: name.slice(0, 200),
       format: formatMap[u.format] ?? InventoryFormat.static_ooh,
-      locationLabel: u.locationLabel.slice(0, 240),
-      description: u.description || null,
+      locationLabel: locationLabel.slice(0, 240),
+      description: description || null,
       basePriceAmount: d(u.basePriceAmount || "1"),
       currency: "ARS",
       priceModel: priceMap[u.priceModel] ?? PriceModel.negotiable,
@@ -209,9 +218,9 @@ async function main() {
       latitude: u.latitude ?? undefined,
       longitude: u.longitude ?? undefined,
       metadata: enrichMetadataWithSpecs(u.metadata ?? {}, {
-        name: u.name,
-        description: u.description,
-        locationLabel: u.locationLabel,
+        name,
+        description,
+        locationLabel,
         format: u.format,
         latitude: u.latitude,
         longitude: u.longitude,

@@ -92,6 +92,55 @@ export function isLatLngMapsUrl(url: string): boolean {
 }
 
 /**
+ * Quita del locationLabel el blob comercial mezclado en el import
+ * ("Tipo Cartel…", "Detalle…", "Impactos…", "10 x 8 mts").
+ */
+export function cleanLocationLabel(raw: string): string {
+  let s = (raw || "").trim();
+  if (!s) return "";
+
+  s = s.split(/\s+Tipo\b/i)[0] ?? s;
+  s = s.split(/\s+Detalle\b/i)[0] ?? s;
+  s = s.split(/\s+Impactos?\b/i)[0] ?? s;
+  s = s.split(/\s+Medida\s*[:：]/i)[0] ?? s;
+  // Dimensiones pegadas al final: "…2406. 10 x 8 mts" / "… 14,5 x 15 mts …"
+  s = s.replace(
+    /\s+\d+[.,]?\d*\s*[x×]\s*\d+[.,]?\d*(?:\s*(?:y\s+\d+[.,]?\d*\s*[x×]\s*\d+[.,]?\d*))?\s*(?:mts?|m|metros)?\b.*$/i,
+    "",
+  );
+  s = s.replace(/\s+M\.\s*$/i, "");
+  s = s.replace(/\s*[·|,;:\-–—]+\s*$/g, "");
+  s = s.replace(/\s+/g, " ").trim();
+  return s.slice(0, 240);
+}
+
+/** Cola comercial recortada de un locationLabel contaminado (para description/metadata). */
+export function locationLabelTail(raw: string): string {
+  const clean = cleanLocationLabel(raw);
+  if (!clean) return (raw || "").trim();
+  if (!raw.trim().startsWith(clean) && !raw.includes(clean)) {
+    return raw.trim().slice(clean.length).replace(/^[.\s]+/, "").trim();
+  }
+  const idx = raw.indexOf(clean);
+  const after =
+    idx >= 0 ? raw.slice(idx + clean.length) : raw.slice(clean.length);
+  return after.replace(/^[.\s]+/, "").trim();
+}
+
+/** Limpia el tramo de dirección en nombres "Espacio — Zona — dirección Tipo…". */
+export function cleanInventoryUnitName(name: string): string {
+  const raw = (name || "").trim();
+  if (!raw) return "";
+  const parts = raw.split(/\s*[—–]\s*/);
+  if (parts.length >= 2) {
+    const head = parts.slice(0, -1).map((p) => p.trim()).filter(Boolean);
+    const last = cleanLocationLabel(parts[parts.length - 1] || "");
+    if (last) return [...head, last].join(" — ").slice(0, 200);
+  }
+  return cleanLocationLabel(raw).slice(0, 200) || raw.slice(0, 200);
+}
+
+/**
  * Link de Maps por dirección textual (más fiable que lat/lng para OOH en CABA).
  * Ej: "Cabildo 3422" + zona CABA → busca Av. Cabildo 3422, no un edificio en calle paralela.
  */
@@ -99,15 +148,7 @@ export function mapsUrlFromLocation(opts: {
   locationLabel?: string | null;
   zona?: string | null;
 }): string | undefined {
-  let label = (opts.locationLabel || "").trim();
-  if (label.length < 4) return undefined;
-
-  label = label
-    .split(/\s+Tipo\b/i)[0]
-    ?.split(/\s+Detalle\b/i)[0]
-    ?.split(/\s+Impactos?\b/i)[0]
-    ?.trim() || label;
-  label = label.replace(/\s+/g, " ").slice(0, 160);
+  let label = cleanLocationLabel(opts.locationLabel || "");
   if (label.length < 4) return undefined;
 
   const parts: string[] = [label];

@@ -10,7 +10,7 @@ import * as https from "https";
 import * as http from "http";
 import { createWriteStream } from "fs";
 import { execFileSync } from "child_process";
-import { enrichMetadataWithSpecs } from "../src/lib/inventory/unit-specs";
+import { enrichMetadataWithSpecs, cleanLocationLabel, cleanInventoryUnitName, locationLabelTail } from "../src/lib/inventory/unit-specs";
 
 const ROOT_FOLDER_ID = "13RXXIfvxVwDqBNHMW6_N_MssWqV0EkhD";
 const WORK = path.join(process.cwd(), ".tmp", "drive-import");
@@ -248,15 +248,19 @@ function parseSlideToUnit(
   const { amount, model } = parsePrice(valor || texts.join(" "));
   const format = detectFormat(tipo, medida);
   const zonePart = zona.replace(/^[●•]\s*/, "").trim();
-  const name = [tipo.replace(/ESPECTACULARES/i, "").trim() || "Espacio", zonePart, ubicacion.split("–")[0].trim()]
-    .filter(Boolean)
-    .join(" — ")
-    .slice(0, 180);
+  const locationLabel = cleanLocationLabel(ubicacion) || ubicacion.slice(0, 240);
+  const tail = locationLabelTail(ubicacion);
+  const name = cleanInventoryUnitName(
+    [tipo.replace(/ESPECTACULARES/i, "").trim() || "Espacio", zonePart, locationLabel]
+      .filter(Boolean)
+      .join(" — "),
+  ).slice(0, 180);
 
   const description = [
     medida && `Medida: ${medida}`,
     visual && `Visual: ${visual}`,
     valor && `Tarifa media kit: ${valor}`,
+    tail && !medida && !visual ? tail : "",
   ]
     .filter(Boolean)
     .join("\n");
@@ -270,9 +274,9 @@ function parseSlideToUnit(
       valorRaw: valor,
     },
     {
-      name: name || ubicacion.slice(0, 120),
+      name: name || locationLabel.slice(0, 120),
       description,
-      locationLabel: ubicacion.slice(0, 240),
+      locationLabel,
       format,
       metadata: {
         tipo,
@@ -286,8 +290,8 @@ function parseSlideToUnit(
 
   return {
     providerName,
-    name: name || ubicacion.slice(0, 120),
-    locationLabel: ubicacion.slice(0, 240),
+    name: name || locationLabel.slice(0, 120),
+    locationLabel,
     description,
     format,
     basePriceAmount: amount,

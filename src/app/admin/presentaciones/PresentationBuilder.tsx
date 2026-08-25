@@ -44,9 +44,9 @@ type EditableSlide = PresentationSlideInput & {
 };
 
 const DEFAULT_HIGHLIGHTS: PresentationHighlight[] = [
-  { value: "14", label: "Paquetes LED" },
-  { value: "AMBA", label: "Cobertura estratégica" },
-  { value: "100%", label: "Contenido dinámico" },
+  { value: "14", label: "Paquetes LED", enabled: true },
+  { value: "AMBA", label: "Cobertura estratégica", enabled: true },
+  { value: "100%", label: "Contenido dinámico", enabled: true },
 ];
 
 function SortableOrderItem({
@@ -138,22 +138,26 @@ function SlidePreview({
   contactWeb: string;
 }) {
   if (kind === "cover") {
+    const visibleHighlights = highlights
+      .filter((h) => h.enabled !== false && (h.value.trim() || h.label.trim()))
+      .slice(0, 3);
+
     return (
-      <div className="relative flex h-full w-full flex-col justify-between overflow-hidden rounded-[var(--radius-lg)] border border-led/40 bg-[#081820] p-3 text-[#f7f9fa] shadow-[var(--shadow-md)] sm:p-4">
-        <div className="min-h-0">
-          <div className="flex items-start justify-between gap-3">
-            {eyebrow ? (
-              <span className="rounded-full border border-led px-2.5 py-0.5 text-[9px] font-semibold tracking-[0.12em] text-led uppercase">
-                {eyebrow}
-              </span>
-            ) : (
-              <span />
-            )}
-            <p className="shrink-0 text-xs font-semibold tracking-wide text-[#f7f9fa]">
-              {CLIENT_BRAND}
-            </p>
-          </div>
-          <div className="mt-3 max-w-[90%] sm:mt-4">
+      <div className="relative flex h-full w-full flex-col overflow-hidden rounded-[var(--radius-lg)] border border-led/40 bg-[#081820] p-3 text-[#f7f9fa] shadow-[var(--shadow-md)] sm:p-4">
+        <div className="flex shrink-0 items-start justify-between gap-3">
+          {eyebrow ? (
+            <span className="rounded-full border border-led px-2.5 py-0.5 text-[9px] font-semibold tracking-[0.12em] text-led uppercase">
+              {eyebrow}
+            </span>
+          ) : (
+            <span />
+          )}
+          <p className="shrink-0 text-xs font-semibold tracking-wide text-[#f7f9fa]">
+            {CLIENT_BRAND}
+          </p>
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col justify-center">
+          <div className="max-w-[90%]">
             <h3 className="text-xl font-semibold leading-tight tracking-tight text-[#f7f9fa] sm:text-2xl">
               {title || "Propuesta de paquetes"}
             </h3>
@@ -168,22 +172,30 @@ function SlidePreview({
               </p>
             ) : null}
           </div>
-        </div>
-        <div className="mt-3 grid shrink-0 grid-cols-3 gap-2">
-          {highlights
-            .filter((h) => h.value.trim() || h.label.trim())
-            .slice(0, 3)
-            .map((h, i) => (
-              <div
-                key={i}
-                className="rounded-[var(--radius-md)] border border-led/80 bg-[#081820] px-2 py-1.5"
-              >
-                <p className="text-base font-semibold tabular-nums text-led sm:text-lg">
-                  {h.value || "—"}
-                </p>
-                <p className="mt-0.5 text-[10px] text-[#f7f9fa]">{h.label || "Dato"}</p>
-              </div>
-            ))}
+          {visibleHighlights.length > 0 ? (
+            <div
+              className={cn(
+                "mt-4 grid gap-2",
+                visibleHighlights.length === 1
+                  ? "max-w-xs grid-cols-1"
+                  : visibleHighlights.length === 2
+                    ? "max-w-lg grid-cols-2"
+                    : "grid-cols-3",
+              )}
+            >
+              {visibleHighlights.map((h, i) => (
+                <div
+                  key={i}
+                  className="rounded-[var(--radius-md)] border border-led/80 bg-[#081820] px-2 py-1.5 text-center"
+                >
+                  <p className="text-base font-semibold tabular-nums text-led sm:text-lg">
+                    {h.value || "—"}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-[#f7f9fa]">{h.label || "Dato"}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
     );
@@ -205,23 +217,21 @@ function SlidePreview({
             {closingLineAccent}
           </p>
         </div>
-        <div className="mt-5 w-full max-w-md rounded-[var(--radius-lg)] border border-led/25 px-4 py-3 text-left">
+        <div className="mt-5 w-full max-w-md rounded-[var(--radius-lg)] border border-led/25 px-4 py-3 text-center">
           {contactAddress ? (
-            <p className="flex gap-2 text-[11px] text-[#f7f9fa]">
-              <span className="text-led">●</span>
-              <span>{contactAddress}</span>
-            </p>
+            <p className="text-[11px] text-[#f7f9fa]">{contactAddress}</p>
           ) : null}
           {contactEmail ? (
-            <p className="mt-1.5 flex gap-2 text-[11px] text-led">
-              <span>●</span>
-              <span>{contactEmail}</span>
-            </p>
+            <p className={cn("text-[11px] text-led", contactAddress && "mt-1.5")}>{contactEmail}</p>
           ) : null}
           {contactWeb ? (
-            <p className="mt-1.5 flex gap-2 text-[11px] text-led">
-              <span>●</span>
-              <span>{contactWeb}</span>
+            <p
+              className={cn(
+                "text-[11px] text-led",
+                (contactAddress || contactEmail) && "mt-1.5",
+              )}
+            >
+              {contactWeb}
             </p>
           ) : null}
         </div>
@@ -432,7 +442,9 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
           titleHighlight: titleHighlight.trim(),
           eyebrow: eyebrow.trim(),
           subtitle: subtitle.trim(),
-          highlights: highlights.filter((h) => h.value.trim() || h.label.trim()),
+          highlights: highlights.filter(
+            (h) => h.enabled !== false && (h.value.trim() || h.label.trim()),
+          ),
           closingLine: closingLine.trim(),
           closingLineAccent: closingLineAccent.trim(),
           closingBadge: closingBadge.trim(),
@@ -668,34 +680,64 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
                   />
                 </div>
                 <div className="grid grid-cols-3 gap-1.5 sm:col-span-2">
-                  {highlights.map((h, i) => (
-                    <div key={i} className="grid gap-1">
-                      <div>
-                        <label className={compactLabel}>Dato {i + 1}</label>
-                        <input
-                          className={cn(compactField, "mt-0.5")}
-                          value={h.value}
-                          onChange={(e) =>
-                            setHighlights((prev) =>
-                              prev.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)),
-                            )
-                          }
-                        />
+                  {highlights.map((h, i) => {
+                    const on = h.enabled !== false;
+                    return (
+                      <div
+                        key={i}
+                        className={cn(
+                          "grid gap-1 rounded-lg border p-1.5",
+                          on ? "border-border" : "border-dashed border-border/60 opacity-60",
+                        )}
+                      >
+                        <label className="flex cursor-pointer items-center gap-1.5">
+                          <input
+                            type="checkbox"
+                            className="size-3.5 accent-[var(--led)]"
+                            checked={on}
+                            onChange={(e) =>
+                              setHighlights((prev) =>
+                                prev.map((x, j) =>
+                                  j === i ? { ...x, enabled: e.target.checked } : x,
+                                ),
+                              )
+                            }
+                          />
+                          <span className={compactLabel}>Dato {i + 1}</span>
+                        </label>
+                        <div>
+                          <label className={compactLabel}>Valor</label>
+                          <input
+                            className={cn(compactField, "mt-0.5")}
+                            value={h.value}
+                            disabled={!on}
+                            onChange={(e) =>
+                              setHighlights((prev) =>
+                                prev.map((x, j) =>
+                                  j === i ? { ...x, value: e.target.value } : x,
+                                ),
+                              )
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label className={compactLabel}>Etiqueta</label>
+                          <input
+                            className={cn(compactField, "mt-0.5")}
+                            value={h.label}
+                            disabled={!on}
+                            onChange={(e) =>
+                              setHighlights((prev) =>
+                                prev.map((x, j) =>
+                                  j === i ? { ...x, label: e.target.value } : x,
+                                ),
+                              )
+                            }
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <label className={compactLabel}>Etiqueta</label>
-                        <input
-                          className={cn(compactField, "mt-0.5")}
-                          value={h.label}
-                          onChange={(e) =>
-                            setHighlights((prev) =>
-                              prev.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)),
-                            )
-                          }
-                        />
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </>
             ) : null}

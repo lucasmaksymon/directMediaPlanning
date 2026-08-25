@@ -35,9 +35,13 @@ function createStyles(p: PresentationPalette) {
       paddingBottom: 40,
       paddingLeft: 48,
       paddingRight: 48,
-      justifyContent: "space-between",
+      justifyContent: "center",
     },
     coverTopRow: {
+      position: "absolute",
+      top: 36,
+      left: 48,
+      right: 48,
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "flex-start",
@@ -62,7 +66,6 @@ function createStyles(p: PresentationPalette) {
       letterSpacing: 0.4,
     },
     coverBody: {
-      marginTop: 48,
       maxWidth: "78%",
     },
     coverTitle: {
@@ -90,7 +93,7 @@ function createStyles(p: PresentationPalette) {
     highlightRow: {
       flexDirection: "row",
       gap: 12,
-      marginTop: 40,
+      marginTop: 28,
     },
     highlightCard: {
       flex: 1,
@@ -105,11 +108,13 @@ function createStyles(p: PresentationPalette) {
       fontSize: 22,
       color: p.led,
       fontWeight: "bold",
+      textAlign: "center",
     },
     highlightLabel: {
       fontSize: 10,
       color: p.onDark,
       marginTop: 4,
+      textAlign: "center",
     },
     brandRow: {
       flexDirection: "row",
@@ -274,11 +279,13 @@ function createStyles(p: PresentationPalette) {
       fontSize: 11,
       color: p.onDark,
       lineHeight: 1.45,
+      textAlign: "center",
     },
     contactTextAccent: {
       fontSize: 11,
       color: p.led,
       lineHeight: 1.45,
+      textAlign: "center",
     },
     footer: {
       position: "absolute",
@@ -308,31 +315,33 @@ function CoverPage({
   deck: PresentationDeck;
   styles: Styles;
 }) {
+  const highlights = deck.highlights
+    .filter((h) => h.enabled !== false && (h.value.trim() || h.label.trim()))
+    .slice(0, 3);
+
   return (
     <Page size="A4" orientation="landscape" style={styles.pageOcean}>
       <View style={styles.coverInner}>
-        <View>
-          <View style={styles.coverTopRow}>
-            {deck.eyebrow ? (
-              <View style={styles.coverEyebrow}>
-                <Text style={styles.coverEyebrowText}>{deck.eyebrow.toUpperCase()}</Text>
-              </View>
-            ) : (
-              <View />
-            )}
-            <Text style={styles.coverLogo}>{CLIENT_BRAND}</Text>
-          </View>
-          <View style={styles.coverBody}>
-            <Text style={styles.coverTitle}>{deck.title}</Text>
-            {deck.titleHighlight ? (
-              <Text style={styles.coverTitleAccent}>{deck.titleHighlight}</Text>
-            ) : null}
-            {deck.subtitle ? <Text style={styles.coverSubtitle}>{deck.subtitle}</Text> : null}
-          </View>
+        <View style={styles.coverTopRow}>
+          {deck.eyebrow ? (
+            <View style={styles.coverEyebrow}>
+              <Text style={styles.coverEyebrowText}>{deck.eyebrow.toUpperCase()}</Text>
+            </View>
+          ) : (
+            <View />
+          )}
+          <Text style={styles.coverLogo}>{CLIENT_BRAND}</Text>
         </View>
-        {deck.highlights.length > 0 ? (
+        <View style={styles.coverBody}>
+          <Text style={styles.coverTitle}>{deck.title}</Text>
+          {deck.titleHighlight ? (
+            <Text style={styles.coverTitleAccent}>{deck.titleHighlight}</Text>
+          ) : null}
+          {deck.subtitle ? <Text style={styles.coverSubtitle}>{deck.subtitle}</Text> : null}
+        </View>
+        {highlights.length > 0 ? (
           <View style={styles.highlightRow}>
-            {deck.highlights.slice(0, 3).map((h, i) => (
+            {highlights.map((h, i) => (
               <View key={i} style={styles.highlightCard}>
                 <Text style={styles.highlightValue}>{h.value || "—"}</Text>
                 <Text style={styles.highlightLabel}>{h.label}</Text>
@@ -458,17 +467,17 @@ function ClosingPage({
         <View style={styles.contactCard}>
           {deck.contactAddress ? (
             <View style={styles.contactRow}>
-              <Text style={styles.contactText}>•  {deck.contactAddress}</Text>
+              <Text style={styles.contactText}>{deck.contactAddress}</Text>
             </View>
           ) : null}
           {deck.contactEmail ? (
             <View style={styles.contactRow}>
-              <Text style={styles.contactTextAccent}>•  {deck.contactEmail}</Text>
+              <Text style={styles.contactTextAccent}>{deck.contactEmail}</Text>
             </View>
           ) : null}
           {deck.contactWeb ? (
             <View style={[styles.contactRow, { marginBottom: 0 }]}>
-              <Text style={styles.contactTextAccent}>•  {deck.contactWeb}</Text>
+              <Text style={styles.contactTextAccent}>{deck.contactWeb}</Text>
             </View>
           ) : null}
         </View>

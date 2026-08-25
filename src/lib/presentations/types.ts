@@ -1,6 +1,8 @@
 export type PresentationHighlight = {
   value: string;
   label: string;
+  /** Si false, no se muestra en portada / export. */
+  enabled?: boolean;
 };
 
 export type PresentationSlideInput = {

@@ -23,6 +23,7 @@ const bodySchema = z.object({
       z.object({
         value: z.string().max(80),
         label: z.string().max(80),
+        enabled: z.boolean().optional(),
       }),
     )
     .max(3)
@@ -120,7 +121,9 @@ export async function POST(req: Request) {
     titleHighlight: input.titleHighlight.trim(),
     eyebrow: input.eyebrow.trim() || "Circuitos digitales premium",
     subtitle: input.subtitle.trim(),
-    highlights: input.highlights.filter((h) => h.value.trim() || h.label.trim()),
+    highlights: input.highlights.filter(
+      (h) => h.enabled !== false && (h.value.trim() || h.label.trim()),
+    ),
     slides,
     closingLine: input.closingLine?.trim() || "Creamos conexiones que",
     closingLineAccent: input.closingLineAccent?.trim() || "generan resultados",
