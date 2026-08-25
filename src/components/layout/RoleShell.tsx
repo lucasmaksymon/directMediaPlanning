@@ -132,6 +132,7 @@ const ADMIN_NAV: RoleNavItem[] = [
   },
   { href: "/admin/operaciones/inventory/new", label: "Nueva unidad" },
   { href: "/admin/operaciones/circuitos", label: "Circuitos" },
+  { href: "/admin/presentaciones", label: "Presentaciones" },
   { href: "/admin/operaciones/analytics", label: "Analíticas" },
   { href: "/admin/proveedores", label: "Proveedores" },
   { href: "/admin/usuarios", label: "Usuarios" },
