@@ -25,6 +25,7 @@ export default async function AdminPresentacionesPage() {
       format: true,
       latitude: true,
       longitude: true,
+      basePriceAmount: true,
       provider: { select: { companyName: true } },
     },
     orderBy: [{ provider: { companyName: "asc" } }, { name: "asc" }],
@@ -33,6 +34,7 @@ export default async function AdminPresentacionesPage() {
   const units = rawUnits.map((u) => ({
     ...u,
     imageUrls: u.imageUrls.slice(0, 1),
+    basePriceAmount: u.basePriceAmount.toString(),
   }));
 
   return (

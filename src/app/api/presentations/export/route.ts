@@ -49,6 +49,8 @@ const bodySchema = z.object({
         spot: z.string().max(200).optional(),
         encendido: z.string().max(200).optional(),
         resolucion: z.string().max(200).optional(),
+        pauta: z.string().max(120).optional(),
+        costoMensual: z.string().max(120).optional(),
         mapsUrl: z.string().max(2000).optional(),
         imageFit: z.enum(["cover", "contain"]).optional(),
       }),

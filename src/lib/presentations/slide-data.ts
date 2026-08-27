@@ -3,6 +3,14 @@ import type {
   PresentationSlideInput,
 } from "@/lib/presentations/types";
 import { parseUnitSpecs, cleanLocationLabel } from "@/lib/inventory/unit-specs";
+import { formatArs } from "@/lib/format";
+
+function formatCostoMensual(amount?: string | number | null): string {
+  if (amount == null || amount === "") return "";
+  const n = Number(amount);
+  if (!Number.isFinite(n) || n <= 1) return "";
+  return formatArs(n);
+}
 
 export function extractUnitSpecs(unit: InventoryUnitForPresentation) {
   const specs = parseUnitSpecs({
@@ -39,6 +47,9 @@ export function extractUnitSpecs(unit: InventoryUnitForPresentation) {
     spot: specs.spot || "",
     encendido: specs.encendido || "",
     resolucion: specs.resolucion || "",
+    pauta: specs.pauta || meta.pauta || "Mensual",
+    costoMensual:
+      formatCostoMensual(unit.basePriceAmount) || specs.costoMensual || meta.costoMensual || "",
     mapsUrl: specs.mapsUrl || "",
   };
 }
@@ -58,6 +69,8 @@ export function unitToSlideDefaults(unit: InventoryUnitForPresentation): Present
     spot: specs.spot || undefined,
     encendido: specs.encendido || undefined,
     resolucion: specs.resolucion || undefined,
+    pauta: specs.pauta || undefined,
+    costoMensual: specs.costoMensual || undefined,
     mapsUrl: specs.mapsUrl || undefined,
   };
 }
@@ -73,6 +86,8 @@ export function slideSpecRows(slide: {
   spot?: string;
   encendido?: string;
   resolucion?: string;
+  pauta?: string;
+  costoMensual?: string;
   mapsUrl?: string;
 }): { label: string; value: string }[] {
   const rows: { label: string; value: string }[] = [];
@@ -85,6 +100,8 @@ export function slideSpecRows(slide: {
   if (slide.spot?.trim()) rows.push({ label: "Spot", value: slide.spot.trim() });
   if (slide.encendido?.trim()) rows.push({ label: "Encendido", value: slide.encendido.trim() });
   if (slide.resolucion?.trim()) rows.push({ label: "Resolución", value: slide.resolucion.trim() });
+  if (slide.pauta?.trim()) rows.push({ label: "Pauta", value: slide.pauta.trim() });
+  if (slide.costoMensual?.trim()) rows.push({ label: "Costo Mensual", value: slide.costoMensual.trim() });
   if (slide.mapsUrl?.trim()) rows.push({ label: "Mapa", value: slide.mapsUrl.trim() });
   return rows;
 }

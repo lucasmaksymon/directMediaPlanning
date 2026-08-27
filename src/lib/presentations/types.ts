@@ -21,6 +21,8 @@ export type PresentationSlideInput = {
   spot?: string;
   encendido?: string;
   resolucion?: string;
+  pauta?: string;
+  costoMensual?: string;
   mapsUrl?: string;
   imageFit?: PresentationImageFit;
 };
@@ -78,5 +80,6 @@ export type InventoryUnitForPresentation = {
   format: string;
   latitude?: number | null;
   longitude?: number | null;
+  basePriceAmount?: string | null;
   provider: { companyName: string };
 };

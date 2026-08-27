@@ -7,6 +7,8 @@ export type InventoryUnitSpecs = {
   spot?: string;
   encendido?: string;
   resolucion?: string;
+  pauta?: string;
+  costoMensual?: string;
   zona?: string;
   mapsUrl?: string;
 };
@@ -273,6 +275,19 @@ export function parseUnitSpecs(unit: SpecSource): InventoryUnitSpecs {
       /(\d{3,5}\s*[x×]\s*\d{3,5}\s*px)/i,
     ]);
 
+  const pauta =
+    meta.pauta ||
+    firstMatch(blob, [
+      /Pauta\s*[:：]\s*([^\n·|]+)/i,
+    ]);
+
+  const costoMensual =
+    meta.costoMensual ||
+    firstMatch(blob, [
+      /Costo\s*mensual\s*[:：]\s*([^\n·|]+)/i,
+      /Tarifa(?:\s*media\s*kit)?\s*[:：]\s*([^\n·|]+)/i,
+    ]);
+
   const zona = meta.zona || "";
 
   const addressMapsUrl = mapsUrlFromLocation({
@@ -296,6 +311,8 @@ export function parseUnitSpecs(unit: SpecSource): InventoryUnitSpecs {
     ...(impacto ? { impacto } : {}),
     ...(encendido ? { encendido } : {}),
     ...(resolucion ? { resolucion } : {}),
+    ...(pauta ? { pauta } : {}),
+    ...(costoMensual ? { costoMensual } : {}),
     ...(zona ? { zona } : {}),
     ...(mapsUrl ? { mapsUrl } : {}),
   };
@@ -340,6 +357,8 @@ export function enrichMetadataWithSpecs(
   assign("spot", specs.spot);
   assign("encendido", specs.encendido);
   assign("resolucion", specs.resolucion);
+  assign("pauta", specs.pauta);
+  assign("costoMensual", specs.costoMensual);
   // Preferir siempre link por dirección: lat/lng en CABA suele caer en calle paralela.
   if (specs.mapsUrl) {
     if (!next.mapsUrl || isLatLngMapsUrl(next.mapsUrl)) {

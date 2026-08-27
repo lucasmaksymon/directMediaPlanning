@@ -13,6 +13,7 @@
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
     "import:drive": "npx tsx scripts/import-drive-kits.ts",
+    "import:dispo": "npx tsx scripts/import-dispo.ts",
     "enrich:specs": "npx tsx scripts/enrich-inventory-specs.ts",
     "geocode:inventory": "npx tsx scripts/geocode-inventory.ts"
   },

@@ -259,6 +259,8 @@ function SlidePreview({
     { label: "Spot", value: slide.spot },
     { label: "Encendido", value: slide.encendido },
     { label: "Resolución", value: slide.resolucion },
+    { label: "Pauta", value: slide.pauta },
+    { label: "Costo Mensual", value: slide.costoMensual },
     { label: "Mapa", value: slide.mapsUrl },
   ].filter((r) => r.value?.trim());
 
@@ -473,6 +475,8 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
             spot: s.spot || undefined,
             encendido: s.encendido || undefined,
             resolucion: s.resolucion || undefined,
+            pauta: s.pauta || undefined,
+            costoMensual: s.costoMensual || undefined,
             mapsUrl: s.mapsUrl || undefined,
             imageFit: normalizeImageFit(s.imageFit),
           })),
@@ -818,6 +822,8 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
                       ["spot", "Spot", ""],
                       ["encendido", "Encendido", ""],
                       ["resolucion", "Resolución", ""],
+                      ["pauta", "Pauta", ""],
+                      ["costoMensual", "Costo mensual", ""],
                       ["mapsUrl", "Link mapa", "col-span-2 lg:col-span-4"],
                     ] as const
                   ).map(([key, label, span]) => (

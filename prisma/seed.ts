@@ -53,6 +53,7 @@ const PROVIDERS: { companyName: string; description: string }[] = [
   { companyName: "NE3 Publicidad", description: "Parque OOH — media kit 2026." },
   { companyName: "NEXO", description: "Parque OOH — media kit 2026." },
   { companyName: "OMB VIA PUBLICA", description: "Parque OOH — media kit 2026." },
+  { companyName: "Marti Publicidad", description: "Parque OOH — disponibilidad 2026." },
   { companyName: "PC Carnevale", description: "Parque OOH — media kit 2026." },
   { companyName: "PUBLICAR", description: "Parque OOH — media kit 2026." },
   { companyName: "PUBLICITAR", description: "Parque OOH — media kit 2026." },
@@ -79,14 +80,20 @@ type DriveUnit = {
   metadata?: Record<string, string>;
 };
 
-function loadDriveInventory(): DriveUnit[] {
-  const p = path.join(__dirname, "data", "drive-inventory.json");
-  if (!fs.existsSync(p)) {
-    console.warn("Sin prisma/data/drive-inventory.json — solo proveedores. Corré: npm run import:drive");
-    return [];
-  }
+function loadJsonUnits(filename: string): DriveUnit[] {
+  const p = path.join(__dirname, "data", filename);
+  if (!fs.existsSync(p)) return [];
   const raw = JSON.parse(fs.readFileSync(p, "utf8")) as { units: DriveUnit[] };
   return raw.units ?? [];
+}
+
+function loadDriveInventory(): DriveUnit[] {
+  const drive = loadJsonUnits("drive-inventory.json");
+  const dispo = loadJsonUnits("dispo-inventory.json");
+  if (!drive.length) {
+    console.warn("Sin prisma/data/drive-inventory.json — solo proveedores / dispo. Corré: npm run import:drive");
+  }
+  return [...drive, ...dispo];
 }
 
 async function clearAll() {
