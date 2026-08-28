@@ -24,7 +24,7 @@ export async function importAudienceReport(
     });
 
     revalidatePath(`/explorar/${unitId}`);
-    revalidatePath("/admin/operaciones/analytics");
+    revalidatePath("/admin");
     return { ok: true };
   } catch {
     return { ok: false, error: "Sin permisos." };
