@@ -1,8 +1,11 @@
+import { normalizeImpactoDisplay } from "@/lib/inventory/impacto";
+
 export type InventoryUnitSpecs = {
   medida?: string;
   visibilidad?: string;
   caras?: string;
   impacto?: string;
+  impactoPeriodo?: string;
   frecuencia?: string;
   spot?: string;
   encendido?: string;
@@ -239,8 +242,11 @@ export function parseUnitSpecs(unit: SpecSource): InventoryUnitSpecs {
       /Impactos?\s*[:：]?\s*([\d.]+(?:\s*impactos?)?(?:\s*(?:semanales|diarios|mensuales))?)/i,
       /([\d.]{4,}\s*impactos?\s*(?:semanales|diarios|mensuales)?)/i,
     ]);
-  if (impacto && !/impacto/i.test(impacto)) {
-    impacto = `${impacto} impactos`;
+  let impactoPeriodo = meta.impactoPeriodo || "";
+  if (impacto) {
+    const normalized = normalizeImpactoDisplay(impacto);
+    impacto = normalized.impacto;
+    impactoPeriodo = normalized.periodo;
   }
 
   const frecuencia =
@@ -309,6 +315,7 @@ export function parseUnitSpecs(unit: SpecSource): InventoryUnitSpecs {
     ...(visibilidad ? { visibilidad } : {}),
     ...(caras ? { caras } : {}),
     ...(impacto ? { impacto } : {}),
+    ...(impactoPeriodo ? { impactoPeriodo } : {}),
     ...(encendido ? { encendido } : {}),
     ...(resolucion ? { resolucion } : {}),
     ...(pauta ? { pauta } : {}),
@@ -353,6 +360,7 @@ export function enrichMetadataWithSpecs(
   }
   assign("caras", specs.caras);
   assign("impacto", specs.impacto);
+  assign("impactoPeriodo", specs.impactoPeriodo);
   assign("frecuencia", specs.frecuencia);
   assign("spot", specs.spot);
   assign("encendido", specs.encendido);

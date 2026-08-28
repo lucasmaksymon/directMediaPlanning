@@ -45,6 +45,7 @@ const bodySchema = z.object({
         visibilidad: z.string().max(300).optional(),
         caras: z.string().max(80).optional(),
         impacto: z.string().max(200).optional(),
+        impactoPeriodo: z.enum(["diario", "semanal", "mensual"]).optional(),
         frecuencia: z.string().max(200).optional(),
         spot: z.string().max(200).optional(),
         encendido: z.string().max(200).optional(),

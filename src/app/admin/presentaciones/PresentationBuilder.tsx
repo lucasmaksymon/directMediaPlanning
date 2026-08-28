@@ -21,6 +21,13 @@ import { CSS } from "@dnd-kit/utilities";
 import { useTheme } from "next-themes";
 import { CLIENT_BRAND } from "@/lib/brand";
 import { cn } from "@/lib/cn";
+import { ensureUnitImpacto } from "@/app/actions/impacto";
+import {
+  IMPACTO_PERIODO_LABEL,
+  applyImpactoPeriodo,
+  detectImpactoPeriodo,
+  type ImpactoPeriodo,
+} from "@/lib/inventory/impacto";
 import { unitToSlideDefaults } from "@/lib/presentations/slide-data";
 import { normalizePresentationTheme } from "@/lib/presentations/theme";
 import type {
@@ -370,16 +377,20 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
 
   const selectedIds = useMemo(() => new Set(slides.map((s) => s.unitId)), [slides]);
 
-  function toggleUnit(unit: UnitCard) {
+  async function toggleUnit(unit: UnitCard) {
     setError(null);
-    setSlides((prev) => {
-      const exists = prev.find((s) => s.unitId === unit.id);
-      if (exists) {
+    const exists = slides.find((s) => s.unitId === unit.id);
+    if (exists) {
+      setSlides((prev) => {
         const next = prev.filter((s) => s.unitId !== unit.id);
         setActiveIndex((i) => Math.max(0, Math.min(i, next.length - 1)));
         return next;
-      }
-      const defaults = unitToSlideDefaults(unit);
+      });
+      return;
+    }
+
+    const defaults = unitToSlideDefaults(unit);
+    setSlides((prev) => {
       const next: EditableSlide[] = [
         ...prev,
         {
@@ -402,6 +413,17 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
       });
       return next;
     });
+
+    const res = await ensureUnitImpacto(unit.id);
+    if (res.ok) {
+      setSlides((prev) =>
+        prev.map((s) =>
+          s.unitId === unit.id
+            ? { ...s, impacto: res.impacto, impactoPeriodo: res.periodo }
+            : s,
+        ),
+      );
+    }
   }
 
   const sensors = useSensors(
@@ -471,6 +493,7 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
             visibilidad: s.visibilidad || undefined,
             caras: s.caras || undefined,
             impacto: s.impacto || undefined,
+            impactoPeriodo: s.impactoPeriodo || undefined,
             frecuencia: s.frecuencia || undefined,
             spot: s.spot || undefined,
             encendido: s.encendido || undefined,
@@ -831,12 +854,54 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
                       <label className={compactLabel} htmlFor={`slide-${key}`}>
                         {label}
                       </label>
-                      <input
-                        id={`slide-${key}`}
-                        className={cn(compactField, "mt-0.5")}
-                        value={activeSlide[key] ?? ""}
-                        onChange={(e) => updateActiveSlide({ [key]: e.target.value })}
-                      />
+                      {key === "impacto" ? (
+                        <div className="mt-0.5 flex gap-1.5">
+                          <input
+                            id={`slide-${key}`}
+                            className={cn(compactField, "min-w-0 flex-1")}
+                            value={activeSlide.impacto ?? ""}
+                            onChange={(e) => {
+                              const periodo =
+                                detectImpactoPeriodo(e.target.value) ||
+                                activeSlide.impactoPeriodo ||
+                                "semanal";
+                              updateActiveSlide({
+                                impacto: e.target.value,
+                                impactoPeriodo: periodo,
+                              });
+                            }}
+                          />
+                          <select
+                            className={cn(compactField, "w-[7.25rem] shrink-0")}
+                            value={
+                              activeSlide.impactoPeriodo ||
+                              detectImpactoPeriodo(activeSlide.impacto ?? "") ||
+                              "semanal"
+                            }
+                            onChange={(e) => {
+                              const periodo = e.target.value as ImpactoPeriodo;
+                              updateActiveSlide({
+                                impactoPeriodo: periodo,
+                                impacto: applyImpactoPeriodo(activeSlide.impacto ?? "", periodo),
+                              });
+                            }}
+                            aria-label="Periodicidad del impacto"
+                          >
+                            {(Object.keys(IMPACTO_PERIODO_LABEL) as ImpactoPeriodo[]).map((p) => (
+                              <option key={p} value={p}>
+                                {IMPACTO_PERIODO_LABEL[p]}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : (
+                        <input
+                          id={`slide-${key}`}
+                          className={cn(compactField, "mt-0.5")}
+                          value={activeSlide[key] ?? ""}
+                          onChange={(e) => updateActiveSlide({ [key]: e.target.value })}
+                        />
+                      )}
                     </div>
                   ))}
                 </div>

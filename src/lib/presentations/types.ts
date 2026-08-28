@@ -17,6 +17,7 @@ export type PresentationSlideInput = {
   visibilidad?: string;
   caras?: string;
   impacto?: string;
+  impactoPeriodo?: "diario" | "semanal" | "mensual";
   frecuencia?: string;
   spot?: string;
   encendido?: string;

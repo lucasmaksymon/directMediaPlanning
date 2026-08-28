@@ -3,6 +3,7 @@ import type {
   PresentationSlideInput,
 } from "@/lib/presentations/types";
 import { parseUnitSpecs, cleanLocationLabel } from "@/lib/inventory/unit-specs";
+import { normalizeImpactoDisplay } from "@/lib/inventory/impacto";
 import { formatArs } from "@/lib/format";
 
 function formatCostoMensual(amount?: string | number | null): string {
@@ -42,7 +43,10 @@ export function extractUnitSpecs(unit: InventoryUnitForPresentation) {
     medida: specs.medida || "",
     visibilidad: specs.visibilidad || "",
     caras: specs.caras || "",
-    impacto: specs.impacto || "",
+    impacto: specs.impacto ? normalizeImpactoDisplay(specs.impacto).impacto : "",
+    impactoPeriodo: specs.impacto
+      ? normalizeImpactoDisplay(specs.impacto).periodo
+      : undefined,
     frecuencia: specs.frecuencia || "",
     spot: specs.spot || "",
     encendido: specs.encendido || "",
@@ -65,6 +69,7 @@ export function unitToSlideDefaults(unit: InventoryUnitForPresentation): Present
     visibilidad: specs.visibilidad || undefined,
     caras: specs.caras || undefined,
     impacto: specs.impacto || undefined,
+    impactoPeriodo: specs.impactoPeriodo || undefined,
     frecuencia: specs.frecuencia || undefined,
     spot: specs.spot || undefined,
     encendido: specs.encendido || undefined,
@@ -82,6 +87,7 @@ export function slideSpecRows(slide: {
   visibilidad?: string;
   caras?: string;
   impacto?: string;
+  impactoPeriodo?: string;
   frecuencia?: string;
   spot?: string;
   encendido?: string;

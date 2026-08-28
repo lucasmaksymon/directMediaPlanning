@@ -10,7 +10,15 @@ export async function GET(req: Request) {
 
   const unit = await prisma.inventoryUnit.findUnique({
     where: { id: unitId, status: "published" },
-    select: { id: true, latitude: true, longitude: true, format: true, locationLabel: true, basePriceAmount: true },
+    select: {
+      id: true,
+      latitude: true,
+      longitude: true,
+      format: true,
+      locationLabel: true,
+      basePriceAmount: true,
+      metadata: true,
+    },
   });
   if (!unit) return NextResponse.json({ error: "Unidad no encontrada." }, { status: 404 });
   if (!unit.latitude || !unit.longitude) {
@@ -20,6 +28,15 @@ export async function GET(req: Request) {
   const pois = await getNearbyPOIs(unit.latitude, unit.longitude);
   const weeklyAudience = estimateWeeklyAudience(pois, unit.format);
   const cpm = estimateCPM(Number(unit.basePriceAmount), weeklyAudience);
+
+  const meta =
+    unit.metadata && typeof unit.metadata === "object"
+      ? (unit.metadata as Record<string, unknown>)
+      : {};
+  if (!String(meta.impacto ?? "").trim()) {
+    const { ensureInventoryImpacto } = await import("@/lib/inventory/estimate-impacto");
+    void ensureInventoryImpacto(unit.id);
+  }
 
   // AI insight
   let aiInsight = "";
