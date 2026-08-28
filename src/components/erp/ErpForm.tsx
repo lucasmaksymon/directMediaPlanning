@@ -33,7 +33,7 @@ export function ErpForm({
 }) {
   const router = useRouter();
   const editing = Boolean(cancelHref);
-  const [open, setOpen] = useState(defaultOpen ?? editing || !collapsible);
+  const [open, setOpen] = useState(defaultOpen ?? (editing || !collapsible));
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
   const [pending, start] = useTransition();

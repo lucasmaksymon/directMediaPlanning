@@ -512,7 +512,7 @@ async function main() {
       where: { paymentOrderId: po.id },
     });
     if (!existingTreasury) {
-      const lines = lot.treasury?.length
+      const lines: TreasuryLine[] = lot.treasury?.length
         ? lot.treasury
         : lot.notes
           ? [{ kind: /echeq|endoso/i.test(lot.notes) ? "echeq" : "transfer", amount, number: null }]

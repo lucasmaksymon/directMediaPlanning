@@ -200,7 +200,7 @@ function NavLinks({
                   ? "text-foreground"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
-              onClick={() => setOpenSection(isOpen ? null : group.title)}
+              onClick={() => setOpenSection(isOpen ? null : group.title ?? null)}
               type="button"
             >
               <span className="min-w-0 flex-1 truncate">{group.title}</span>

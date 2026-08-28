@@ -4,7 +4,7 @@ import { ERP_ORDER, nextAutoOrderEstado, requiredString } from "@/lib/erp";
 
 export type ErpResult = { ok: true } | { ok: false; error: string };
 
-export function erpFail(e: unknown): ErpResult {
+export function erpFail(e: unknown): Extract<ErpResult, { ok: false }> {
   if (e instanceof Prisma.PrismaClientKnownRequestError) {
     if (e.code === "P2002") return { ok: false, error: "Ya existe un registro con esos datos." };
     if (e.code === "P2003" || e.code === "P2014") {
