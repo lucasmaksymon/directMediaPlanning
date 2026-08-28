@@ -11,17 +11,27 @@ import { ERP_ORDER } from "@/lib/erp";
 
 export const metadata = { title: productTitle("Administración") };
 
+async function loadHubStats() {
+  try {
+    const [clients, saleOrders, openOrders, invoices, expenses] = await Promise.all([
+      prisma.erpClient.count(),
+      prisma.erpSaleOrder.count(),
+      prisma.erpSaleOrder.count({ where: { estado: ERP_ORDER.issued } }),
+      prisma.erpSaleInvoice.count(),
+      prisma.erpExpense.count(),
+    ]);
+    return { clients, saleOrders, openOrders, invoices, expenses };
+  } catch (e) {
+    console.error("[backoffice] no se pudieron leer las tablas ERP", e);
+    return { clients: 0, saleOrders: 0, openOrders: 0, invoices: 0, expenses: 0 };
+  }
+}
+
 export default async function BackofficeHomePage() {
   const session = await auth();
   if (!session?.user || session.user.role !== "admin") redirect("/");
 
-  const [clients, saleOrders, openOrders, invoices, expenses] = await Promise.all([
-    prisma.erpClient.count(),
-    prisma.erpSaleOrder.count(),
-    prisma.erpSaleOrder.count({ where: { estado: ERP_ORDER.issued } }),
-    prisma.erpSaleInvoice.count(),
-    prisma.erpExpense.count(),
-  ]);
+  const { clients, saleOrders, openOrders, invoices, expenses } = await loadHubStats();
 
   return (
     <div className={cn(adminPage, "gap-5")}>

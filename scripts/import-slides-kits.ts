@@ -5,9 +5,13 @@
  *
  * Uso: npx tsx scripts/import-slides-kits.ts
  *      DRY_RUN=1 npx tsx scripts/import-slides-kits.ts
+ *
+ * Si faltan los PPTX en .tmp/slides-import/, los descarga desde Google Slides.
  */
 import * as fs from "fs";
+import * as https from "https";
 import * as path from "path";
+import { createWriteStream } from "fs";
 import { execFileSync } from "child_process";
 import {
   InventoryFormat,
@@ -30,12 +34,14 @@ const DRY_RUN = process.env.DRY_RUN === "1";
 const KITS = [
   {
     file: path.join(WORK, "pres1.pptx"),
+    presentationId: "1x5zTGJmjVkhIW_h8iXl_0FBOasLOxWuOW9_jjXgL3Ik",
     providerName: "SARMIENTO",
     source: "slides-sarmiento",
     sourceFile: "Google Slides / SARMIENTO columnas Buenos Aires",
   },
   {
     file: path.join(WORK, "pres2.pptx"),
+    presentationId: "1n0NE0burHcdIWqUoHY1GJXZHqZ4-ruQG390uD2SVq_Q",
     providerName: "INKUESTO MEDIA",
     source: "slides-inkuesto",
     sourceFile: "Google Slides / InKuesto Media kit",
@@ -358,13 +364,89 @@ function baseLocationKey(label: string) {
   );
 }
 
+function isPptxFile(filePath: string) {
+  if (!fs.existsSync(filePath) || fs.statSync(filePath).size < 1000) return false;
+  const head = Buffer.alloc(4);
+  const fd = fs.openSync(filePath, "r");
+  fs.readSync(fd, head, 0, 4, 0);
+  fs.closeSync(fd);
+  return head[0] === 0x50 && head[1] === 0x4b;
+}
+
+function downloadSlidesPptx(presentationId: string, dest: string): Promise<void> {
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  const url = `https://docs.google.com/presentation/d/${presentationId}/export/pptx`;
+  return new Promise((resolve, reject) => {
+    const follow = (u: string, redirects = 0) => {
+      if (redirects > 8) return reject(new Error(`demasiados redirects al bajar ${presentationId}`));
+      https
+        .get(u, { headers: { "User-Agent": "Mozilla/5.0" } }, (res) => {
+          if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+            const next = res.headers.location.startsWith("http")
+              ? res.headers.location
+              : new URL(res.headers.location, u).href;
+            follow(next, redirects + 1);
+            return;
+          }
+          if (res.statusCode && res.statusCode >= 400) {
+            reject(new Error(`HTTP ${res.statusCode} al bajar ${presentationId}`));
+            return;
+          }
+          const tmp = dest + ".part";
+          const file = createWriteStream(tmp);
+          res.pipe(file);
+          file.on("finish", () => {
+            file.close();
+            if (isPptxFile(tmp)) {
+              fs.renameSync(tmp, dest);
+              resolve();
+              return;
+            }
+            const head = fs.existsSync(tmp) ? fs.readFileSync(tmp, "utf8").slice(0, 200) : "";
+            if (fs.existsSync(tmp)) fs.unlinkSync(tmp);
+            reject(new Error(`La descarga no es un PPTX (${presentationId}): ${head.replace(/\s+/g, " ").slice(0, 120)}`));
+          });
+        })
+        .on("error", reject);
+    };
+    follow(url);
+  });
+}
+
+async function ensureKitPptx(kit: (typeof KITS)[number]) {
+  if (isPptxFile(kit.file)) {
+    console.log(`  cache ${path.basename(kit.file)} (${Math.round(fs.statSync(kit.file).size / 1024)} KB)`);
+    return;
+  }
+  process.stdout.write(`  descargando ${kit.providerName}… `);
+  await downloadSlidesPptx(kit.presentationId, kit.file);
+  console.log(`ok ${Math.round(fs.statSync(kit.file).size / 1024)} KB`);
+}
+
+function unzipPptx(pptxPath: string, tmpRoot: string) {
+  const py = "import zipfile,sys; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])";
+  for (const bin of ["python3", "python"]) {
+    try {
+      execFileSync(bin, ["-c", py, pptxPath, tmpRoot], { stdio: "ignore" });
+      return;
+    } catch {
+      /* probar siguiente */
+    }
+  }
+  try {
+    execFileSync("unzip", ["-q", "-o", pptxPath, "-d", tmpRoot], { stdio: "ignore" });
+    return;
+  } catch {
+    /* caer al error de abajo */
+  }
+  throw new Error("No se pudo descomprimir el PPTX: instala python3 o unzip.");
+}
+
 function extractPptx(pptxPath: string) {
   const tmpRoot = path.join(WORK, "unzip", slug(path.basename(pptxPath)));
   fs.rmSync(tmpRoot, { recursive: true, force: true });
   fs.mkdirSync(tmpRoot, { recursive: true });
-  execFileSync("python", ["-c", "import zipfile,sys; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])", pptxPath, tmpRoot], {
-    stdio: "ignore",
-  });
+  unzipPptx(pptxPath, tmpRoot);
   const slidesDir = path.join(tmpRoot, "ppt", "slides");
   const slides: { slideNum: number; texts: string[]; rels: string }[] = [];
   if (!fs.existsSync(slidesDir)) return { tmpRoot, slides };
@@ -697,12 +779,11 @@ async function persistDb(units: ParsedUnit[]) {
 }
 
 async function main() {
+  fs.mkdirSync(WORK, { recursive: true });
   const units: ParsedUnit[] = [];
   for (const kit of KITS) {
-    if (!fs.existsSync(kit.file)) {
-      throw new Error(`Falta ${kit.file}. Descargá el PPTX antes de importar.`);
-    }
     console.log(`\n=== ${kit.providerName} ===`);
+    await ensureKitPptx(kit);
     const parsed = parseRawSlides(kit.file);
     console.log(`  slides con dirección: ${parsed.length}`);
     const merged = mergeRawSlides(parsed);
