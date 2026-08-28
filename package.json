@@ -13,10 +13,13 @@
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
     "import:drive": "npx tsx scripts/import-drive-kits.ts",
+    "import:slides": "npx tsx scripts/import-slides-kits.ts",
     "import:dispo": "npx tsx scripts/import-dispo.ts",
+    "import:admin-2026": "python scripts/parse-admin-2026.py && npx tsx scripts/import-admin-2026.ts",
     "backfill:impacto": "npx tsx scripts/backfill-impacto.ts",
     "enrich:specs": "npx tsx scripts/enrich-inventory-specs.ts",
-    "geocode:inventory": "npx tsx scripts/geocode-inventory.ts"
+    "geocode:inventory": "npx tsx scripts/geocode-inventory.ts",
+    "sync:erp-catalog": "npx tsx scripts/sync-erp-catalog.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

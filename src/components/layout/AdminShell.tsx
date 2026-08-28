@@ -2,6 +2,7 @@
 
 export {
   AdminShell,
+  BackofficeShell,
   AdvertiserShell,
   ProviderShell,
   AgencyShell,

@@ -11,7 +11,7 @@ export default auth((req) => {
     if (role !== "provider" && role !== "admin") return NextResponse.redirect(new URL("/", req.url));
   }
 
-  if (pathname.startsWith("/admin")) {
+  if (pathname.startsWith("/admin") || pathname.startsWith("/backoffice")) {
     if (!session) return NextResponse.redirect(new URL("/login", req.url));
     if (role !== "admin") return NextResponse.redirect(new URL("/", req.url));
   }
@@ -30,5 +30,13 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/provider/:path*", "/advertiser/:path*", "/admin/:path*", "/agency/:path*"],
+  matcher: [
+    "/provider/:path*",
+    "/advertiser/:path*",
+    "/admin",
+    "/admin/:path*",
+    "/backoffice",
+    "/backoffice/:path*",
+    "/agency/:path*",
+  ],
 };

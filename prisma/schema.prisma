@@ -145,6 +145,7 @@ model User {
   agencyMemberships AgencyClient[]     @relation("AgencyClients")
   campaigns         Campaign[]
   creativeAssets    CreativeAsset[]
+  erpClients        ErpClient[]
 }
 
 model AdvertiserProfile {
@@ -176,6 +177,7 @@ model ProviderProfile {
   circuits       Circuit[]
   screens        Screen[]
   playlists      Playlist[]
+  erpVendors     ErpVendor[]
 }
 
 model InventoryUnit {
@@ -506,4 +508,411 @@ model AgencyClient {
   createdAt        DateTime      @default(now())
 
   @@unique([agencyId, advertiserId])
+}
+
+// ---------------------------------------------------------------------------
+// ERP interno (espejo de ADMINISTRACION). No mezclar con Reservation/Payment.
+// Estados numéricos se conservan: maestros 0/1, órdenes 0=borrador 1=emitida 4=facturada.
+// ---------------------------------------------------------------------------
+
+model ErpCompany {
+  id          String   @id @default(cuid())
+  name        String
+  currency    String   @default("ARS")
+  paymentDays Int      @default(30)
+  estado      Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  clients     ErpClient[]
+}
+
+model ErpClient {
+  id              String     @id @default(cuid())
+  name            String
+  companyId       String
+  company         ErpCompany @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  executiveUserId String?
+  executive       User?      @relation(fields: [executiveUserId], references: [id], onDelete: SetNull)
+  taxId           String?
+  address         String?
+  contact         String?
+  email           String?
+  phone           String?
+  costRate        Decimal    @default(0) @db.Decimal(8, 4)
+  agencyFee       Decimal    @default(0) @db.Decimal(8, 4)
+  taxCondition    Int        @default(0)
+  estado          Int        @default(1)
+  industry        String?
+  legalName       String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  saleOrders      ErpSaleOrder[]
+  saleInvoices    ErpSaleInvoice[]
+  saleReceipts    ErpSaleReceipt[]
+
+  @@index([companyId])
+  @@index([name])
+}
+
+model ErpVendor {
+  id                   String           @id @default(cuid())
+  kind                 Int              @default(0)
+  name                 String
+  taxId                String?
+  address              String?
+  contact              String?
+  email                String?
+  phone                String?
+  cbu                  String?
+  taxCondition         Int              @default(0)
+  estado               Int              @default(1)
+  paymentDays          Int              @default(30)
+  nextmediaProviderId  String?
+  nextmediaProvider    ProviderProfile? @relation(fields: [nextmediaProviderId], references: [id], onDelete: SetNull)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  purchaseOrders       ErpPurchaseOrder[]
+  productionOrders     ErpProductionOrder[]
+  purchaseInvoices     ErpPurchaseInvoice[]
+  purchaseReceipts     ErpPurchaseReceipt[]
+  paymentOrders        ErpPaymentOrder[]
+
+  @@index([kind, name])
+}
+
+model ErpProvince {
+  id        String    @id @default(cuid())
+  name      String
+  estado    Int       @default(1)
+  createdAt DateTime  @default(now())
+  cities    ErpCity[]
+}
+
+model ErpCity {
+  id         String      @id @default(cuid())
+  provinceId String
+  province   ErpProvince @relation(fields: [provinceId], references: [id], onDelete: Cascade)
+  name       String
+  estado     Int         @default(1)
+  createdAt  DateTime    @default(now())
+
+  @@index([provinceId])
+}
+
+model ErpCurrency {
+  id        String   @id @default(cuid())
+  code      String
+  name      String
+  rate      Decimal  @default(1) @db.Decimal(14, 6)
+  estado    Int      @default(1)
+  createdAt DateTime @default(now())
+}
+
+/// Soporte / producto de GESTIÓN (CPM, MUPIS, Pantalla LED…).
+model ErpElement {
+  id        String   @id @default(cuid())
+  name      String
+  estado    Int      @default(1)
+  createdAt DateTime @default(now())
+}
+
+model ErpSaleOrder {
+  id            String   @id @default(cuid())
+  clientId      String
+  client        ErpClient @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  issuedAt      DateTime
+  month         Int
+  year          Int
+  number        String
+  net           Decimal  @db.Decimal(14, 2)
+  vat           Decimal  @db.Decimal(14, 2)
+  amount        Decimal  @db.Decimal(14, 2)
+  estado        Int      @default(1)
+  attachmentExt String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  items            ErpCampaignItem[]
+  gestionLines     ErpGestionLine[]
+  purchaseOrders   ErpPurchaseOrder[]
+  productionOrders ErpProductionOrder[]
+  invoices         ErpSaleInvoice[]
+
+  @@index([clientId, year, month])
+  @@index([number])
+}
+
+/// Ítem de campaña (hoja GESTIÓN: elemento, plaza, cantidad, período).
+model ErpCampaignItem {
+  id          String       @id @default(cuid())
+  saleOrderId String
+  saleOrder   ErpSaleOrder @relation(fields: [saleOrderId], references: [id], onDelete: Cascade)
+  element     String
+  location    String?
+  quantity    Decimal      @default(0) @db.Decimal(12, 2)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  createdAt   DateTime     @default(now())
+
+  @@index([saleOrderId])
+}
+
+/// Fila de la hoja GESTIÓN: ítem + FC compra + producción + FC venta.
+model ErpGestionLine {
+  id                   String              @id @default(cuid())
+  saleOrderId          String
+  saleOrder            ErpSaleOrder        @relation(fields: [saleOrderId], references: [id], onDelete: Cascade)
+  sort                 Int                 @default(0)
+  element              String?
+  location             String?
+  quantity             Decimal             @default(0) @db.Decimal(12, 2)
+  startsAt             DateTime?
+  endsAt               DateTime?
+  purchaseInvoiceId    String?
+  purchaseInvoice      ErpPurchaseInvoice? @relation("GestionPurchase", fields: [purchaseInvoiceId], references: [id], onDelete: SetNull)
+  productionInvoiceId  String?
+  productionInvoice    ErpPurchaseInvoice? @relation("GestionProduction", fields: [productionInvoiceId], references: [id], onDelete: SetNull)
+  saleInvoiceId        String?
+  saleInvoice          ErpSaleInvoice?     @relation(fields: [saleInvoiceId], references: [id], onDelete: SetNull)
+  createdAt            DateTime            @default(now())
+
+  @@index([saleOrderId, sort])
+}
+
+model ErpPurchaseOrder {
+  id            String       @id @default(cuid())
+  saleOrderId   String
+  saleOrder     ErpSaleOrder @relation(fields: [saleOrderId], references: [id], onDelete: Restrict)
+  vendorId      String
+  vendor        ErpVendor    @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  issuedAt      DateTime
+  number        String
+  net           Decimal      @db.Decimal(14, 2)
+  vat           Decimal      @db.Decimal(14, 2)
+  amount        Decimal      @db.Decimal(14, 2)
+  estado        Int          @default(1)
+  attachmentExt String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  invoiceLinks  ErpPurchaseInvoiceOrder[]
+
+  @@index([saleOrderId])
+  @@index([vendorId])
+}
+
+model ErpProductionOrder {
+  id            String       @id @default(cuid())
+  saleOrderId   String
+  saleOrder     ErpSaleOrder @relation(fields: [saleOrderId], references: [id], onDelete: Restrict)
+  vendorId      String
+  vendor        ErpVendor    @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  issuedAt      DateTime
+  number        String
+  net           Decimal      @db.Decimal(14, 2)
+  vat           Decimal      @db.Decimal(14, 2)
+  amount        Decimal      @db.Decimal(14, 2)
+  estado        Int          @default(1)
+  attachmentExt String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  invoiceLinks  ErpPurchaseInvoiceOrder[] @relation("ProductionInvoiceOrders")
+
+  @@index([saleOrderId])
+  @@index([vendorId])
+}
+
+model ErpSaleInvoice {
+  id            String       @id @default(cuid())
+  clientId      String
+  client        ErpClient    @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  saleOrderId   String
+  saleOrder     ErpSaleOrder @relation(fields: [saleOrderId], references: [id], onDelete: Restrict)
+  issuedAt      DateTime
+  dueAt         DateTime
+  docType       String
+  pos           Int
+  number        Int
+  amount        Decimal      @db.Decimal(14, 2)
+  vat           Decimal      @db.Decimal(14, 2)
+  legalName     String?
+  detail        String?
+  collected     Decimal      @default(0) @db.Decimal(14, 2)
+  receiptRef    String?
+  retVat        Decimal      @default(0) @db.Decimal(14, 2)
+  retSuss       Decimal      @default(0) @db.Decimal(14, 2)
+  retGan        Decimal      @default(0) @db.Decimal(14, 2)
+  retIibb       Decimal      @default(0) @db.Decimal(14, 2)
+  echeq         Decimal      @default(0) @db.Decimal(14, 2)
+  bank          Decimal      @default(0) @db.Decimal(14, 2)
+  collectStatus Int          @default(0)
+  attachmentExt String?
+  attachmentUrl String?
+  createdAt     DateTime     @default(now())
+  receiptLinks  ErpSaleReceiptInvoice[]
+  gestionLines  ErpGestionLine[]
+
+  @@index([saleOrderId])
+  @@index([clientId])
+}
+
+model ErpPurchaseInvoice {
+  id            String   @id @default(cuid())
+  vendorId      String
+  vendor        ErpVendor @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  issuedAt      DateTime
+  dueAt         DateTime
+  docType       String
+  pos           Int
+  number        Int
+  amount        Decimal  @db.Decimal(14, 2)
+  vat           Decimal  @db.Decimal(14, 2)
+  vatWithholding Decimal @default(0) @db.Decimal(14, 2)
+  iibbCaba      Decimal  @default(0) @db.Decimal(14, 2)
+  iibbBsAs      Decimal  @default(0) @db.Decimal(14, 2)
+  internalTax   Decimal  @default(0) @db.Decimal(14, 2)
+  nonTaxable    Decimal  @default(0) @db.Decimal(14, 2)
+  isVatPurchase Boolean  @default(false)
+  isCreditNote  Boolean  @default(false)
+  commission    Decimal  @default(0) @db.Decimal(14, 2)
+  diegoFee      Decimal  @default(0) @db.Decimal(14, 2)
+  payStatus     Int      @default(0)
+  attachmentExt String?
+  attachmentUrl String?
+  createdAt     DateTime @default(now())
+  orderLinks    ErpPurchaseInvoiceOrder[]
+  receiptLinks  ErpPurchaseReceiptInvoice[]
+  paymentLinks  ErpPaymentOrderInvoice[]
+  gestionPurchases   ErpGestionLine[] @relation("GestionPurchase")
+  gestionProductions ErpGestionLine[] @relation("GestionProduction")
+
+  @@index([vendorId])
+}
+
+model ErpPurchaseInvoiceOrder {
+  id                 String              @id @default(cuid())
+  invoiceId          String
+  invoice            ErpPurchaseInvoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  purchaseOrderId    String?
+  purchaseOrder      ErpPurchaseOrder?   @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  productionOrderId  String?
+  productionOrder    ErpProductionOrder? @relation("ProductionInvoiceOrders", fields: [productionOrderId], references: [id], onDelete: SetNull)
+  vendorKind         Int
+  createdAt          DateTime            @default(now())
+}
+
+model ErpSaleReceipt {
+  id            String   @id @default(cuid())
+  clientId      String
+  client        ErpClient @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  issuedAt      DateTime
+  number        Int
+  amount        Decimal  @db.Decimal(14, 2)
+  balance       Decimal  @db.Decimal(14, 2)
+  attachmentExt String?
+  createdAt     DateTime @default(now())
+  invoices      ErpSaleReceiptInvoice[]
+  payments      ErpTreasuryPayment[]
+
+  @@index([clientId])
+}
+
+model ErpSaleReceiptInvoice {
+  id        String         @id @default(cuid())
+  receiptId String
+  receipt   ErpSaleReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  invoiceId String
+  invoice   ErpSaleInvoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@unique([receiptId, invoiceId])
+}
+
+model ErpPurchaseReceipt {
+  id            String    @id @default(cuid())
+  vendorId      String
+  vendor        ErpVendor @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  issuedAt      DateTime
+  number        Int
+  amount        Decimal   @db.Decimal(14, 2)
+  balance       Decimal   @db.Decimal(14, 2)
+  attachmentExt String?
+  createdAt     DateTime  @default(now())
+  invoices      ErpPurchaseReceiptInvoice[]
+  payments      ErpTreasuryPayment[]
+
+  @@index([vendorId])
+}
+
+model ErpPurchaseReceiptInvoice {
+  id        String             @id @default(cuid())
+  receiptId String
+  receipt   ErpPurchaseReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  invoiceId String
+  invoice   ErpPurchaseInvoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@unique([receiptId, invoiceId])
+}
+
+model ErpPaymentOrder {
+  id        String    @id @default(cuid())
+  vendorId  String
+  vendor    ErpVendor @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  issuedAt  DateTime
+  number    Int
+  amount    Decimal   @db.Decimal(14, 2)
+  balance   Decimal   @db.Decimal(14, 2)
+  notes     String?
+  createdAt DateTime  @default(now())
+  invoices  ErpPaymentOrderInvoice[]
+  treasury  ErpTreasuryPayment[]
+
+  @@index([vendorId])
+}
+
+model ErpPaymentOrderInvoice {
+  id             String             @id @default(cuid())
+  paymentOrderId String
+  paymentOrder   ErpPaymentOrder    @relation(fields: [paymentOrderId], references: [id], onDelete: Cascade)
+  invoiceId      String
+  invoice        ErpPurchaseInvoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@unique([paymentOrderId, invoiceId])
+}
+
+/// pagos del legado. tipoPago=1 es cheque.
+model ErpTreasuryPayment {
+  id                 String              @id @default(cuid())
+  saleReceiptId      String?
+  saleReceipt        ErpSaleReceipt?     @relation(fields: [saleReceiptId], references: [id], onDelete: SetNull)
+  purchaseReceiptId  String?
+  purchaseReceipt    ErpPurchaseReceipt? @relation(fields: [purchaseReceiptId], references: [id], onDelete: SetNull)
+  paymentOrderId     String?
+  paymentOrder       ErpPaymentOrder?    @relation(fields: [paymentOrderId], references: [id], onDelete: SetNull)
+  paymentKind        Int
+  number             String?
+  notes              String?
+  issuedAt           DateTime?
+  paidAt             DateTime?
+  checkOrder         Int                 @default(0)
+  checkType          Int                 @default(0)
+  checkMode          Int                 @default(0)
+  amount             Decimal             @db.Decimal(14, 2)
+  estado             Int                 @default(0)
+  createdAt          DateTime            @default(now())
+
+  @@index([saleReceiptId])
+  @@index([purchaseReceiptId])
+  @@index([paymentOrderId])
+  @@index([paymentKind, estado])
+}
+
+model ErpExpense {
+  id           String   @id @default(cuid())
+  month        Int
+  year         Int
+  fixed        Decimal  @default(0) @db.Decimal(14, 2)
+  bank         Decimal  @default(0) @db.Decimal(14, 2)
+  vat          Decimal  @default(0) @db.Decimal(14, 2)
+  commissions  Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt    DateTime @default(now())
+
+  @@unique([month, year])
 }

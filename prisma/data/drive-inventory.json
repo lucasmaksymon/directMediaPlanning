@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-25T12:33:28.079Z",
-  "count": 1033,
+  "generatedAt": "2026-08-28T21:23:57.978Z",
+  "count": 1090,
   "byProvider": {
     "BBYMC": 36,
     "BILLBOARD": 69,
@@ -18,7 +18,9 @@
     "ATACAMA": 14,
     "DA3": 13,
     "IDEAS CREATIVAS": 46,
-    "NextMedia Paquetes": 34
+    "NextMedia Paquetes": 34,
+    "SARMIENTO": 8,
+    "INKUESTO MEDIA": 49
   },
   "units": [
     {
@@ -22627,10 +22629,1149 @@
       "imagePath": "/inventory/wallstreet/espacio-caba-av-9-de-julio-y-av-pte-roque-saenz-pena-s86.jpg",
       "latitude": -34.6037,
       "longitude": -58.3816
+    },
+    {
+      "providerName": "SARMIENTO",
+      "name": "Columna bifaz — CABA — Autopista Illia | KDT - Sentido hacia Capital (Cara a Provincia)",
+      "locationLabel": "Autopista Illia | KDT - Sentido hacia Capital (Cara a Provincia)",
+      "description": "Medida: 10 x 6 m\nCobertura neta: 1.137.381\nImpactos: 2.185.347 (datos semanales)",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/sarmiento/columna-bifaz-caba-autopista-illia-kdt-sentido-hacia-capital-s2.jpg",
+      "sourceFile": "Google Slides / SARMIENTO columnas Buenos Aires",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "CABA",
+        "medida": "10 x 6 m",
+        "coberturaNeta": "1.137.381",
+        "impacto": "2.185.347 semanales",
+        "source": "slides-sarmiento",
+        "visibilidad": "hacia Capital (Cara a Provincia)",
+        "caras": "Doble",
+        "impactoPeriodo": "semanal",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Autopista%20Illia%20%7C%20KDT%20-%20Sentido%20hacia%20Capital%20(Cara%20a%20Provincia)%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "SARMIENTO",
+      "name": "Columna bifaz — CABA — Autopista Illia | KDT - Sentido hacia Capital (Cara a Capital)",
+      "locationLabel": "Autopista Illia | KDT - Sentido hacia Capital (Cara a Capital)",
+      "description": "Medida: 10 x 6 m\nCobertura neta: 1.437.337\nImpactos: 2.832.264 (datos semanales)",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/sarmiento/columna-bifaz-caba-autopista-illia-kdt-sentido-hacia-capital-s3.jpg",
+      "sourceFile": "Google Slides / SARMIENTO columnas Buenos Aires",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "CABA",
+        "medida": "10 x 6 m",
+        "coberturaNeta": "1.437.337",
+        "impacto": "2.832.264 semanales",
+        "source": "slides-sarmiento",
+        "visibilidad": "hacia Capital (Cara a Capital)",
+        "caras": "Doble",
+        "impactoPeriodo": "semanal",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Autopista%20Illia%20%7C%20KDT%20-%20Sentido%20hacia%20Capital%20(Cara%20a%20Capital)%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "SARMIENTO",
+      "name": "Columna bifaz — CABA — Autopista Illia | KDT - Sentido hacia Provincia (Cara a Capital)",
+      "locationLabel": "Autopista Illia | KDT - Sentido hacia Provincia (Cara a Capital)",
+      "description": "Medida: 10 x 6 m\nCobertura neta: 1.098.739\nImpactos: 2.087.652 (datos semanales)",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/sarmiento/columna-bifaz-caba-autopista-illia-kdt-sentido-hacia-provinc-s4.jpg",
+      "sourceFile": "Google Slides / SARMIENTO columnas Buenos Aires",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "CABA",
+        "medida": "10 x 6 m",
+        "coberturaNeta": "1.098.739",
+        "impacto": "2.087.652 semanales",
+        "source": "slides-sarmiento",
+        "visibilidad": "hacia Provincia (Cara a Capital)",
+        "caras": "Doble",
+        "impactoPeriodo": "semanal",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Autopista%20Illia%20%7C%20KDT%20-%20Sentido%20hacia%20Provincia%20(Cara%20a%20Capital)%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "SARMIENTO",
+      "name": "Columna bifaz — CABA — Autopista Illia | KDT - Sentido hacia Provincia (Cara a Provincia)",
+      "locationLabel": "Autopista Illia | KDT - Sentido hacia Provincia (Cara a Provincia)",
+      "description": "Medida: 10 x 6 m\nCobertura neta: 1.090.428\nImpactos: 2.076.521 (datos semanales)",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/sarmiento/columna-bifaz-caba-autopista-illia-kdt-sentido-hacia-provinc-s5.jpg",
+      "sourceFile": "Google Slides / SARMIENTO columnas Buenos Aires",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "CABA",
+        "medida": "10 x 6 m",
+        "coberturaNeta": "1.090.428",
+        "impacto": "2.076.521 semanales",
+        "source": "slides-sarmiento",
+        "visibilidad": "hacia Provincia (Cara a Provincia)",
+        "caras": "Doble",
+        "impactoPeriodo": "semanal",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Autopista%20Illia%20%7C%20KDT%20-%20Sentido%20hacia%20Provincia%20(Cara%20a%20Provincia)%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "SARMIENTO",
+      "name": "Columna bifaz — CABA — Au. Illia y Rotonda Av. Sarmiento (Cara a Capital)",
+      "locationLabel": "Au. Illia y Rotonda Av. Sarmiento (Cara a Capital)",
+      "description": "Medida: 10 x 6 m\nCobertura neta: 1.091.742\nImpactos: 2.097.657 (datos semanales)",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/sarmiento/columna-bifaz-caba-au-illia-y-rotonda-av-sarmiento-cara-a-ca-s7.jpg",
+      "sourceFile": "Google Slides / SARMIENTO columnas Buenos Aires",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "CABA",
+        "medida": "10 x 6 m",
+        "coberturaNeta": "1.091.742",
+        "impacto": "2.097.657 semanales",
+        "source": "slides-sarmiento",
+        "caras": "Doble",
+        "impactoPeriodo": "semanal",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Au.%20Illia%20y%20Rotonda%20Av.%20Sarmiento%20(Cara%20a%20Capital)%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "SARMIENTO",
+      "name": "Columna bifaz — CABA — Au. Illia y Rotonda Av. Sarmiento (Cara a Provincia)",
+      "locationLabel": "Au. Illia y Rotonda Av. Sarmiento (Cara a Provincia)",
+      "description": "Medida: 10 x 6 m\nCobertura neta: 1.451.742\nImpactos: 2.797.697 (datos semanales)",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/sarmiento/columna-bifaz-caba-au-illia-y-rotonda-av-sarmiento-cara-a-pr-s8.jpg",
+      "sourceFile": "Google Slides / SARMIENTO columnas Buenos Aires",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "CABA",
+        "medida": "10 x 6 m",
+        "coberturaNeta": "1.451.742",
+        "impacto": "2.797.697 semanales",
+        "source": "slides-sarmiento",
+        "caras": "Doble",
+        "impactoPeriodo": "semanal",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Au.%20Illia%20y%20Rotonda%20Av.%20Sarmiento%20(Cara%20a%20Provincia)%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "SARMIENTO",
+      "name": "Columna bifaz — CABA — Av. Cantilo Int. Puente Guiraldes (Cara a Provincia)",
+      "locationLabel": "Av. Cantilo Int. Puente Guiraldes (Cara a Provincia)",
+      "description": "Medida: 11,9 x 5 m\nCobertura neta: 841.340\nImpactos: 1.611.393 (datos semanales)",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/sarmiento/columna-bifaz-caba-av-cantilo-int-puente-guiraldes-cara-a-pr-s10.png",
+      "sourceFile": "Google Slides / SARMIENTO columnas Buenos Aires",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "CABA",
+        "medida": "11,9 x 5 m",
+        "coberturaNeta": "841.340",
+        "impacto": "1.611.393 semanales",
+        "source": "slides-sarmiento",
+        "caras": "Doble",
+        "impactoPeriodo": "semanal",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Av.%20Cantilo%20Int.%20Puente%20Guiraldes%20(Cara%20a%20Provincia)%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "SARMIENTO",
+      "name": "Columna bifaz — CABA — Av. Cantilo Int. Puente Guiraldes (Cara a Capital)",
+      "locationLabel": "Av. Cantilo Int. Puente Guiraldes (Cara a Capital)",
+      "description": "Medida: 10 x 6 m\nCobertura neta: 841.340\nImpactos: 1.611.393 (datos semanales)",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/sarmiento/columna-bifaz-caba-av-cantilo-int-puente-guiraldes-cara-a-ca-s11.jpg",
+      "sourceFile": "Google Slides / SARMIENTO columnas Buenos Aires",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "CABA",
+        "medida": "10 x 6 m",
+        "coberturaNeta": "841.340",
+        "impacto": "1.611.393 semanales",
+        "source": "slides-sarmiento",
+        "caras": "Doble",
+        "impactoPeriodo": "semanal",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Av.%20Cantilo%20Int.%20Puente%20Guiraldes%20(Cara%20a%20Capital)%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Columna bifaz — CABA — Av. Lugones y Puente Labruna",
+      "locationLabel": "Av. Lugones y Puente Labruna",
+      "description": "Medida: 12,2 x 5,2 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/columna-bifaz-caba-av-lugones-y-puente-labruna-s4.png",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "CABA",
+        "medida": "12,2 x 5,2 m",
+        "source": "slides-inkuesto",
+        "caras": "Doble",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Av.%20Lugones%20y%20Puente%20Labruna%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Columna bifaz — CABA — Av. Paseo Colón y Av. San Juan",
+      "locationLabel": "Av. Paseo Colón y Av. San Juan",
+      "description": "Medida: 10 x 6 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/columna-bifaz-caba-av-paseo-colon-y-av-san-juan-s6.png",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "CABA",
+        "medida": "10 x 6 m",
+        "source": "slides-inkuesto",
+        "caras": "Doble",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Av.%20Paseo%20Col%C3%B3n%20y%20Av.%20San%20Juan%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Columna bifaz — CABA — Av. Lugones | KDT (Cara a Capital)",
+      "locationLabel": "Av. Lugones | KDT (Cara a Capital)",
+      "description": "Medida: 12 x 5 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/columna-bifaz-caba-av-lugones-kdt-cara-a-capital-s8.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "CABA",
+        "medida": "12 x 5 m",
+        "source": "slides-inkuesto",
+        "caras": "Doble",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Av.%20Lugones%20%7C%20KDT%20(Cara%20a%20Capital)%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Columna bifaz — CABA — Av. Lugones KDT (Cara a Provincia)",
+      "locationLabel": "Av. Lugones KDT (Cara a Provincia)",
+      "description": "Medida: 12 x 5 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/columna-bifaz-caba-av-lugones-kdt-cara-a-provincia-s9.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "CABA",
+        "medida": "12 x 5 m",
+        "source": "slides-inkuesto",
+        "caras": "Doble",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Av.%20Lugones%20KDT%20(Cara%20a%20Provincia)%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Columna bifaz — CABA — Av. Cantilo Int. Puente Guiraldes (Cara a Provincia)",
+      "locationLabel": "Av. Cantilo Int. Puente Guiraldes (Cara a Provincia)",
+      "description": "Medida: 12 x 5 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/columna-bifaz-caba-av-cantilo-int-puente-guiraldes-cara-a-pr-s12.png",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "CABA",
+        "medida": "12 x 5 m",
+        "source": "slides-inkuesto",
+        "caras": "Doble",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Av.%20Cantilo%20Int.%20Puente%20Guiraldes%20(Cara%20a%20Provincia)%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Columna bifaz — CABA — Av. Lugones y Av. Udaondo (Sentido hacia Capital)",
+      "locationLabel": "Av. Lugones y Av. Udaondo (Sentido hacia Capital)",
+      "description": "Medida: 11 x 6 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/columna-bifaz-caba-av-lugones-y-av-udaondo-sentido-hacia-cap-s13.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "CABA",
+        "medida": "11 x 6 m",
+        "source": "slides-inkuesto",
+        "visibilidad": "hacia Capital)",
+        "caras": "Doble",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Av.%20Lugones%20y%20Av.%20Udaondo%20(Sentido%20hacia%20Capital)%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Columna bifaz — CABA — Av. Lugones y Av. Udaondo (Sentido hacia Provincia)",
+      "locationLabel": "Av. Lugones y Av. Udaondo (Sentido hacia Provincia)",
+      "description": "Medida: 11 x 6 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/columna-bifaz-caba-av-lugones-y-av-udaondo-sentido-hacia-pro-s14.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "CABA",
+        "medida": "11 x 6 m",
+        "source": "slides-inkuesto",
+        "visibilidad": "hacia Provincia)",
+        "caras": "Doble",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Av.%20Lugones%20y%20Av.%20Udaondo%20(Sentido%20hacia%20Provincia)%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Columna bifaz — CABA — Av. Cantilo | KDT (Sentido hacia Provincia - Cara a Provincia)",
+      "locationLabel": "Av. Cantilo | KDT (Sentido hacia Provincia - Cara a Provincia)",
+      "description": "Medida: 10 x 6 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/columna-bifaz-caba-av-cantilo-kdt-sentido-hacia-provincia-ca-s16.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "CABA",
+        "medida": "10 x 6 m",
+        "source": "slides-inkuesto",
+        "visibilidad": "hacia Provincia - Cara a Provincia)",
+        "caras": "Doble",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Av.%20Cantilo%20%7C%20KDT%20(Sentido%20hacia%20Provincia%20-%20Cara%20a%20Provincia)%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Columna bifaz — CABA — Av. Cantilo | KDT - (Sentido hacia Provincia - Cara a Capital)",
+      "locationLabel": "Av. Cantilo | KDT - (Sentido hacia Provincia - Cara a Capital)",
+      "description": "Medida: 10 x 6 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/columna-bifaz-caba-av-cantilo-kdt-sentido-hacia-provincia-ca-s17.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "CABA",
+        "medida": "10 x 6 m",
+        "source": "slides-inkuesto",
+        "visibilidad": "hacia Provincia - Cara a Capital)",
+        "caras": "Doble",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Av.%20Cantilo%20%7C%20KDT%20-%20(Sentido%20hacia%20Provincia%20-%20Cara%20a%20Capital)%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Columna bifaz — CABA — Au. 9 de Julio Sur (Constitución)",
+      "locationLabel": "Au. 9 de Julio Sur (Constitución)",
+      "description": "Medida: 12 x 6 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/columna-bifaz-caba-au-9-de-julio-sur-constitucion-s19.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "CABA",
+        "medida": "12 x 6 m",
+        "source": "slides-inkuesto",
+        "caras": "Doble",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Au.%209%20de%20Julio%20Sur%20(Constituci%C3%B3n)%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Columna bifaz — CABA — Au. 9 de Julio Sur y Pasaje Samperio",
+      "locationLabel": "Au. 9 de Julio Sur y Pasaje Samperio",
+      "description": "Medida: 12 x 6 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/columna-bifaz-caba-au-9-de-julio-sur-y-pasaje-samperio-s21.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "CABA",
+        "medida": "12 x 6 m",
+        "source": "slides-inkuesto",
+        "caras": "Doble",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Au.%209%20de%20Julio%20Sur%20y%20Pasaje%20Samperio%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Columna bifaz — Vicente López — Gral Paz, Zufriategui 1050 (Banco Nación)",
+      "locationLabel": "Gral Paz, Zufriategui 1050 (Banco Nación)",
+      "description": "Medida: 15 x 10 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/columna-bifaz-vicente-lopez-gral-paz-zufriategui-1050-banco--s23.png",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "Vicente López",
+        "medida": "15 x 10 m",
+        "source": "slides-inkuesto",
+        "caras": "Doble",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Gral%20Paz%2C%20Zufriategui%201050%20(Banco%20Naci%C3%B3n)%2C%20Vicente%20L%C3%B3pez%2C%20Buenos%20Aires%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Columna bifaz — Florencio Varela — Au. Bs. As. - La Plata S/N y Calle 1241 (KM 39)",
+      "locationLabel": "Au. Bs. As. - La Plata S/N y Calle 1241 (KM 39)",
+      "description": "Medida: 14 x 10 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/columna-bifaz-florencio-varela-au-bs-as-la-plata-s-n-y-calle-s25.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "Florencio Varela",
+        "medida": "14 x 10 m",
+        "source": "slides-inkuesto",
+        "caras": "Doble",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Au.%20Bs.%20As.%20-%20La%20Plata%20S%2FN%20y%20Calle%201241%20(KM%2039)%2C%20Florencio%20Varela%2C%20Buenos%20Aires%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Columna bifaz — Moreno — Colectora Acceso Oeste Int. Gnecco",
+      "locationLabel": "Colectora Acceso Oeste Int. Gnecco",
+      "description": "Medida: 10 x 8 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/columna-bifaz-moreno-colectora-acceso-oeste-int-gnecco-s27.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "Moreno",
+        "medida": "10 x 8 m",
+        "source": "slides-inkuesto",
+        "caras": "Doble",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Colectora%20Acceso%20Oeste%20Int.%20Gnecco%2C%20Moreno%2C%20Buenos%20Aires%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Columna bifaz — Berazategui — Au. Bs. As. - La Plata S/N y Calle 455 entre 409 (KM 38,2)",
+      "locationLabel": "Au. Bs. As. - La Plata S/N y Calle 455 entre 409 (KM 38,2)",
+      "description": "Medida: 14 x 10 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/columna-bifaz-berazategui-au-bs-as-la-plata-s-n-y-calle-455--s29.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "Berazategui",
+        "medida": "14 x 10 m",
+        "source": "slides-inkuesto",
+        "caras": "Doble",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Au.%20Bs.%20As.%20-%20La%20Plata%20S%2FN%20y%20Calle%20455%20entre%20409%20(KM%2038%2C2)%2C%20Berazategui%2C%20Buenos%20Aires%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Columna bifaz — Buenos Aires — Autopista Bs. As. - La Plata S/N Hudson Park (KM 35,6)",
+      "locationLabel": "Autopista Bs. As. - La Plata S/N Hudson Park (KM 35,6)",
+      "description": "Medida: 12 x 6 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/columna-bifaz-buenos-aires-autopista-bs-as-la-plata-s-n-huds-s31.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "Buenos Aires",
+        "medida": "12 x 6 m",
+        "source": "slides-inkuesto",
+        "caras": "Doble",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Autopista%20Bs.%20As.%20-%20La%20Plata%20S%2FN%20Hudson%20Park%20(KM%2035%2C6)%2C%20Buenos%20Aires%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Columna bifaz — Berazategui — Autopista Bs. As. - La Plata S/N entre 411A y 451 (KM 38,2)",
+      "locationLabel": "Autopista Bs. As. - La Plata S/N entre 411A y 451 (KM 38,2)",
+      "description": "Medida: 14 x 10 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/columna-bifaz-berazategui-autopista-bs-as-la-plata-s-n-entre-s33.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "Berazategui",
+        "medida": "14 x 10 m",
+        "source": "slides-inkuesto",
+        "caras": "Doble",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Autopista%20Bs.%20As.%20-%20La%20Plata%20S%2FN%20entre%20411A%20y%20451%20(KM%2038%2C2)%2C%20Berazategui%2C%20Buenos%20Aires%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Columna bifaz — Pilar — Ruta 8 - Panamericana Mapuche (KM 47,5 - Sentido a Provincia)",
+      "locationLabel": "Ruta 8 - Panamericana Mapuche (KM 47,5 - Sentido a Provincia)",
+      "description": "Medida: 12 x 8 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/columna-bifaz-pilar-ruta-8-panamericana-mapuche-km-47-5-sent-s35.png",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "Pilar",
+        "medida": "12 x 8 m",
+        "source": "slides-inkuesto",
+        "caras": "Doble",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Ruta%208%20-%20Panamericana%20Mapuche%20(KM%2047%2C5%20-%20Sentido%20a%20Provincia)%2C%20Pilar%2C%20Buenos%20Aires%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Columna bifaz — Pilar — Ruta 8 - Panamericana Mapuche (KM 47,5 - Sentido a CABA)",
+      "locationLabel": "Ruta 8 - Panamericana Mapuche (KM 47,5 - Sentido a CABA)",
+      "description": "Medida: 12 x 8 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/columna-bifaz-pilar-ruta-8-panamericana-mapuche-km-47-5-sent-s36.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "Pilar",
+        "medida": "12 x 8 m",
+        "source": "slides-inkuesto",
+        "caras": "Doble",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Ruta%208%20-%20Panamericana%20Mapuche%20(KM%2047%2C5%20-%20Sentido%20a%20CABA)%2C%20Pilar%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Columna bifaz — Pilar — Ruta 8 - Panamericana (KM 41)",
+      "locationLabel": "Ruta 8 - Panamericana (KM 41)",
+      "description": "Medida: 16 x 9 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/columna-bifaz-pilar-ruta-8-panamericana-km-41-s38.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "Pilar",
+        "medida": "16 x 9 m",
+        "source": "slides-inkuesto",
+        "caras": "Doble",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Ruta%208%20-%20Panamericana%20(KM%2041)%2C%20Pilar%2C%20Buenos%20Aires%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Columna bifaz — Pilar — Ruta 8 - Panamericana (KM 40,5)",
+      "locationLabel": "Ruta 8 - Panamericana (KM 40,5)",
+      "description": "Medida: 15 x 9 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/columna-bifaz-pilar-ruta-8-panamericana-km-40-5-s40.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "Pilar",
+        "medida": "15 x 9 m",
+        "source": "slides-inkuesto",
+        "caras": "Doble",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Ruta%208%20-%20Panamericana%20(KM%2040%2C5)%2C%20Pilar%2C%20Buenos%20Aires%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Columna bifaz — Tres de Febrero — Acceso Oeste (KM 16)",
+      "locationLabel": "Acceso Oeste (KM 16)",
+      "description": "Medida: 15 x 9 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/columna-bifaz-tres-de-febrero-acceso-oeste-km-16-s42.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Columna bifaz",
+        "zona": "Tres de Febrero",
+        "medida": "15 x 9 m",
+        "source": "slides-inkuesto",
+        "caras": "Doble",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Acceso%20Oeste%20(KM%2016)%2C%20Tres%20de%20Febrero%2C%20Buenos%20Aires%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Frontlight — Pilar — Colectora Norte y Las Camelias, alt. Panamericana (KM 42,5)",
+      "locationLabel": "Colectora Norte y Las Camelias, alt. Panamericana (KM 42,5)",
+      "description": "Medida: 10 x 8 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/frontlight-pilar-colectora-norte-y-las-camelias-alt-panameri-s46.png",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Frontlight",
+        "zona": "Pilar",
+        "medida": "10 x 8 m",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Colectora%20Norte%20y%20Las%20Camelias%2C%20alt.%20Panamericana%20(KM%2042%2C5)%2C%20Pilar%2C%20Buenos%20Aires%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Frontlight — CABA — Av. Olazábal 2978 y Balbín",
+      "locationLabel": "Av. Olazábal 2978 y Balbín",
+      "description": "Medida: 22 x 7 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/frontlight-caba-av-olazabal-2978-y-balbin-s48.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Frontlight",
+        "zona": "CABA",
+        "medida": "22 x 7 m",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Av.%20Olaz%C3%A1bal%202978%20y%20Balb%C3%ADn%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Frontlight — Tortuguitas — Colectora Panamericana (KM 36,5 - Cara a Provincia)",
+      "locationLabel": "Colectora Panamericana (KM 36,5 - Cara a Provincia)",
+      "description": "Medida: 12 x 8 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/frontlight-tortuguitas-colectora-panamericana-km-36-5-cara-a-s50.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Frontlight",
+        "zona": "Tortuguitas",
+        "medida": "12 x 8 m",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Colectora%20Panamericana%20(KM%2036%2C5%20-%20Cara%20a%20Provincia)%2C%20Tortuguitas%2C%20Buenos%20Aires%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Frontlight — Tortuguitas — Colectora Panamericana (KM 36,5 - Cara a Capital)",
+      "locationLabel": "Colectora Panamericana (KM 36,5 - Cara a Capital)",
+      "description": "Medida: 12 x 8 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/frontlight-tortuguitas-colectora-panamericana-km-36-5-cara-a-s51.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Frontlight",
+        "zona": "Tortuguitas",
+        "medida": "12 x 8 m",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Colectora%20Panamericana%20(KM%2036%2C5%20-%20Cara%20a%20Capital)%2C%20Tortuguitas%2C%20Buenos%20Aires%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Frontlight — Ciudadela — Gaona 3763 (Cara a Capital)",
+      "locationLabel": "Gaona 3763 (Cara a Capital)",
+      "description": "Medida: 25 x 8 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/frontlight-ciudadela-gaona-3763-cara-a-capital-s53.png",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Frontlight",
+        "zona": "Ciudadela",
+        "medida": "25 x 8 m",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Gaona%203763%20(Cara%20a%20Capital)%2C%20Ciudadela%2C%20Buenos%20Aires%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Frontlight — Ciudadela — Gaona 3763 (Cara a Provincia)",
+      "locationLabel": "Gaona 3763 (Cara a Provincia)",
+      "description": "Medida: 8 x 8 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/frontlight-ciudadela-gaona-3763-cara-a-provincia-s54.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Frontlight",
+        "zona": "Ciudadela",
+        "medida": "8 x 8 m",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Gaona%203763%20(Cara%20a%20Provincia)%2C%20Ciudadela%2C%20Buenos%20Aires%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Frontlight — CABA — General Hornos 67",
+      "locationLabel": "General Hornos 67",
+      "description": "Medida: 30 x 6 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/frontlight-caba-general-hornos-67-s56.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Frontlight",
+        "zona": "CABA",
+        "medida": "30 x 6 m",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=General%20Hornos%2067%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Frontlight — CABA — Av. Juan B. Justo y Cabrera",
+      "locationLabel": "Av. Juan B. Justo y Cabrera",
+      "description": "Medida: 20 x 4 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/frontlight-caba-av-juan-b-justo-y-cabrera-s58.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Frontlight",
+        "zona": "CABA",
+        "medida": "20 x 4 m",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Av.%20Juan%20B.%20Justo%20y%20Cabrera%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Frontlight — CABA — Av. Juan B. Justo 1579",
+      "locationLabel": "Av. Juan B. Justo 1579",
+      "description": "",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/frontlight-caba-av-juan-b-justo-1579-s59.png",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Frontlight",
+        "zona": "CABA",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Av.%20Juan%20B.%20Justo%201579%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Frontlight — CABA — Cerrito 462",
+      "locationLabel": "Cerrito 462",
+      "description": "Medida: 10 x 8 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/frontlight-caba-cerrito-462-s60.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Frontlight",
+        "zona": "CABA",
+        "medida": "10 x 8 m",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Cerrito%20462%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Frontlight — CABA — Av. Ramón Castillo 1720 (Sentido al Norte)",
+      "locationLabel": "Av. Ramón Castillo 1720 (Sentido al Norte)",
+      "description": "Medida: Telón 37 x 21 m; Coronamiento 27 x 6 m; Ochava 10 x 6 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/frontlight-caba-av-ramon-castillo-1720-sentido-al-norte-s62.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Frontlight",
+        "zona": "CABA",
+        "medida": "37 x 21 mts",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Av.%20Ram%C3%B3n%20Castillo%201720%20(Sentido%20al%20Norte)%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Frontlight — CABA — Av. Sarmiento y Av. Libertador (Ecoparque)",
+      "locationLabel": "Av. Sarmiento y Av. Libertador (Ecoparque)",
+      "description": "Medida: 8 x 4 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/frontlight-caba-av-sarmiento-y-av-libertador-ecoparque-s65.png",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Frontlight",
+        "zona": "CABA",
+        "medida": "8 x 4 m",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Av.%20Sarmiento%20y%20Av.%20Libertador%20(Ecoparque)%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Mural + Front — CABA — Av. Juan B. Justo y Gorriti",
+      "locationLabel": "Av. Juan B. Justo y Gorriti",
+      "description": "Medida: Mural 40 x 6 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/mural-front-caba-av-juan-b-justo-y-gorriti-s67.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Mural + Front",
+        "zona": "CABA",
+        "medida": "Mural 40 x 6 m",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Av.%20Juan%20B.%20Justo%20y%20Gorriti%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Medianera — CABA — Callao y Libertador 2094",
+      "locationLabel": "Callao y Libertador 2094",
+      "description": "Medida: 48 x 20 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/medianera-caba-callao-y-libertador-2094-s71.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Medianera",
+        "zona": "CABA",
+        "medida": "48 x 20 m",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Callao%20y%20Libertador%202094%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Medianera — CABA — Libertador 101",
+      "locationLabel": "Libertador 101",
+      "description": "Medida: 14,5 x 35 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/medianera-caba-libertador-101-s73.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Medianera",
+        "zona": "CABA",
+        "medida": "14,5 x 35 m",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Libertador%20101%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Medianera — CABA — Av. Pres. Figueroa Alcorta 3450",
+      "locationLabel": "Av. Pres. Figueroa Alcorta 3450",
+      "description": "Medida: 10 x 19 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/medianera-caba-av-pres-figueroa-alcorta-3450-s75.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Medianera",
+        "zona": "CABA",
+        "medida": "10 x 19 m",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Av.%20Pres.%20Figueroa%20Alcorta%203450%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Medianera — CABA — Salguero 2724 y Cerviño",
+      "locationLabel": "Salguero 2724 y Cerviño",
+      "description": "Medida: 12 x 11 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/medianera-caba-salguero-2724-y-cervino-s77.png",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Medianera",
+        "zona": "CABA",
+        "medida": "12 x 11 m",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Salguero%202724%20y%20Cervi%C3%B1o%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Medianera — CABA — Salguero 2957 y Libertador",
+      "locationLabel": "Salguero 2957 y Libertador",
+      "description": "Medida: 5,4 x 10 m; 4,05 x 10 m; 4,06 x 10 m; 5,10 x 10 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/medianera-caba-salguero-2957-y-libertador-s79.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Medianera",
+        "zona": "CABA",
+        "medida": "5,4 x 10 mts",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Salguero%202957%20y%20Libertador%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Medianera — CABA — Av. Cramer 2540",
+      "locationLabel": "Av. Cramer 2540",
+      "description": "Medida: 14 x 12 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/medianera-caba-av-cramer-2540-s81.png",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Medianera",
+        "zona": "CABA",
+        "medida": "14 x 12 m",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Av.%20Cramer%202540%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Medianera — CABA — Av. Entre Ríos 1722",
+      "locationLabel": "Av. Entre Ríos 1722",
+      "description": "Medida: 10 x 8 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/medianera-caba-av-entre-rios-1722-s83.png",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Medianera",
+        "zona": "CABA",
+        "medida": "10 x 8 m",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Av.%20Entre%20R%C3%ADos%201722%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "LED — CABA — Roque Saenz Peña y Cerrito 430",
+      "locationLabel": "Roque Saenz Peña y Cerrito 430",
+      "description": "",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/led-caba-roque-saenz-pena-y-cerrito-430-s88.png",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "LED",
+        "zona": "CABA",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Roque%20Saenz%20Pe%C3%B1a%20y%20Cerrito%20430%2C%20CABA%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "LED — Mar del Plata — Juan B. Justo 1 y Peralta Ramos",
+      "locationLabel": "Juan B. Justo 1 y Peralta Ramos",
+      "description": "Medida: 8,5 x 3 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/led-mar-del-plata-juan-b-justo-1-y-peralta-ramos-s90.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "LED",
+        "zona": "Mar del Plata",
+        "medida": "8,5 x 3 m",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Juan%20B.%20Justo%201%20y%20Peralta%20Ramos%2C%20Mar%20del%20Plata%2C%20Buenos%20Aires%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Frontlight — Castelli — Ruta 2 (KM 181.5) | Cara a MDQ",
+      "locationLabel": "Ruta 2 (KM 181.5) | Cara a MDQ",
+      "description": "Medida: 12 x 4 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/frontlight-castelli-ruta-2-km-181-5-cara-a-mdq-s93.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Frontlight",
+        "zona": "Castelli",
+        "medida": "12 x 4 m",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Ruta%202%20(KM%20181.5)%20%7C%20Cara%20a%20MDQ%2C%20Castelli%2C%20Buenos%20Aires%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Frontlight — Castelli — Ruta 2 (KM 181.5) | Cara a CABA",
+      "locationLabel": "Ruta 2 (KM 181.5) | Cara a CABA",
+      "description": "Medida: 12 x 4 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/frontlight-castelli-ruta-2-km-181-5-cara-a-caba-s94.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Frontlight",
+        "zona": "Castelli",
+        "medida": "12 x 4 m",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Ruta%202%20(KM%20181.5)%20%7C%20Cara%20a%20CABA%2C%20Castelli%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Frontlight — Dolores — Ruta 2 Est. Sevigne (KM 199 - Sentido a Capital)",
+      "locationLabel": "Ruta 2 Est. Sevigne (KM 199 - Sentido a Capital)",
+      "description": "Medida: 16 x 8 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/frontlight-dolores-ruta-2-est-sevigne-km-199-sentido-a-capit-s96.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Frontlight",
+        "zona": "Dolores",
+        "medida": "16 x 8 m",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Ruta%202%20Est.%20Sevigne%20(KM%20199%20-%20Sentido%20a%20Capital)%2C%20Dolores%2C%20Buenos%20Aires%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Frontlight — Dolores — Ruta 2 Est. Sevigne (KM 199 - Sentido a MDQ)",
+      "locationLabel": "Ruta 2 Est. Sevigne (KM 199 - Sentido a MDQ)",
+      "description": "Medida: 16 x 8 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/frontlight-dolores-ruta-2-est-sevigne-km-199-sentido-a-mdq-s97.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Frontlight",
+        "zona": "Dolores",
+        "medida": "16 x 8 m",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Ruta%202%20Est.%20Sevigne%20(KM%20199%20-%20Sentido%20a%20MDQ)%2C%20Dolores%2C%20Buenos%20Aires%2C%20Argentina"
+      }
+    },
+    {
+      "providerName": "INKUESTO MEDIA",
+      "name": "Frontlight — Dolores — Ruta 2 (KM 273)",
+      "locationLabel": "Ruta 2 (KM 273)",
+      "description": "Medida: 15 x 6 m",
+      "format": "static_ooh",
+      "basePriceAmount": "1",
+      "priceModel": "negotiable",
+      "status": "published",
+      "imagePath": "/inventory/inkuesto-media/frontlight-dolores-ruta-2-km-273-s99.jpg",
+      "sourceFile": "Google Slides / InKuesto Media kit",
+      "metadata": {
+        "tipo": "Frontlight",
+        "zona": "Dolores",
+        "medida": "15 x 6 m",
+        "source": "slides-inkuesto",
+        "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Ruta%202%20(KM%20273)%2C%20Dolores%2C%20Buenos%20Aires%2C%20Argentina"
+      }
     }
-  ],
-  "published": 1033,
-  "geocodedAt": "2026-08-25T17:22:08.439Z",
-  "withCoordinates": 1033,
-  "cleanedLocationsAt": "2026-08-25T18:32:31.309Z"
+  ]
 }

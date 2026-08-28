@@ -25,21 +25,33 @@ export function buildHeaderNav(session: AuthLike): {
   const role = session.user.role;
 
   if (role === "admin") {
-    const adminLink: NavItem = { href: "/admin", label: "Operaciones" };
-    const sectionAdmin: NavItem[] = [
-      { href: "/admin/reservas", label: "Reservas" },
-      { href: "/admin/operaciones/inventory", label: "Inventario" },
-      { href: "/admin/operaciones/inventory/new", label: "Nueva unidad" },
-      { href: "/admin/operaciones/circuitos", label: "Circuitos" },
-      { href: "/admin/proveedores", label: "Proveedores" },
-      { href: "/admin/operaciones", label: "Resumen ops" },
-      { href: "/admin", label: "Métricas" },
-      { href: "/admin/usuarios", label: "Usuarios" },
-    ];
+    const ops: NavItem = { href: "/admin", label: "Operaciones" };
+    const backoffice: NavItem = { href: "/backoffice", label: "Administración" };
     return {
-      desktop: [catalog, adminLink],
-      mobilePrimary: [catalog, adminLink],
-      mobileSections: [{ title: "NextMedia · Operaciones", items: sectionAdmin }],
+      desktop: [catalog, ops, backoffice],
+      mobilePrimary: [catalog, ops, backoffice],
+      mobileSections: [
+        {
+          title: "Operaciones",
+          items: [
+            { href: "/admin", label: "Métricas" },
+            { href: "/admin/reservas", label: "Reservas" },
+            { href: "/admin/operaciones/inventory", label: "Inventario" },
+            { href: "/admin/presentaciones", label: "Presentaciones" },
+            { href: "/admin/usuarios", label: "Usuarios" },
+          ],
+        },
+        {
+          title: "Administración",
+          items: [
+            { href: "/backoffice", label: "Inicio" },
+            { href: "/backoffice/gestion", label: "Gestión" },
+            { href: "/backoffice/ordenes/venta", label: "O.P. Venta" },
+            { href: "/backoffice/informe", label: "Informe mensual" },
+            { href: "/backoffice/clientes", label: "Clientes" },
+          ],
+        },
+      ],
     };
   }
 

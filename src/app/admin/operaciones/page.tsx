@@ -21,7 +21,7 @@ export default async function ProviderHomePage() {
           { href: "/admin/operaciones/inventory", label: "Inventario", desc: "Gestioná espacios y visibilidad" },
           { href: "/admin/operaciones/reservations", label: "Solicitudes", desc: "Pedidos entrantes pendientes" },
           { href: "/admin/operaciones/inventory/new", label: "Nueva unidad", desc: "Sumá un espacio al catálogo" },
-          { href: "/admin/operaciones/analytics", label: "Analíticas", desc: "Fill rate e ingresos" },
+          { href: "/admin", label: "Métricas", desc: "Fill rate e ingresos" },
           { href: "/admin/operaciones/circuitos", label: "Circuitos OOH", desc: "Paquetes de múltiples espacios" },
           { href: "/admin/operaciones/programmatic", label: "SSP / Programática", desc: "Deals OpenRTB y floor price" },
         ].map((item) => (

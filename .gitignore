@@ -36,6 +36,9 @@ yarn-error.log*
 # prisma
 prisma/migrations/**/migration_lock.toml
 
+# dump operativo del Excel de administración
+/data/admin-2026.json
+
 # IDE
 .idea
 .vscode
