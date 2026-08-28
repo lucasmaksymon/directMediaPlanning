@@ -38,14 +38,14 @@ export default async function AdminPresentacionesPage() {
   }));
 
   return (
-    <div className={cn(adminOpsPage, "gap-2 py-3")}>
-      <header className={adminOpsPageHeader}>
+    <div className={cn(adminOpsPage, "min-w-0 gap-2 overflow-x-hidden overflow-y-auto px-4 py-3 lg:overflow-hidden lg:px-5 xl:px-6")}>
+      <header className={cn(adminOpsPageHeader, "flex flex-wrap items-baseline gap-x-3")}>
         <h1 className="nm-page-title text-xl">Presentaciones</h1>
-        <p className="mt-0.5 text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Elegí carteles, previsualizá y exportá PDF o PowerPoint.
         </p>
       </header>
-      <div className={adminOpsPageBody}>
+      <div className={cn(adminOpsPageBody, "min-w-0 overflow-x-hidden overflow-y-auto lg:overflow-hidden")}>
         <PresentationBuilder units={units} />
       </div>
     </div>

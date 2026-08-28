@@ -113,7 +113,7 @@ export default async function AdminInventoryPage({
               placeholder="Nombre, ubicación, proveedor…"
             />
           </div>
-          <div className="w-40">
+          <div className="w-full min-w-0 sm:w-40">
             <label className={cn(labelClass, "mb-1 text-[10px] uppercase tracking-wide")} htmlFor="status">
               Estado
             </label>
@@ -131,7 +131,7 @@ export default async function AdminInventoryPage({
               ))}
             </select>
           </div>
-          <div className="w-48">
+          <div className="w-full min-w-0 sm:w-48">
             <label className={cn(labelClass, "mb-1 text-[10px] uppercase tracking-wide")} htmlFor="proveedor">
               Proveedor
             </label>

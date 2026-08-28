@@ -40,7 +40,7 @@ export const marketingContent = cn(layoutPadding, "mx-auto w-full max-w-7xl");
 export const proseMuted = "nm-secondary";
 
 export const panelPage = cn(
-  "flex min-h-0 flex-1 w-full flex-col gap-5 py-5",
+  "flex min-h-0 min-w-0 flex-1 w-full flex-col gap-5 overflow-x-hidden overflow-y-auto py-5",
   layoutPadding,
 );
 

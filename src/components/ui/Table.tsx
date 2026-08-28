@@ -5,7 +5,7 @@ import { tableScroll } from "@/lib/ui-classes";
 export function Table({ className, ...props }: HTMLAttributes<HTMLTableElement>) {
   return (
     <div className={cn(tableScroll, "rounded-[var(--radius-lg)] border border-border")}>
-      <table className={cn("w-full min-w-full border-collapse text-sm", className)} {...props} />
+      <table className={cn("w-full min-w-[40rem] border-collapse text-sm", className)} {...props} />
     </div>
   );
 }

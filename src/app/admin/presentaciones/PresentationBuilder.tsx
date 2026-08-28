@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   closestCenter,
@@ -13,9 +13,9 @@ import {
 import {
   arrayMove,
   SortableContext,
+  horizontalListSortingStrategy,
   sortableKeyboardCoordinates,
   useSortable,
-  verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useTheme } from "next-themes";
@@ -41,6 +41,100 @@ import { btnPrimary, btnSecondary, fieldClass, surfaceCard } from "@/lib/ui-clas
 
 const compactField = cn(fieldClass, "h-8 px-2.5 py-1 text-xs");
 const compactLabel = "block text-[10px] font-medium tracking-wide text-muted-foreground";
+
+const IMPACTO_PERIODO_SHORT: Record<ImpactoPeriodo, string> = {
+  diario: "Día",
+  semanal: "Sem",
+  mensual: "Mes",
+};
+
+function SlideField({
+  id,
+  label,
+  value,
+  onChange,
+  className,
+  children,
+}: {
+  id: string;
+  label: string;
+  value?: string;
+  onChange?: (value: string) => void;
+  className?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className={cn("min-w-0", className)}>
+      <label className={compactLabel} htmlFor={id}>
+        {label}
+      </label>
+      {children ?? (
+        <input
+          id={id}
+          className={cn(compactField, "mt-0.5")}
+          value={value ?? ""}
+          onChange={(e) => onChange?.(e.target.value)}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Lienzo de preview = widescreen 16:9 (igual que el PPTX). Se escala entero. */
+const SLIDE_W = 1280;
+const SLIDE_H = 720;
+
+function isKitPageImage(url: string | null | undefined) {
+  return Boolean(url && /\/inventory\/(marti-publicidad|pc-carnevale)\//.test(url));
+}
+
+function ScaledSlideFrame({ children }: { children: React.ReactNode }) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0);
+
+  useLayoutEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+
+    const update = () => {
+      const { width, height } = host.getBoundingClientRect();
+      if (width < 2 || height < 2) return;
+      setScale(Math.min(width / SLIDE_W, height / SLIDE_H));
+    };
+
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={hostRef}
+      className="flex h-full w-full items-center justify-center overflow-hidden bg-muted/25"
+    >
+      <div
+        className="relative overflow-hidden rounded-[var(--radius-lg)] shadow-[var(--shadow-sm)]"
+        style={{
+          width: SLIDE_W * scale,
+          height: SLIDE_H * scale,
+          visibility: scale > 0 ? "visible" : "hidden",
+        }}
+      >
+        <div
+          className="absolute top-0 left-0 origin-top-left"
+          style={{
+            width: SLIDE_W,
+            height: SLIDE_H,
+            transform: `scale(${scale})`,
+          }}
+        >
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 type UnitCard = InventoryUnitForPresentation & {
   basePriceAmount?: string;
@@ -81,7 +175,7 @@ function SortableOrderItem({
         transition,
       }}
       className={cn(
-        "flex w-full items-start gap-1.5 rounded-lg border px-1.5 py-1.5 text-left",
+        "flex w-[13.5rem] shrink-0 items-start gap-1.5 rounded-lg border px-1.5 py-1.5 text-left",
         active ? "border-led/50 bg-led/8" : "border-border bg-muted/20",
         isDragging && "z-10 border-led bg-card shadow-[var(--shadow-md)] opacity-95",
       )}
@@ -152,31 +246,31 @@ function SlidePreview({
       .slice(0, 3);
 
     return (
-      <div className="relative flex h-full w-full flex-col overflow-hidden rounded-[var(--radius-lg)] border border-led/40 bg-[#081820] p-3 text-[#f7f9fa] shadow-[var(--shadow-md)] sm:p-4">
-        <div className="flex shrink-0 items-start justify-between gap-3">
+      <div className="relative flex h-full w-full flex-col overflow-hidden border border-led/40 bg-[#081820] px-14 py-12 text-[#f7f9fa]">
+        <div className="flex shrink-0 items-start justify-between gap-6">
           {eyebrow ? (
-            <span className="rounded-full border border-led px-2.5 py-0.5 text-[9px] font-semibold tracking-[0.12em] text-led uppercase">
+            <span className="rounded-full border border-led px-4 py-1.5 text-[15px] font-semibold tracking-[0.14em] text-led uppercase">
               {eyebrow}
             </span>
           ) : (
             <span />
           )}
-          <p className="shrink-0 text-xs font-semibold tracking-wide text-[#f7f9fa]">
+          <p className="shrink-0 text-[18px] font-semibold tracking-wide text-[#f7f9fa]">
             {CLIENT_BRAND}
           </p>
         </div>
         <div className="flex min-h-0 flex-1 flex-col justify-center">
           <div className="max-w-[90%]">
-            <h3 className="text-xl font-semibold leading-tight tracking-tight text-[#f7f9fa] sm:text-2xl">
+            <h3 className="text-[48px] font-semibold leading-[1.08] tracking-tight text-[#f7f9fa]">
               {title || "Propuesta de paquetes"}
             </h3>
             {titleHighlight ? (
-              <p className="mt-0.5 text-xl font-semibold leading-tight tracking-tight text-led sm:text-2xl">
+              <p className="mt-1 text-[48px] font-semibold leading-[1.08] tracking-tight text-led">
                 {titleHighlight}
               </p>
             ) : null}
             {subtitle ? (
-              <p className="mt-2 max-w-[95%] text-[11px] leading-relaxed text-[rgba(247,249,250,0.72)] sm:text-xs">
+              <p className="mt-5 max-w-[46rem] text-[18px] leading-relaxed text-[rgba(247,249,250,0.72)]">
                 {subtitle}
               </p>
             ) : null}
@@ -184,23 +278,21 @@ function SlidePreview({
           {visibleHighlights.length > 0 ? (
             <div
               className={cn(
-                "mt-4 grid gap-2",
+                "mt-10 grid gap-4",
                 visibleHighlights.length === 1
                   ? "max-w-xs grid-cols-1"
                   : visibleHighlights.length === 2
-                    ? "max-w-lg grid-cols-2"
+                    ? "max-w-2xl grid-cols-2"
                     : "grid-cols-3",
               )}
             >
               {visibleHighlights.map((h, i) => (
                 <div
                   key={i}
-                  className="rounded-[var(--radius-md)] border border-led/80 bg-[#081820] px-2 py-1.5 text-center"
+                  className="rounded-[var(--radius-md)] border border-led/80 bg-[#081820] px-5 py-4 text-center"
                 >
-                  <p className="text-base font-semibold tabular-nums text-led sm:text-lg">
-                    {h.value || "—"}
-                  </p>
-                  <p className="mt-0.5 text-[10px] text-[#f7f9fa]">{h.label || "Dato"}</p>
+                  <p className="text-[32px] font-semibold tabular-nums text-led">{h.value || "—"}</p>
+                  <p className="mt-1 text-[14px] text-[#f7f9fa]">{h.label || "Dato"}</p>
                 </div>
               ))}
             </div>
@@ -212,32 +304,32 @@ function SlidePreview({
 
   if (kind === "closing") {
     return (
-      <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden rounded-[var(--radius-lg)] bg-ocean p-5 text-center shadow-[var(--shadow-sm)]">
+      <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden bg-ocean px-16 py-12 text-center">
         {closingBadge ? (
-          <span className="absolute top-3 right-3 rounded-full border border-led px-2.5 py-0.5 text-[9px] font-semibold text-led">
+          <span className="absolute top-10 right-12 rounded-full border border-led px-4 py-1.5 text-[14px] font-semibold text-led">
             {closingBadge}
           </span>
         ) : null}
-        <div className="max-w-3xl">
-          <p className="text-xl font-semibold tracking-tight text-[#f7f9fa] uppercase sm:text-2xl">
+        <div className="max-w-4xl">
+          <p className="text-[44px] font-semibold tracking-tight text-[#f7f9fa] uppercase">
             {closingLine}
           </p>
-          <p className="mt-0.5 text-xl font-semibold tracking-tight text-led uppercase sm:text-2xl">
+          <p className="mt-1 text-[44px] font-semibold tracking-tight text-led uppercase">
             {closingLineAccent}
           </p>
         </div>
-        <div className="mt-5 w-full max-w-md rounded-[var(--radius-lg)] border border-led/25 px-4 py-3 text-center">
+        <div className="mt-10 w-full max-w-xl rounded-[var(--radius-lg)] border border-led/25 px-8 py-6 text-center">
           {contactAddress ? (
-            <p className="text-[11px] text-[#f7f9fa]">{contactAddress}</p>
+            <p className="text-[16px] text-[#f7f9fa]">{contactAddress}</p>
           ) : null}
           {contactEmail ? (
-            <p className={cn("text-[11px] text-led", contactAddress && "mt-1.5")}>{contactEmail}</p>
+            <p className={cn("text-[16px] text-led", contactAddress && "mt-2")}>{contactEmail}</p>
           ) : null}
           {contactWeb ? (
             <p
               className={cn(
-                "text-[11px] text-led",
-                (contactAddress || contactEmail) && "mt-1.5",
+                "text-[16px] text-led",
+                (contactAddress || contactEmail) && "mt-2",
               )}
             >
               {contactWeb}
@@ -272,25 +364,25 @@ function SlidePreview({
   ].filter((r) => r.value?.trim());
 
   return (
-    <div className="flex h-full w-full overflow-hidden rounded-[var(--radius-lg)] border border-border bg-background shadow-[var(--shadow-sm)]">
-      <div className="flex w-[45%] flex-col justify-center gap-2 overflow-y-auto bg-card p-3 sm:p-4">
+    <div className="flex h-full w-full overflow-hidden border border-border bg-background">
+      <div className="flex w-[45%] flex-col justify-center gap-5 bg-card px-10 py-9">
         {slide.zona ? (
-          <span className="w-fit rounded-full border border-led/30 bg-led/10 px-2 py-0.5 text-[9px] font-semibold text-led">
+          <span className="w-fit rounded-full border border-led/30 bg-led/10 px-3 py-1 text-[13px] font-semibold text-led">
             {slide.zona}
           </span>
         ) : slide.providerName ? (
-          <p className="text-[11px] font-semibold text-led">{slide.providerName}</p>
+          <p className="text-[16px] font-semibold text-led">{slide.providerName}</p>
         ) : null}
-        <div>
-          <p className="text-sm font-semibold tracking-tight text-foreground sm:text-base">
-            {slide.slideTitle}
-          </p>
-        </div>
-        <dl className="space-y-1 border-t border-border pt-2">
+        <p className="text-[32px] font-semibold leading-tight tracking-tight text-foreground">
+          {slide.slideTitle}
+        </p>
+        <dl className="space-y-3 border-t border-border pt-5">
           {rows.map((r) => (
-            <div key={r.label} className="flex gap-2">
-              <dt className="w-[4.75rem] shrink-0 text-[10px] font-semibold text-led">{r.label}</dt>
-              <dd className="min-w-0 flex-1 break-words text-[11px] text-foreground sm:text-xs">
+            <div key={r.label} className="flex gap-4">
+              <dt className="w-[8.5rem] shrink-0 text-[13px] font-semibold leading-snug text-led">
+                {r.label}
+              </dt>
+              <dd className="min-w-0 flex-1 break-words text-[16px] leading-snug text-foreground">
                 {r.label === "Mapa" ? (
                   <a
                     href={r.value}
@@ -308,7 +400,7 @@ function SlidePreview({
           ))}
         </dl>
       </div>
-      <div className="relative w-[55%] overflow-hidden bg-card">
+      <div className="relative w-[55%] overflow-hidden bg-muted">
         {slide.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -322,7 +414,7 @@ function SlidePreview({
             src={slide.imageUrl}
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+          <div className="flex h-full items-center justify-center text-[18px] text-muted-foreground">
             Sin imagen
           </div>
         )}
@@ -390,13 +482,14 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
     }
 
     const defaults = unitToSlideDefaults(unit);
+    const imageUrl = unit.imageUrls[0] ?? null;
     setSlides((prev) => {
       const next: EditableSlide[] = [
         ...prev,
         {
           ...defaults,
-          imageFit: defaultImageFit,
-          imageUrl: unit.imageUrls[0] ?? null,
+          imageFit: isKitPageImage(imageUrl) ? "contain" : defaultImageFit,
+          imageUrl,
           unitName: unit.name,
           providerName: unit.provider.companyName,
         },
@@ -527,10 +620,10 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2">
-      <div className="grid min-h-0 flex-1 gap-2 xl:grid-cols-[minmax(220px,260px)_minmax(0,1fr)_minmax(220px,260px)]">
+    <div className="flex min-h-0 min-w-0 flex-col gap-2 lg:h-full">
+      <div className="grid min-w-0 gap-2 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[minmax(20rem,26rem)_minmax(0,1fr)] 2xl:grid-cols-[minmax(22rem,28rem)_minmax(0,1fr)]">
         {/* Catálogo */}
-        <section className={cn(surfaceCard(), "flex min-h-[14rem] flex-col gap-2 p-3 xl:min-h-0")}>
+        <section className={cn(surfaceCard(), "flex max-h-64 min-h-0 min-w-0 flex-col gap-2 p-3 lg:max-h-none lg:overflow-hidden")}>
           <div className="flex items-baseline justify-between gap-2">
             <h2 className="text-sm font-semibold text-foreground">Carteles</h2>
             <p className="text-[11px] tabular-nums text-muted-foreground">
@@ -596,8 +689,8 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
         </section>
 
         {/* Preview + config */}
-        <section className="flex min-h-0 flex-col gap-2 overflow-hidden">
-          <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+        <section className="flex min-h-0 min-w-0 flex-col gap-2 lg:h-full lg:overflow-hidden 2xl:grid 2xl:grid-cols-[minmax(0,1.35fr)_minmax(24rem,1fr)] 2xl:grid-rows-[auto_minmax(0,1fr)]">
+          <div className="flex shrink-0 flex-wrap items-center gap-1.5 2xl:col-span-2">
             {(
               [
                 ["cover", "Portada"],
@@ -644,86 +737,103 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
             ) : null}
           </div>
 
-          <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden [container-type:size]">
-            <div className="aspect-video h-[min(100%,calc(100cqw*9/16))] w-[min(100%,calc(100cqh*16/9))]">
-              <SlidePreview
-                kind={previewKind}
-                title={title}
-                titleHighlight={titleHighlight}
-                eyebrow={eyebrow}
-                subtitle={subtitle}
-                highlights={highlights}
-                slide={activeSlide}
-                closingLine={closingLine}
-                closingLineAccent={closingLineAccent}
-                closingBadge={closingBadge}
-                contactAddress={contactAddress}
-                contactEmail={contactEmail}
-                contactWeb={contactWeb}
-              />
+          <div className="flex min-w-0 flex-col gap-2 2xl:min-h-0 2xl:h-full">
+          <div className="mx-auto w-full min-w-0 shrink-0 max-w-[min(100%,calc(min(44vh,26rem)*16/9))] 2xl:mx-0 2xl:h-auto 2xl:max-w-none 2xl:min-h-0 2xl:flex-1">
+            <div className="aspect-video overflow-hidden 2xl:aspect-auto 2xl:h-full">
+              <ScaledSlideFrame>
+                <SlidePreview
+                  kind={previewKind}
+                  title={title}
+                  titleHighlight={titleHighlight}
+                  eyebrow={eyebrow}
+                  subtitle={subtitle}
+                  highlights={highlights}
+                  slide={activeSlide}
+                  closingLine={closingLine}
+                  closingLineAccent={closingLineAccent}
+                  closingBadge={closingBadge}
+                  contactAddress={contactAddress}
+                  contactEmail={contactEmail}
+                  contactWeb={contactWeb}
+                />
+              </ScaledSlideFrame>
             </div>
           </div>
 
-          <div className={cn(surfaceCard(), "grid shrink-0 gap-x-2 gap-y-1.5 p-2.5 sm:grid-cols-2")}>
+          <section className={cn(surfaceCard(), "flex shrink-0 flex-col gap-1.5 p-2")}>
+            <div className="flex items-baseline justify-between gap-2 px-0.5">
+              <h2 className="text-sm font-semibold text-foreground">Orden</h2>
+              <span className="text-[11px] tabular-nums text-muted-foreground">{slides.length}</span>
+            </div>
+            <div className="min-h-0 overflow-x-auto overflow-y-hidden [scrollbar-gutter:stable]">
+              {slides.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-border px-3 py-2.5 text-center text-[11px] text-muted-foreground">
+                  Elegí carteles del listado para armar el deck.
+                </p>
+              ) : (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={slides.map((s) => s.unitId)}
+                    strategy={horizontalListSortingStrategy}
+                  >
+                    <div className="flex gap-1.5 pb-0.5">
+                      {slides.map((s, i) => (
+                        <SortableOrderItem
+                          key={s.unitId}
+                          slide={s}
+                          index={i}
+                          active={i === activeIndex && previewKind === "unit"}
+                          onSelect={() => {
+                            setActiveIndex(i);
+                            setPreviewKind("unit");
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              )}
+            </div>
+          </section>
+          </div>
+
+          <div className={cn(surfaceCard(), "flex min-h-0 flex-1 flex-col overflow-hidden p-2.5 2xl:h-full")}>
             {previewKind === "cover" ? (
-              <>
-                <div className="sm:col-span-2">
-                  <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-                    Datos de portada
-                  </p>
+              <div className="flex min-h-0 flex-1 flex-col gap-2">
+                <p className="shrink-0 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+                  Datos de portada
+                </p>
+                <SlideField id="pres-eyebrow" label="Pill / eyebrow" value={eyebrow} onChange={setEyebrow} />
+                <div className="grid shrink-0 grid-cols-1 gap-x-2 gap-y-1.5 sm:grid-cols-2">
+                  <SlideField id="pres-title" label="Título (línea 1)" value={title} onChange={setTitle} />
+                  <SlideField id="pres-title-accent" label="Título accent (línea 2)" value={titleHighlight} onChange={setTitleHighlight} />
                 </div>
-                <div className="sm:col-span-2">
-                  <label className={compactLabel} htmlFor="pres-eyebrow">
-                    Pill / eyebrow
-                  </label>
-                  <input
-                    id="pres-eyebrow"
-                    className={cn(compactField, "mt-0.5")}
-                    value={eyebrow}
-                    onChange={(e) => setEyebrow(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={compactLabel} htmlFor="pres-title">
-                    Título (línea 1)
-                  </label>
-                  <input
-                    id="pres-title"
-                    className={cn(compactField, "mt-0.5")}
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={compactLabel} htmlFor="pres-title-accent">
-                    Título accent (línea 2)
-                  </label>
-                  <input
-                    id="pres-title-accent"
-                    className={cn(compactField, "mt-0.5")}
-                    value={titleHighlight}
-                    onChange={(e) => setTitleHighlight(e.target.value)}
-                  />
-                </div>
-                <div className="sm:col-span-2">
+                <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                   <label className={compactLabel} htmlFor="pres-sub">
                     Subtítulo
                   </label>
                   <textarea
                     id="pres-sub"
-                    className={cn(compactField, "mt-0.5 min-h-[2.5rem] resize-none py-1.5")}
+                    className={cn(
+                      fieldClass,
+                      "mt-0.5 min-h-[5.5rem] flex-1 resize-none overflow-auto px-2.5 py-2 text-xs",
+                    )}
                     value={subtitle}
                     onChange={(e) => setSubtitle(e.target.value)}
                   />
                 </div>
-                <div className="grid grid-cols-3 gap-1.5 sm:col-span-2">
+                <div className="grid shrink-0 grid-cols-1 gap-1.5 sm:grid-cols-3">
                   {highlights.map((h, i) => {
                     const on = h.enabled !== false;
                     return (
                       <div
                         key={i}
                         className={cn(
-                          "grid gap-1 rounded-lg border p-1.5",
+                          "grid gap-1 rounded-lg border p-2",
                           on ? "border-border" : "border-dashed border-border/60 opacity-60",
                         )}
                       >
@@ -776,263 +886,212 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
                     );
                   })}
                 </div>
-              </>
+              </div>
             ) : null}
 
             {previewKind === "unit" ? (
               activeSlide ? (
-                <div className="sm:col-span-2 grid grid-cols-2 gap-x-2 gap-y-1 lg:grid-cols-4">
-                  <div className="col-span-2 flex items-baseline justify-between gap-2 lg:col-span-4">
+                <div className="grid min-h-0 flex-1 grid-cols-1 content-start gap-x-2 gap-y-1.5 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-2">
+                  <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 sm:col-span-2 lg:col-span-3 2xl:col-span-2">
                     <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
                       Cartel {activeIndex + 1}/{slides.length}
                     </p>
                     <p className="min-w-0 truncate text-[10px] text-muted-foreground">
                       {activeSlide.unitName} · {activeSlide.providerName}
                     </p>
-                  </div>
-                  <div className="col-span-2 flex flex-wrap items-center gap-2 lg:col-span-4">
-                    <span className={compactLabel}>Imagen</span>
-                    {(
-                      [
-                        ["cover", "Recortada"],
-                        ["contain", "Completa"],
-                      ] as const
-                    ).map(([mode, label]) => {
-                      const active = normalizeImageFit(activeSlide.imageFit) === mode;
-                      return (
+                    <div className="flex flex-wrap items-center gap-1.5 sm:ml-auto">
+                      <span className={compactLabel}>Imagen</span>
+                      {(
+                        [
+                          ["cover", "Recortada"],
+                          ["contain", "Completa"],
+                        ] as const
+                      ).map(([mode, label]) => {
+                        const active = normalizeImageFit(activeSlide.imageFit) === mode;
+                        return (
+                          <button
+                            key={mode}
+                            type="button"
+                            className={cn(
+                              "rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition",
+                              active
+                                ? "bg-led text-black"
+                                : "bg-muted text-muted-foreground hover:text-foreground",
+                            )}
+                            onClick={() => {
+                              updateActiveSlide({ imageFit: mode });
+                              setDefaultImageFit(mode);
+                            }}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                      {slides.length > 1 ? (
                         <button
-                          key={mode}
                           type="button"
-                          className={cn(
-                            "rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition",
-                            active
-                              ? "bg-led text-black"
-                              : "bg-muted text-muted-foreground hover:text-foreground",
-                          )}
+                          className="text-[10px] font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
                           onClick={() => {
-                            updateActiveSlide({ imageFit: mode });
-                            setDefaultImageFit(mode);
+                            const fit = normalizeImageFit(activeSlide.imageFit);
+                            setSlides((prev) => prev.map((s) => ({ ...s, imageFit: fit })));
+                            setDefaultImageFit(fit);
                           }}
                         >
-                          {label}
+                          Aplicar a todos
                         </button>
-                      );
-                    })}
-                    {slides.length > 1 ? (
-                      <button
-                        type="button"
-                        className="ml-auto text-[10px] font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                        onClick={() => {
-                          const fit = normalizeImageFit(activeSlide.imageFit);
-                          setSlides((prev) => prev.map((s) => ({ ...s, imageFit: fit })));
-                          setDefaultImageFit(fit);
-                        }}
-                      >
-                        Aplicar a todos
-                      </button>
-                    ) : null}
+                      ) : null}
+                    </div>
                   </div>
+                  <SlideField
+                    id="slide-slideTitle"
+                    label="Título"
+                    value={activeSlide.slideTitle}
+                    onChange={(v) => updateActiveSlide({ slideTitle: v })}
+                  />
+                  <SlideField
+                    id="slide-zona"
+                    label="Zona"
+                    value={activeSlide.zona}
+                    onChange={(v) => updateActiveSlide({ zona: v })}
+                  />
+                  <SlideField
+                    id="slide-medida"
+                    label="Medida"
+                    value={activeSlide.medida}
+                    onChange={(v) => updateActiveSlide({ medida: v })}
+                  />
+                  <SlideField
+                    id="slide-location"
+                    label="Ubicación"
+                    value={activeSlide.location}
+                    onChange={(v) => updateActiveSlide({ location: v })}
+                  />
+                  <SlideField
+                    id="slide-visibilidad"
+                    label="Visibilidad"
+                    value={activeSlide.visibilidad}
+                    onChange={(v) => updateActiveSlide({ visibilidad: v })}
+                  />
+                  <SlideField
+                    id="slide-caras"
+                    label="Caras"
+                    value={activeSlide.caras}
+                    onChange={(v) => updateActiveSlide({ caras: v })}
+                  />
+                  <SlideField id="slide-impacto" label="Impacto" className="sm:col-span-2">
+                    <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
+                      <input
+                        id="slide-impacto"
+                        className={cn(compactField, "min-w-0 flex-1")}
+                        value={activeSlide.impacto ?? ""}
+                        onChange={(e) => {
+                          const periodo =
+                            detectImpactoPeriodo(e.target.value) ||
+                            activeSlide.impactoPeriodo ||
+                            "semanal";
+                          updateActiveSlide({
+                            impacto: e.target.value,
+                            impactoPeriodo: periodo,
+                          });
+                        }}
+                      />
+                      <div
+                        className="flex h-8 shrink-0 items-stretch rounded-[var(--radius-input)] border border-border p-0.5"
+                        role="group"
+                        aria-label="Periodicidad del impacto"
+                      >
+                        {(Object.keys(IMPACTO_PERIODO_LABEL) as ImpactoPeriodo[]).map((p) => {
+                          const current =
+                            activeSlide.impactoPeriodo ||
+                            detectImpactoPeriodo(activeSlide.impacto ?? "") ||
+                            "semanal";
+                          const on = current === p;
+                          return (
+                            <button
+                              key={p}
+                              type="button"
+                              title={IMPACTO_PERIODO_LABEL[p]}
+                              className={cn(
+                                "rounded-md px-2.5 text-[10px] font-semibold",
+                                on ? "bg-led text-black" : "text-muted-foreground hover:text-foreground",
+                              )}
+                              onClick={() =>
+                                updateActiveSlide({
+                                  impactoPeriodo: p,
+                                  impacto: applyImpactoPeriodo(activeSlide.impacto ?? "", p),
+                                })
+                              }
+                            >
+                              {IMPACTO_PERIODO_SHORT[p]}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </SlideField>
+                  <SlideField
+                    id="slide-pauta"
+                    label="Pauta"
+                    value={activeSlide.pauta}
+                    onChange={(v) => updateActiveSlide({ pauta: v })}
+                  />
                   {(
                     [
-                      ["slideTitle", "Título", "col-span-2 lg:col-span-3"],
-                      ["zona", "Zona", ""],
-                      ["location", "Ubicación", "col-span-2 lg:col-span-4"],
-                      ["medida", "Medida", ""],
-                      ["visibilidad", "Visibilidad", ""],
-                      ["caras", "Caras", ""],
-                      ["impacto", "Impacto", ""],
-                      ["frecuencia", "Frecuencia", ""],
-                      ["spot", "Spot", ""],
-                      ["encendido", "Encendido", ""],
-                      ["resolucion", "Resolución", ""],
-                      ["pauta", "Pauta", ""],
-                      ["costoMensual", "Costo mensual", ""],
-                      ["mapsUrl", "Link mapa", "col-span-2 lg:col-span-4"],
+                      ["frecuencia", "Frecuencia"],
+                      ["spot", "Spot"],
+                      ["encendido", "Encendido"],
+                      ["resolucion", "Resolución"],
                     ] as const
-                  ).map(([key, label, span]) => (
-                    <div key={key} className={span || undefined}>
-                      <label className={compactLabel} htmlFor={`slide-${key}`}>
-                        {label}
-                      </label>
-                      {key === "impacto" ? (
-                        <div className="mt-0.5 flex gap-1.5">
-                          <input
-                            id={`slide-${key}`}
-                            className={cn(compactField, "min-w-0 flex-1")}
-                            value={activeSlide.impacto ?? ""}
-                            onChange={(e) => {
-                              const periodo =
-                                detectImpactoPeriodo(e.target.value) ||
-                                activeSlide.impactoPeriodo ||
-                                "semanal";
-                              updateActiveSlide({
-                                impacto: e.target.value,
-                                impactoPeriodo: periodo,
-                              });
-                            }}
-                          />
-                          <select
-                            className={cn(compactField, "w-[7.25rem] shrink-0")}
-                            value={
-                              activeSlide.impactoPeriodo ||
-                              detectImpactoPeriodo(activeSlide.impacto ?? "") ||
-                              "semanal"
-                            }
-                            onChange={(e) => {
-                              const periodo = e.target.value as ImpactoPeriodo;
-                              updateActiveSlide({
-                                impactoPeriodo: periodo,
-                                impacto: applyImpactoPeriodo(activeSlide.impacto ?? "", periodo),
-                              });
-                            }}
-                            aria-label="Periodicidad del impacto"
-                          >
-                            {(Object.keys(IMPACTO_PERIODO_LABEL) as ImpactoPeriodo[]).map((p) => (
-                              <option key={p} value={p}>
-                                {IMPACTO_PERIODO_LABEL[p]}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      ) : (
-                        <input
-                          id={`slide-${key}`}
-                          className={cn(compactField, "mt-0.5")}
-                          value={activeSlide[key] ?? ""}
-                          onChange={(e) => updateActiveSlide({ [key]: e.target.value })}
-                        />
-                      )}
-                    </div>
-                  ))}
+                  )
+                    .filter(([key]) => Boolean(activeSlide[key]?.trim()))
+                    .map(([key, label]) => (
+                      <SlideField
+                        key={key}
+                        id={`slide-${key}`}
+                        label={label}
+                        value={activeSlide[key]}
+                        onChange={(v) => updateActiveSlide({ [key]: v })}
+                      />
+                    ))}
+                  <SlideField
+                    id="slide-costoMensual"
+                    label="Costo mensual"
+                    value={activeSlide.costoMensual}
+                    onChange={(v) => updateActiveSlide({ costoMensual: v })}
+                  />
+                  <SlideField
+                    id="slide-mapsUrl"
+                    label="Link mapa"
+                    value={activeSlide.mapsUrl}
+                    onChange={(v) => updateActiveSlide({ mapsUrl: v })}
+                    className="sm:col-span-2 lg:col-span-3 2xl:col-span-2"
+                  />
                 </div>
               ) : (
-                <p className="sm:col-span-2 py-2 text-center text-xs text-muted-foreground">
-                  Seleccioná un cartel del listado o del orden a la derecha para editar sus datos.
+                <p className="py-2 text-center text-xs text-muted-foreground">
+                  Seleccioná un cartel del listado o del orden debajo del preview para editar sus datos.
                 </p>
               )
             ) : null}
 
             {previewKind === "closing" ? (
-              <>
-                <div className="sm:col-span-2">
-                  <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-                    Datos de cierre
-                  </p>
-                </div>
-                <div>
-                  <label className={compactLabel} htmlFor="pres-closing">
-                    Slogan (línea 1)
-                  </label>
-                  <input
-                    id="pres-closing"
-                    className={cn(compactField, "mt-0.5")}
-                    value={closingLine}
-                    onChange={(e) => setClosingLine(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={compactLabel} htmlFor="pres-closing-accent">
-                    Slogan accent (línea 2)
-                  </label>
-                  <input
-                    id="pres-closing-accent"
-                    className={cn(compactField, "mt-0.5")}
-                    value={closingLineAccent}
-                    onChange={(e) => setClosingLineAccent(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={compactLabel} htmlFor="pres-closing-badge">
-                    Badge
-                  </label>
-                  <input
-                    id="pres-closing-badge"
-                    className={cn(compactField, "mt-0.5")}
-                    value={closingBadge}
-                    onChange={(e) => setClosingBadge(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={compactLabel} htmlFor="pres-address">
-                    Dirección
-                  </label>
-                  <input
-                    id="pres-address"
-                    className={cn(compactField, "mt-0.5")}
-                    value={contactAddress}
-                    onChange={(e) => setContactAddress(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={compactLabel} htmlFor="pres-email">
-                    Email
-                  </label>
-                  <input
-                    id="pres-email"
-                    className={cn(compactField, "mt-0.5")}
-                    value={contactEmail}
-                    onChange={(e) => setContactEmail(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={compactLabel} htmlFor="pres-web">
-                    Web
-                  </label>
-                  <input
-                    id="pres-web"
-                    className={cn(compactField, "mt-0.5")}
-                    value={contactWeb}
-                    onChange={(e) => setContactWeb(e.target.value)}
-                  />
-                </div>
-              </>
+              <div className="grid min-h-0 flex-1 grid-cols-1 content-start gap-x-2 gap-y-1.5 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-2">
+                <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase sm:col-span-2 lg:col-span-3 2xl:col-span-2">
+                  Datos de cierre
+                </p>
+                <SlideField id="pres-closing" label="Slogan (línea 1)" value={closingLine} onChange={setClosingLine} />
+                <SlideField id="pres-closing-accent" label="Slogan accent (línea 2)" value={closingLineAccent} onChange={setClosingLineAccent} />
+                <SlideField id="pres-closing-badge" label="Badge" value={closingBadge} onChange={setClosingBadge} />
+                <SlideField id="pres-address" label="Dirección" value={contactAddress} onChange={setContactAddress} />
+                <SlideField id="pres-email" label="Email" value={contactEmail} onChange={setContactEmail} />
+                <SlideField id="pres-web" label="Web" value={contactWeb} onChange={setContactWeb} />
+              </div>
             ) : null}
-          </div>
-        </section>
-
-        {/* Orden */}
-        <section className={cn(surfaceCard(), "flex min-h-[14rem] flex-col gap-2 p-3 xl:min-h-0")}>
-          <div className="flex items-baseline justify-between gap-2">
-            <h2 className="text-sm font-semibold text-foreground">Orden</h2>
-            <span className="text-[11px] tabular-nums text-muted-foreground">{slides.length}</span>
-          </div>
-          <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1 [scrollbar-gutter:stable]">
-            {slides.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-[11px] text-muted-foreground">
-                Elegí carteles del listado para armar el deck.
-              </p>
-            ) : (
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={slides.map((s) => s.unitId)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="space-y-1">
-                    {slides.map((s, i) => (
-                      <SortableOrderItem
-                        key={s.unitId}
-                        slide={s}
-                        index={i}
-                        active={i === activeIndex && previewKind === "unit"}
-                        onSelect={() => {
-                          setActiveIndex(i);
-                          setPreviewKind("unit");
-                        }}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
-              </DndContext>
-            )}
           </div>
         </section>
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border pt-2">
+      <div className="flex shrink-0 flex-col gap-2 border-t border-border pt-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         {error ? (
           <p className="text-xs text-signal" role="alert">
             {error}
@@ -1045,7 +1104,7 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
         <div className="flex flex-wrap gap-1.5 sm:justify-end">
           <button
             type="button"
-            className={cn(btnSecondary, "h-8 min-w-[7rem] px-3 text-xs")}
+            className={cn(btnSecondary, "h-8 min-w-0 flex-1 px-3 text-xs sm:min-w-[7rem] sm:flex-none")}
             disabled={!!exporting || slides.length === 0}
             onClick={() => exportDeck("pptx")}
           >
@@ -1053,7 +1112,7 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
           </button>
           <button
             type="button"
-            className={cn(btnPrimary, "h-8 min-w-[7rem] px-3 text-xs")}
+            className={cn(btnPrimary, "h-8 min-w-0 flex-1 px-3 text-xs sm:min-w-[7rem] sm:flex-none")}
             disabled={!!exporting || slides.length === 0}
             onClick={() => exportDeck("pdf")}
           >

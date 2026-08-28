@@ -152,7 +152,7 @@ export function ExplorarExplorer({
             />
           </div>
 
-          <div className="w-36">
+          <div className="w-full min-w-0 sm:w-36">
             <label className={labelCls} htmlFor="desde">
               Desde
             </label>
@@ -165,7 +165,7 @@ export function ExplorarExplorer({
             />
           </div>
 
-          <div className="w-36">
+          <div className="w-full min-w-0 sm:w-36">
             <label className={labelCls} htmlFor="hasta">
               Hasta
             </label>
@@ -178,7 +178,7 @@ export function ExplorarExplorer({
             />
           </div>
 
-          <div className="w-44">
+          <div className="w-full min-w-0 sm:w-44">
             <label className={labelCls} htmlFor="proveedor">
               Proveedor
             </label>
@@ -197,7 +197,7 @@ export function ExplorarExplorer({
             </select>
           </div>
 
-          <div className="w-40">
+          <div className="w-full min-w-0 sm:w-40">
             <label className={labelCls} htmlFor="formato">
               Formato
             </label>
@@ -216,7 +216,7 @@ export function ExplorarExplorer({
             </select>
           </div>
 
-          <div className="w-32">
+          <div className="w-full min-w-0 sm:w-32">
             <label className={labelCls} htmlFor="precio_max">
               Precio máx.
             </label>
@@ -339,7 +339,7 @@ export function ExplorarExplorer({
                 "nm-scroll grid min-h-0 min-w-0 gap-3 overflow-y-auto overflow-x-hidden pe-1",
                 vista === "lista"
                   ? "h-full content-start sm:grid-cols-2 xl:grid-cols-3"
-                  : "h-full content-start",
+                  : "max-h-[50vh] content-start lg:max-h-none lg:h-full",
               )}
             >
               {units.map((u) => (

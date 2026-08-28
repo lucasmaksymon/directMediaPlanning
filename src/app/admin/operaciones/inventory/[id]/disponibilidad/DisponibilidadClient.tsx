@@ -43,7 +43,7 @@ export function DisponibilidadClient({ unitId, initialBlocks }: { unitId: string
   }
 
   return (
-    <div className="grid h-full min-h-0 gap-4 lg:grid-cols-[1fr_minmax(280px,360px)]">
+    <div className="grid min-h-0 gap-4 overflow-y-auto lg:h-full lg:grid-cols-[1fr_minmax(260px,360px)] lg:overflow-hidden">
       {/* Calendario */}
       <div className={cn(surfaceCard(), "flex min-h-0 flex-col p-5 sm:p-6")}>
         <h2 className="mb-4 text-base font-semibold text-foreground">Calendario del espacio</h2>

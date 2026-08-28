@@ -110,8 +110,8 @@ export function CircuitForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex h-full min-h-0 flex-col gap-4">
-      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(300px,380px)_1fr]">
+    <form onSubmit={handleSubmit} className="flex min-h-0 flex-col gap-4 overflow-y-auto lg:h-full lg:overflow-hidden">
+      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(260px,380px)_1fr]">
       <div className={cn(surfaceCard(), "flex flex-col gap-4 p-5 sm:p-6 lg:min-h-0")}>
         <h2 className="text-base font-semibold text-foreground">Información del circuito</h2>
         <div>
