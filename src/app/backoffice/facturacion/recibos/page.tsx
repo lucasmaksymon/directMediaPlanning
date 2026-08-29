@@ -2,12 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { EmptyState, Input, PageHeader, Select, Table, TBody, TD, TH, THead, TR } from "@/components/ui";
+import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
+import { RecibosTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
-import { ErpRowActions } from "@/components/erp/ErpRowActions";
-import { createErpSaleReceipt, deleteErpSaleReceipt, updateErpSaleReceipt } from "@/app/actions/erp-billing";
-import { displayDate, erpInputNumber, isoDate, money } from "@/lib/erp";
+import { createErpSaleReceipt, updateErpSaleReceipt } from "@/app/actions/erp-billing";
+import { erpInputNumber, isoDate, money } from "@/lib/erp";
 
 export const metadata = { title: productTitle("Recibos de venta") };
 
@@ -103,38 +103,17 @@ export default async function ErpRecibosPage({
         {receipts.length === 0 ? (
           <EmptyState description="No hay recibos." title="Sin recibos" />
         ) : (
-          <Table>
-            <THead>
-              <TR>
-                <TH>Nº</TH>
-                <TH>Cliente</TH>
-                <TH>Fecha</TH>
-                <TH>Importe</TH>
-                <TH>Saldo</TH>
-                <TH>Facturas</TH>
-                <TH className="text-right">Acciones</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {receipts.map((r) => (
-                <TR key={r.id}>
-                  <TD className="font-medium">{r.number}</TD>
-                  <TD>{r.client.name}</TD>
-                  <TD>{displayDate(r.issuedAt)}</TD>
-                  <TD className="tabular-nums">{money(r.amount)}</TD>
-                  <TD className="tabular-nums">{money(r.balance)}</TD>
-                  <TD className="tabular-nums text-muted-foreground">{r.invoices.length}</TD>
-                  <TD>
-                    <ErpRowActions
-                      deleteAction={deleteErpSaleReceipt.bind(null, r.id)}
-                      deleteConfirm="¿Borrar este recibo y sus cheques asociados?"
-                      editHref={`/backoffice/facturacion/recibos?edit=${r.id}`}
-                    />
-                  </TD>
-                </TR>
-              ))}
-            </TBody>
-          </Table>
+          <RecibosTable
+            rows={receipts.map((r) => ({
+              id: r.id,
+              number: r.number,
+              client: r.client.name,
+              issuedAt: r.issuedAt,
+              amount: Number(r.amount),
+              balance: Number(r.balance),
+              invoices: r.invoices.length,
+            }))}
+          />
         )}
       </div>
     </div>

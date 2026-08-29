@@ -2,12 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { Badge, EmptyState, Input, PageHeader, Select, Table, TBody, TD, TH, THead, TR } from "@/components/ui";
+import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
+import { ProveedoresTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
-import { ErpRowActions } from "@/components/erp/ErpRowActions";
-import { createErpVendor, deleteErpVendor, updateErpVendor } from "@/app/actions/erp-masters";
-import { ERP_TAX_CONDITION, erpVendorKindLabel } from "@/lib/erp";
+import { createErpVendor, updateErpVendor } from "@/app/actions/erp-masters";
+import { ERP_TAX_CONDITION } from "@/lib/erp";
 
 export const metadata = { title: productTitle("Proveedores ERP") };
 
@@ -103,38 +103,16 @@ export default async function ErpProveedoresPage({
         {vendors.length === 0 ? (
           <EmptyState description="Cargá medios y productores para emitir órdenes de compra." title="Sin proveedores" />
         ) : (
-          <Table>
-            <THead>
-              <TR>
-                <TH>Proveedor</TH>
-                <TH>Tipo</TH>
-                <TH>CUIT</TH>
-                <TH>Plazo</TH>
-                <TH>Plataforma</TH>
-                <TH className="text-right">Acciones</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {vendors.map((v) => (
-                <TR key={v.id}>
-                  <TD className="font-medium">{v.name}</TD>
-                  <TD>
-                    <Badge variant={v.kind === 1 ? "warning" : "info"}>{erpVendorKindLabel(v.kind)}</Badge>
-                  </TD>
-                  <TD className="tabular-nums">{v.taxId ?? "—"}</TD>
-                  <TD className="tabular-nums">{v.paymentDays} días</TD>
-                  <TD className="text-muted-foreground">{v.nextmediaProvider?.companyName ?? "—"}</TD>
-                  <TD>
-                    <ErpRowActions
-                      deleteAction={deleteErpVendor.bind(null, v.id)}
-                      deleteConfirm={`¿Borrar el proveedor ${v.name}?`}
-                      editHref={`/backoffice/proveedores?edit=${v.id}`}
-                    />
-                  </TD>
-                </TR>
-              ))}
-            </TBody>
-          </Table>
+          <ProveedoresTable
+            rows={vendors.map((v) => ({
+              id: v.id,
+              name: v.name,
+              kind: v.kind,
+              taxId: v.taxId,
+              paymentDays: v.paymentDays,
+              platform: v.nextmediaProvider?.companyName ?? null,
+            }))}
+          />
         )}
       </div>
     </div>

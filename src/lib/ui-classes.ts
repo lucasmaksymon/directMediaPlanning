@@ -57,6 +57,6 @@ export const pageScroll =
 export const adminPageBody =
   "min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain";
 
-export const tableScroll = "overflow-x-auto overflow-y-auto [scrollbar-gutter:stable]";
+export const tableScroll = "nm-scroll overflow-x-auto overflow-y-auto [scrollbar-gutter:stable]";
 
 export const adminOpsPageBody = "min-h-0 flex-1 overflow-hidden";

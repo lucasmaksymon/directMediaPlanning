@@ -2,16 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { Badge, EmptyState, Input, PageHeader, Select, Table, TBody, TD, TH, THead, TR } from "@/components/ui";
+import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
+import { OrdenesCompraTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
-import { ErpRowActions } from "@/components/erp/ErpRowActions";
-import {
-  createErpProductionOrder,
-  deleteErpProductionOrder,
-  updateErpProductionOrder,
-} from "@/app/actions/erp-orders";
-import { displayDate, ERP_VENDOR, erpInputNumber, erpOrderBadge, erpOrderLabel, isoDate, money } from "@/lib/erp";
+import { createErpProductionOrder, updateErpProductionOrder } from "@/app/actions/erp-orders";
+import { ERP_VENDOR, erpInputNumber, isoDate } from "@/lib/erp";
 import { ERP_ORDER_ESTADOS } from "@/lib/erp-write";
 
 export const metadata = { title: productTitle("O. Producción") };
@@ -107,44 +103,19 @@ export default async function ErpOProduccionPage({
         {orders.length === 0 ? (
           <EmptyState description="No hay órdenes de producción." title="Sin O. producción" />
         ) : (
-          <Table>
-            <THead>
-              <TR>
-                <TH>Número</TH>
-                <TH>Venta</TH>
-                <TH>Productor</TH>
-                <TH>Fecha</TH>
-                <TH>Importe</TH>
-                <TH>Estado</TH>
-                <TH className="text-right">Acciones</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {orders.map((o) => (
-                <TR key={o.id}>
-                  <TD className="font-medium">{o.number}</TD>
-                  <TD>
-                    {o.saleOrder.number}
-                    <span className="block text-xs text-muted-foreground">{o.saleOrder.client.name}</span>
-                  </TD>
-                  <TD>{o.vendor.name}</TD>
-                  <TD>{displayDate(o.issuedAt)}</TD>
-                  <TD className="tabular-nums">{money(o.amount)}</TD>
-                  <TD>
-                    <Badge variant={erpOrderBadge(o.estado)}>{erpOrderLabel(o.estado)}</Badge>
-                  </TD>
-                  <TD>
-                    <ErpRowActions
-                      deleteAction={deleteErpProductionOrder.bind(null, o.id)}
-                      deleteConfirm={`¿Borrar la orden ${o.number}?`}
-                      editHref={`/backoffice/ordenes/produccion?edit=${o.id}`}
-                      pdfHref={`/api/pdf/erp/orden?tipo=produccion&id=${o.id}`}
-                    />
-                  </TD>
-                </TR>
-              ))}
-            </TBody>
-          </Table>
+          <OrdenesCompraTable
+            kind="produccion"
+            rows={orders.map((o) => ({
+              id: o.id,
+              number: o.number,
+              saleNumber: o.saleOrder.number,
+              client: o.saleOrder.client.name,
+              vendor: o.vendor.name,
+              issuedAt: o.issuedAt,
+              amount: Number(o.amount),
+              estado: o.estado,
+            }))}
+          />
         )}
       </div>
     </div>

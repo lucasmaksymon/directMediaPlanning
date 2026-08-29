@@ -2,18 +2,14 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { EmptyState, Input, PageHeader, Select, Table, TBody, TD, TH, THead, TR } from "@/components/ui";
+import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
+import { FacturasCompraTable } from "@/components/erp/erp-standard-tables";
 import { ErpAttach } from "@/components/erp/ErpAttach";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
-import { ErpRowActions } from "@/components/erp/ErpRowActions";
-import {
-  createErpPurchaseInvoice,
-  deleteErpPurchaseInvoice,
-  updateErpPurchaseInvoice,
-} from "@/app/actions/erp-billing";
+import { createErpPurchaseInvoice, updateErpPurchaseInvoice } from "@/app/actions/erp-billing";
 import { ErpDocTypeSelect } from "@/components/erp/ErpDocTypeSelect";
-import { displayDate, ERP_ORDER, ERP_SETTLE, erpInputNumber, isoDate, money } from "@/lib/erp";
+import { ERP_ORDER, ERP_SETTLE, erpInputNumber, isoDate } from "@/lib/erp";
 
 export const metadata = { title: productTitle("Facturas de compra") };
 
@@ -155,42 +151,20 @@ export default async function ErpFacturasCompraPage({
         {invoices.length === 0 ? (
           <EmptyState description="No hay facturas de compra." title="Sin facturas" />
         ) : (
-          <Table>
-            <THead>
-              <TR>
-                <TH>Comprobante</TH>
-                <TH>Proveedor</TH>
-                <TH>Fecha</TH>
-                <TH>Importe</TH>
-                <TH>Retenciones</TH>
-                <TH>Pago</TH>
-                <TH className="text-right">Acciones</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {invoices.map((f) => (
-                <TR key={f.id}>
-                  <TD className="font-medium">
-                    {f.docType} {String(f.pos).padStart(4, "0")}-{String(f.number).padStart(8, "0")}
-                  </TD>
-                  <TD>{f.vendor.name}</TD>
-                  <TD>{displayDate(f.issuedAt)}</TD>
-                  <TD className="tabular-nums">{money(Number(f.amount) + Number(f.vat))}</TD>
-                  <TD className="tabular-nums text-muted-foreground">
-                    {money(Number(f.vatWithholding) + Number(f.iibbCaba) + Number(f.iibbBsAs))}
-                  </TD>
-                  <TD>{f.isCreditNote ? "NC · " : ""}{f.payStatus === 1 ? "Pagado" : "Pendiente"}</TD>
-                  <TD>
-                    <ErpRowActions
-                      deleteAction={deleteErpPurchaseInvoice.bind(null, f.id)}
-                      deleteConfirm="¿Borrar esta factura? Si la orden ya no cubre el importe, se reabre."
-                      editHref={`/backoffice/facturacion/compra?edit=${f.id}`}
-                    />
-                  </TD>
-                </TR>
-              ))}
-            </TBody>
-          </Table>
+          <FacturasCompraTable
+            rows={invoices.map((f) => ({
+              id: f.id,
+              docType: f.docType,
+              pos: f.pos,
+              number: f.number,
+              vendor: f.vendor.name,
+              issuedAt: f.issuedAt,
+              total: Number(f.amount) + Number(f.vat),
+              retenciones: Number(f.vatWithholding) + Number(f.iibbCaba) + Number(f.iibbBsAs),
+              payStatus: f.payStatus,
+              isCreditNote: f.isCreditNote,
+            }))}
+          />
         )}
       </div>
     </div>

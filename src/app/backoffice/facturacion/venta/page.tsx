@@ -2,20 +2,15 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { EmptyState, Input, PageHeader, Select, Table, TBody, TD, TH, THead, TR } from "@/components/ui";
+import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
+import { FacturasVentaTable } from "@/components/erp/erp-standard-tables";
 import { ErpAttach } from "@/components/erp/ErpAttach";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
-import { ErpRowActions } from "@/components/erp/ErpRowActions";
-import {
-  createErpSaleInvoice,
-  deleteErpSaleInvoice,
-  setErpSaleCollectStatus,
-  updateErpSaleInvoice,
-} from "@/app/actions/erp-billing";
+import { createErpSaleInvoice, updateErpSaleInvoice } from "@/app/actions/erp-billing";
 import { ErpDocTypeSelect } from "@/components/erp/ErpDocTypeSelect";
 import { ErpSaleInvoiceLinks } from "@/components/erp/ErpSaleInvoiceLinks";
-import { displayDate, ERP_COLLECT, ERP_ORDER, erpInputNumber, erpReceiptRef, isoDate, money } from "@/lib/erp";
+import { ERP_COLLECT, ERP_ORDER, erpInputNumber, erpReceiptRef, isoDate, money } from "@/lib/erp";
 
 export const metadata = { title: productTitle("Facturas de venta") };
 
@@ -142,49 +137,20 @@ export default async function ErpFacturasVentaPage({
         {invoices.length === 0 ? (
           <EmptyState description="No hay facturas de venta." title="Sin facturas" />
         ) : (
-          <Table>
-            <THead>
-              <TR>
-                <TH>Comprobante</TH>
-                <TH>Cliente</TH>
-                <TH>Orden</TH>
-                <TH>Fecha</TH>
-                <TH>Vence</TH>
-                <TH>Total</TH>
-                <TH>Cobro</TH>
-                <TH className="text-right">Acciones</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {invoices.map((f) => (
-                <TR key={f.id}>
-                  <TD className="font-medium">
-                    {f.docType} {String(f.pos).padStart(4, "0")}-{String(f.number).padStart(8, "0")}
-                  </TD>
-                  <TD>{f.client.name}</TD>
-                  <TD>{f.saleOrder.number}</TD>
-                  <TD>{displayDate(f.issuedAt)}</TD>
-                  <TD>{displayDate(f.dueAt)}</TD>
-                  <TD className="tabular-nums">{money(Number(f.amount) + Number(f.vat))}</TD>
-                  <TD>{f.collectStatus === 1 ? "Cobrado" : "Pendiente"}</TD>
-                  <TD>
-                    <ErpRowActions
-                      confirmAction={
-                        f.collectStatus === ERP_COLLECT.collected
-                          ? undefined
-                          : setErpSaleCollectStatus.bind(null, f.id, ERP_COLLECT.collected)
-                      }
-                      confirmLabel="Cobrada"
-                      confirmPrompt="¿Marcar esta factura como cobrada?"
-                      deleteAction={deleteErpSaleInvoice.bind(null, f.id)}
-                      deleteConfirm="¿Borrar esta factura? Si la orden ya no cubre el importe, se reabre."
-                      editHref={`/backoffice/facturacion/venta?edit=${f.id}`}
-                    />
-                  </TD>
-                </TR>
-              ))}
-            </TBody>
-          </Table>
+          <FacturasVentaTable
+            rows={invoices.map((f) => ({
+              id: f.id,
+              docType: f.docType,
+              pos: f.pos,
+              number: f.number,
+              client: f.client.name,
+              order: f.saleOrder.number,
+              issuedAt: f.issuedAt,
+              dueAt: f.dueAt,
+              total: Number(f.amount) + Number(f.vat),
+              collectStatus: f.collectStatus,
+            }))}
+          />
         )}
       </div>
     </div>

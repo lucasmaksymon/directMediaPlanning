@@ -2,12 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { Badge, EmptyState, Input, PageHeader, Select, Table, TBody, TD, TH, THead, TR } from "@/components/ui";
+import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
+import { ClientesTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
-import { ErpRowActions } from "@/components/erp/ErpRowActions";
-import { createErpClient, deleteErpClient, updateErpClient } from "@/app/actions/erp-masters";
-import { ERP_TAX_CONDITION, erpInputNumber, erpRecordLabel } from "@/lib/erp";
+import { createErpClient, updateErpClient } from "@/app/actions/erp-masters";
+import { ERP_TAX_CONDITION, erpInputNumber } from "@/lib/erp";
 
 export const metadata = { title: productTitle("Clientes") };
 
@@ -121,38 +121,16 @@ export default async function ErpClientesPage({
             title="Sin clientes"
           />
         ) : (
-          <Table>
-            <THead>
-              <TR>
-                <TH>Cliente</TH>
-                <TH>Empresa</TH>
-                <TH>CUIT</TH>
-                <TH>Ejecutivo</TH>
-                <TH>Estado</TH>
-                <TH className="text-right">Acciones</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {clients.map((c) => (
-                <TR key={c.id}>
-                  <TD className="font-medium">{c.name}</TD>
-                  <TD>{c.company.name}</TD>
-                  <TD className="tabular-nums">{c.taxId ?? "—"}</TD>
-                  <TD className="text-muted-foreground">{c.executive?.email ?? "—"}</TD>
-                  <TD>
-                    <Badge variant={c.estado === 1 ? "success" : "default"}>{erpRecordLabel(c.estado)}</Badge>
-                  </TD>
-                  <TD>
-                    <ErpRowActions
-                      deleteAction={deleteErpClient.bind(null, c.id)}
-                      deleteConfirm={`¿Borrar el cliente ${c.name}?`}
-                      editHref={`/backoffice/clientes?edit=${c.id}`}
-                    />
-                  </TD>
-                </TR>
-              ))}
-            </TBody>
-          </Table>
+          <ClientesTable
+            rows={clients.map((c) => ({
+              id: c.id,
+              name: c.name,
+              company: c.company.name,
+              taxId: c.taxId,
+              executive: c.executive?.email ?? null,
+              estado: c.estado,
+            }))}
+          />
         )}
       </div>
     </div>

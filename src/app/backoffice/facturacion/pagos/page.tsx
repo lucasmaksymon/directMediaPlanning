@@ -2,13 +2,13 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { EmptyState, Input, PageHeader, Select, Table, TBody, TD, TH, THead, TR } from "@/components/ui";
+import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
+import { PagosTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
-import { ErpRowActions } from "@/components/erp/ErpRowActions";
-import { createErpPaymentOrder, deleteErpPaymentOrder, updateErpPaymentOrder } from "@/app/actions/erp-billing";
+import { createErpPaymentOrder, updateErpPaymentOrder } from "@/app/actions/erp-billing";
 import { ErpPayMethodSelect } from "@/components/erp/ErpPayMethodSelect";
-import { displayDate, erpInputNumber, isoDate, money } from "@/lib/erp";
+import { erpInputNumber, isoDate, money } from "@/lib/erp";
 
 export const metadata = { title: productTitle("Órdenes de pago") };
 
@@ -97,40 +97,17 @@ export default async function ErpOrdenesPagoPage({
         {orders.length === 0 ? (
           <EmptyState description="No hay órdenes de pago." title="Sin OP" />
         ) : (
-          <Table>
-            <THead>
-              <TR>
-                <TH>Nº</TH>
-                <TH>Proveedor</TH>
-                <TH>Fecha</TH>
-                <TH>Importe</TH>
-                <TH>Medio</TH>
-                <TH>Facturas</TH>
-                <TH className="text-right">Acciones</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {orders.map((o) => (
-                <TR key={o.id}>
-                  <TD className="font-medium">{o.number}</TD>
-                  <TD>{o.vendor.name}</TD>
-                  <TD>{displayDate(o.issuedAt)}</TD>
-                  <TD className="tabular-nums">{money(o.amount)}</TD>
-                  <TD className="max-w-[14rem] truncate text-xs text-muted-foreground" title={o.notes ?? ""}>
-                    {o.notes ?? "—"}
-                  </TD>
-                  <TD className="tabular-nums text-muted-foreground">{o.invoices.length}</TD>
-                  <TD>
-                    <ErpRowActions
-                      deleteAction={deleteErpPaymentOrder.bind(null, o.id)}
-                      deleteConfirm="¿Borrar esta orden de pago?"
-                      editHref={`/backoffice/facturacion/pagos?edit=${o.id}`}
-                    />
-                  </TD>
-                </TR>
-              ))}
-            </TBody>
-          </Table>
+          <PagosTable
+            rows={orders.map((o) => ({
+              id: o.id,
+              number: o.number,
+              vendor: o.vendor.name,
+              issuedAt: o.issuedAt,
+              amount: Number(o.amount),
+              notes: o.notes,
+              invoices: o.invoices.length,
+            }))}
+          />
         )}
       </div>
     </div>

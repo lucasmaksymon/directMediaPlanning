@@ -394,13 +394,18 @@ def main():
                 vendors[vname] = {"name": vname, "kind": 1, "paymentDays": 60}
             neto = num(gestion.cell(r, 29).value) or 0
             issued = iso(gestion.cell(r, 26).value)
+            vat = num(gv.cell(r, 30).value)
+            if vat is None:
+                vat = num(gestion.cell(r, 30).value)
+            if vat is None:
+                vat = round(neto * 0.21, 2)
             if prod or neto:
                 prod_ref = {
                     **(prod or {"raw": None, "docType": "A", "pos": 0, "number": 0, "credit": False}),
                     "vendor": vname,
                     "issuedAt": issued,
                     "net": neto,
-                    "vat": round(neto * 0.21, 2),
+                    "vat": round(float(vat), 2),
                     "payStatus": paid(gestion.cell(r, 32).value or gestion.cell(r, 33).value),
                     "poNumber": txt(gestion.cell(r, 25).value) or key,
                 }
@@ -412,11 +417,20 @@ def main():
             neto = num(gestion.cell(r, 38).value) or 0
             issued = iso(gestion.cell(r, 36).value)
             status = (txt(gestion.cell(r, 45).value) or "").upper()
+            vat = num(gv.cell(r, 39).value)
+            if vat is None:
+                vat = num(gestion.cell(r, 39).value)
+            if vat is None:
+                vat = round(neto * 0.21, 2)
             sale_ref = {
                 **sale,
                 "issuedAt": issued,
                 "net": neto,
-                "vat": round(neto * 0.21, 2),
+                "vat": round(float(vat), 2),
+                "retVat": num(gv.cell(r, 40).value) or num(gestion.cell(r, 40).value) or 0,
+                "retSuss": num(gv.cell(r, 41).value) or num(gestion.cell(r, 41).value) or 0,
+                "retGan": num(gv.cell(r, 42).value) or num(gestion.cell(r, 42).value) or 0,
+                "retIibb": num(gv.cell(r, 43).value) or num(gestion.cell(r, 43).value) or 0,
                 "collectStatus": 1 if "COBRADO" in status else 0,
                 "receiptRef": txt(gestion.cell(r, 47).value),
             }

@@ -2,26 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { Badge, EmptyState, Input, PageHeader, Select, Table, TBody, TD, TH, THead, TR } from "@/components/ui";
+import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
+import { CampaignItemsTable, OrdenesVentaTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
-import { ErpRowActions } from "@/components/erp/ErpRowActions";
-import {
-  createErpCampaignItem,
-  createErpSaleOrder,
-  deleteErpCampaignItem,
-  deleteErpSaleOrder,
-  updateErpSaleOrder,
-} from "@/app/actions/erp-orders";
-import {
-  displayDate,
-  ERP_MONTHS,
-  erpInputNumber,
-  erpOrderBadge,
-  erpOrderLabel,
-  isoDate,
-  money,
-} from "@/lib/erp";
+import { createErpCampaignItem, createErpSaleOrder, updateErpSaleOrder } from "@/app/actions/erp-orders";
+import { ERP_MONTHS, erpInputNumber, isoDate } from "@/lib/erp";
 import { ERP_ORDER_ESTADOS } from "@/lib/erp-write";
 import { listErpElementsForSelect, listErpPlazasForSelect } from "@/lib/erp-catalog";
 
@@ -161,36 +147,16 @@ export default async function ErpOpVentaPage({
               </ErpField>
             </ErpForm>
             {current.items.length > 0 ? (
-              <Table>
-                <THead>
-                  <TR>
-                    <TH>Elemento</TH>
-                    <TH>Ubicación</TH>
-                    <TH>Cant.</TH>
-                    <TH>Período</TH>
-                    <TH className="text-right">Acciones</TH>
-                  </TR>
-                </THead>
-                <TBody>
-                  {current.items.map((item) => (
-                    <TR key={item.id}>
-                      <TD className="font-medium">{item.element}</TD>
-                      <TD>{item.location ?? "—"}</TD>
-                      <TD className="tabular-nums">{Number(item.quantity)}</TD>
-                      <TD className="text-xs text-muted-foreground">
-                        {item.startsAt ? displayDate(item.startsAt) : "—"}
-                        {item.endsAt ? ` → ${displayDate(item.endsAt)}` : ""}
-                      </TD>
-                      <TD>
-                        <ErpRowActions
-                          deleteAction={deleteErpCampaignItem.bind(null, item.id)}
-                          deleteConfirm="¿Borrar este ítem?"
-                        />
-                      </TD>
-                    </TR>
-                  ))}
-                </TBody>
-              </Table>
+              <CampaignItemsTable
+                rows={current.items.map((item) => ({
+                  id: item.id,
+                  element: item.element,
+                  location: item.location,
+                  quantity: Number(item.quantity),
+                  startsAt: item.startsAt,
+                  endsAt: item.endsAt,
+                }))}
+              />
             ) : null}
           </div>
         ) : null}
@@ -198,47 +164,19 @@ export default async function ErpOpVentaPage({
         {orders.length === 0 ? (
           <EmptyState description="No hay órdenes de venta." title="Sin O.P. venta" />
         ) : (
-          <Table>
-            <THead>
-              <TR>
-                <TH>Número</TH>
-                <TH>Cliente</TH>
-                <TH>Período</TH>
-                <TH>Fecha</TH>
-                <TH>Ítems</TH>
-                <TH>Importe</TH>
-                <TH>Estado</TH>
-                <TH className="text-right">Acciones</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {orders.map((o) => (
-                <TR key={o.id}>
-                  <TD className="font-medium">{o.number}</TD>
-                  <TD>{o.client.name}</TD>
-                  <TD>
-                    {ERP_MONTHS[o.month]} {o.year}
-                  </TD>
-                  <TD>{displayDate(o.issuedAt)}</TD>
-                  <TD className="text-xs text-muted-foreground">
-                    {o.items.length === 0 ? "—" : o.items.map((i) => i.element).join(", ")}
-                  </TD>
-                  <TD className="tabular-nums">{money(o.amount)}</TD>
-                  <TD>
-                    <Badge variant={erpOrderBadge(o.estado)}>{erpOrderLabel(o.estado)}</Badge>
-                  </TD>
-                  <TD>
-                    <ErpRowActions
-                      deleteAction={deleteErpSaleOrder.bind(null, o.id)}
-                      deleteConfirm={`¿Borrar la O.P. ${o.number}?`}
-                      editHref={`/backoffice/ordenes/venta?edit=${o.id}`}
-                      pdfHref={`/api/pdf/erp/orden?tipo=venta&id=${o.id}`}
-                    />
-                  </TD>
-                </TR>
-              ))}
-            </TBody>
-          </Table>
+          <OrdenesVentaTable
+            rows={orders.map((o) => ({
+              id: o.id,
+              number: o.number,
+              client: o.client.name,
+              month: o.month,
+              year: o.year,
+              issuedAt: o.issuedAt,
+              items: o.items.map((i) => i.element).join(", "),
+              amount: Number(o.amount),
+              estado: o.estado,
+            }))}
+          />
         )}
       </div>
     </div>

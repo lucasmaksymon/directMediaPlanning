@@ -2,9 +2,10 @@ import Link from "next/link";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { PageHeader, Select, Table, TBody, TD, TH, THead, TR } from "@/components/ui";
+import { PageHeader, Select } from "@/components/ui";
+import { InformeTable } from "@/components/erp/erp-standard-tables";
 import { buildMonthlyReport } from "@/lib/erp-informe";
-import { ERP_MONTHS, money } from "@/lib/erp";
+import { ERP_MONTHS } from "@/lib/erp";
 
 export const metadata = { title: productTitle("Informe mensual") };
 
@@ -65,47 +66,27 @@ export default async function ErpInformePage({
           </Link>
         </form>
 
-        <Table>
-          <THead>
-            <TR>
-              <TH>Cliente</TH>
-              <TH>Orden</TH>
-              <TH>Compra</TH>
-              <TH>Venta</TH>
-              <TH>Compra IVA</TH>
-              <TH>Comisión</TH>
-              <TH>Ganancia</TH>
-              <TH>%</TH>
-            </TR>
-          </THead>
-          <TBody>
-            {rows.length === 0 ? (
-              <TR>
-                <TD className="text-muted-foreground" colSpan={8}>
-                  No hay O.P. de venta en {ERP_MONTHS[month]} {year}.
-                </TD>
-              </TR>
-            ) : (
-              rows.map((r, i) => {
-                const strong = r.kind !== "order";
-                return (
-                  <TR key={`${r.kind}-${r.client}-${r.order}-${i}`}>
-                    <TD className={cn(strong && "font-semibold")}>{r.client}</TD>
-                    <TD className={cn(r.uninvoiced && "font-semibold text-[var(--error)]")}>{r.order}</TD>
-                    <TD className="tabular-nums">{money(r.compraTotal)}</TD>
-                    <TD className="tabular-nums">{r.kind === "expenses" ? "—" : money(r.ventaTotal)}</TD>
-                    <TD className="tabular-nums">{r.kind === "expenses" ? "—" : money(r.totalCompraIva)}</TD>
-                    <TD className="tabular-nums">{r.kind === "expenses" ? "—" : money(r.comision)}</TD>
-                    <TD className="tabular-nums font-medium">{money(r.gananciaBruta)}</TD>
-                    <TD className="tabular-nums">
-                      {r.porcentaje == null ? "—" : `${r.porcentaje.toFixed(2)}%`}
-                    </TD>
-                  </TR>
-                );
-              })
-            )}
-          </TBody>
-        </Table>
+        {rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No hay O.P. de venta en {ERP_MONTHS[month]} {year}.
+          </p>
+        ) : (
+          <InformeTable
+            rows={rows.map((r, i) => ({
+              key: `${r.kind}-${r.client}-${r.order}-${i}`,
+              kind: r.kind,
+              client: r.client,
+              order: r.order,
+              uninvoiced: r.uninvoiced,
+              compraTotal: r.compraTotal,
+              ventaTotal: r.ventaTotal,
+              totalCompraIva: r.totalCompraIva,
+              comision: r.comision,
+              gananciaBruta: r.gananciaBruta,
+              porcentaje: r.porcentaje,
+            }))}
+          />
+        )}
       </div>
     </div>
   );

@@ -2,12 +2,11 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { Badge, EmptyState, Input, PageHeader, Select, Table, TBody, TD, TH, THead, TR } from "@/components/ui";
+import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
+import { EmpresasTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
-import { ErpRowActions } from "@/components/erp/ErpRowActions";
-import { createErpCompany, deleteErpCompany, updateErpCompany } from "@/app/actions/erp-masters";
-import { erpRecordLabel } from "@/lib/erp";
+import { createErpCompany, updateErpCompany } from "@/app/actions/erp-masters";
 
 export const metadata = { title: productTitle("Empresas") };
 
@@ -74,36 +73,15 @@ export default async function ErpEmpresasPage({
         {companies.length === 0 ? (
           <EmptyState description="Creá la primera empresa para poder cargar clientes." title="Sin empresas" />
         ) : (
-          <Table>
-            <THead>
-              <TR>
-                <TH>Empresa</TH>
-                <TH>Moneda</TH>
-                <TH>Plazo</TH>
-                <TH>Estado</TH>
-                <TH className="text-right">Acciones</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {companies.map((c) => (
-                <TR key={c.id}>
-                  <TD className="font-medium">{c.name}</TD>
-                  <TD>{c.currency}</TD>
-                  <TD className="tabular-nums">{c.paymentDays} días</TD>
-                  <TD>
-                    <Badge variant={c.estado === 1 ? "success" : "default"}>{erpRecordLabel(c.estado)}</Badge>
-                  </TD>
-                  <TD>
-                    <ErpRowActions
-                      deleteAction={deleteErpCompany.bind(null, c.id)}
-                      deleteConfirm={`¿Borrar la empresa ${c.name}?`}
-                      editHref={`/backoffice/config/empresas?edit=${c.id}`}
-                    />
-                  </TD>
-                </TR>
-              ))}
-            </TBody>
-          </Table>
+          <EmpresasTable
+            rows={companies.map((c) => ({
+              id: c.id,
+              name: c.name,
+              currency: c.currency,
+              paymentDays: c.paymentDays,
+              estado: c.estado,
+            }))}
+          />
         )}
       </div>
     </div>

@@ -148,6 +148,47 @@ export async function loadGestion(filter: GestionFilter): Promise<GestionRow[]> 
   return rows;
 }
 
+export type GestionPurchaseBlock = {
+  id: string;
+  doc: string;
+  vendor: string;
+  issuedAt: Date;
+  net: number;
+  vat: number;
+  iibb: number;
+  percVat: number;
+  diegoFee: number;
+  total: number;
+  payStatus: number;
+};
+
+export type GestionProductionBlock = {
+  id: string;
+  doc: string;
+  vendor: string;
+  issuedAt: Date;
+  net: number;
+  vat: number;
+  total: number;
+  payStatus: number;
+};
+
+export type GestionSaleBlock = {
+  id: string;
+  doc: string;
+  issuedAt: Date;
+  net: number;
+  vat: number;
+  retVat: number;
+  retSuss: number;
+  retGan: number;
+  retIibb: number;
+  total: number;
+  collected: number;
+  collectStatus: number;
+  receiptRef: string | null;
+};
+
 export type GestionLineRow = {
   id: string;
   orderId: string;
@@ -161,34 +202,41 @@ export type GestionLineRow = {
   quantity: number;
   startsAt: Date | null;
   endsAt: Date | null;
-  purchase: {
-    id: string;
-    doc: string;
-    vendor: string;
-    net: number;
-    vat: number;
-    iibb: number;
-    percVat: number;
-    diegoFee: number;
-    payStatus: number;
-  } | null;
-  production: {
-    id: string;
-    doc: string;
-    vendor: string;
-    net: number;
-    payStatus: number;
-  } | null;
-  sale: {
-    id: string;
-    doc: string;
-    net: number;
-    vat: number;
-    collected: number;
-    collectStatus: number;
-    receiptRef: string | null;
-  } | null;
+  purchase: GestionPurchaseBlock | null;
+  production: GestionProductionBlock | null;
+  sale: GestionSaleBlock | null;
+  /** Venta neta de retenciones − compra − producción (misma idea que el Excel / informe). */
+  ganancia: number | null;
+  gananciaPct: number | null;
 };
+
+/** TOTAL compra Excel col. 20: neto + IVA + IIBB + perc. IVA + com. Diego. */
+export function purchaseLineTotal(p: {
+  net: number;
+  vat: number;
+  iibb: number;
+  percVat: number;
+  diegoFee: number;
+}) {
+  return p.net + p.vat + p.iibb + p.percVat + p.diegoFee;
+}
+
+/** TOTAL producción Excel col. 31: neto + IVA. */
+export function productionLineTotal(p: { net: number; vat: number }) {
+  return p.net + p.vat;
+}
+
+/** TOTAL venta Excel col. 44: neto + IVA − retenciones. */
+export function saleLineTotal(s: {
+  net: number;
+  vat: number;
+  retVat: number;
+  retSuss: number;
+  retGan: number;
+  retIibb: number;
+}) {
+  return s.net + s.vat - s.retVat - s.retSuss - s.retGan - s.retIibb;
+}
 
 function invDoc(inv: { isCreditNote?: boolean; docType: string; pos: number; number: number }) {
   return `${inv.isCreditNote ? "NC" : inv.docType} ${inv.pos}-${inv.number}`;
@@ -239,6 +287,66 @@ export async function loadGestionLines(filter: GestionFilter): Promise<GestionLi
     if (filter.pay === "pending" && payStatus !== "Pendiente") continue;
     if (filter.pay === "paid" && payStatus !== "Pagado") continue;
 
+    const purchaseBlock: GestionPurchaseBlock | null = purchase
+      ? (() => {
+          const block = {
+            id: purchase.id,
+            doc: invDoc(purchase),
+            vendor: purchase.vendor.name,
+            issuedAt: purchase.issuedAt,
+            net: n(purchase.amount),
+            vat: n(purchase.vat),
+            iibb: n(purchase.iibbCaba) + n(purchase.iibbBsAs),
+            percVat: n(purchase.vatWithholding),
+            diegoFee: n(purchase.diegoFee),
+            payStatus: purchase.payStatus,
+          };
+          return { ...block, total: purchaseLineTotal(block) };
+        })()
+      : null;
+
+    const productionBlock: GestionProductionBlock | null = production
+      ? (() => {
+          const block = {
+            id: production.id,
+            doc: invDoc(production),
+            vendor: production.vendor.name,
+            issuedAt: production.issuedAt,
+            net: n(production.amount),
+            vat: n(production.vat),
+            payStatus: production.payStatus,
+          };
+          return { ...block, total: productionLineTotal(block) };
+        })()
+      : null;
+
+    const saleBlock: GestionSaleBlock | null = sale
+      ? (() => {
+          const block = {
+            id: sale.id,
+            doc: `${sale.docType} ${sale.pos}-${sale.number}`,
+            issuedAt: sale.issuedAt,
+            net: n(sale.amount),
+            vat: n(sale.vat),
+            retVat: n(sale.retVat),
+            retSuss: n(sale.retSuss),
+            retGan: n(sale.retGan),
+            retIibb: n(sale.retIibb),
+            collected: n(sale.collected),
+            collectStatus: sale.collectStatus,
+            receiptRef: sale.receiptRef,
+          };
+          return { ...block, total: saleLineTotal(block) };
+        })()
+      : null;
+
+    const hasMoney = Boolean(purchaseBlock || productionBlock || saleBlock);
+    const ganancia = hasMoney
+      ? (saleBlock?.total ?? 0) - (purchaseBlock?.total ?? 0) - (productionBlock?.total ?? 0)
+      : null;
+    const gananciaPct =
+      ganancia != null && saleBlock && saleBlock.total !== 0 ? (ganancia * 100) / saleBlock.total : null;
+
     rows.push({
       id: line.id,
       orderId: line.saleOrder.id,
@@ -252,39 +360,11 @@ export async function loadGestionLines(filter: GestionFilter): Promise<GestionLi
       quantity: n(line.quantity),
       startsAt: line.startsAt,
       endsAt: line.endsAt,
-      purchase: purchase
-        ? {
-            id: purchase.id,
-            doc: invDoc(purchase),
-            vendor: purchase.vendor.name,
-            net: n(purchase.amount),
-            vat: n(purchase.vat),
-            iibb: n(purchase.iibbCaba),
-            percVat: n(purchase.vatWithholding),
-            diegoFee: n(purchase.diegoFee),
-            payStatus: purchase.payStatus,
-          }
-        : null,
-      production: production
-        ? {
-            id: production.id,
-            doc: invDoc(production),
-            vendor: production.vendor.name,
-            net: n(production.amount),
-            payStatus: production.payStatus,
-          }
-        : null,
-      sale: sale
-        ? {
-            id: sale.id,
-            doc: `${sale.docType} ${sale.pos}-${sale.number}`,
-            net: n(sale.amount),
-            vat: n(sale.vat),
-            collected: n(sale.collected),
-            collectStatus: sale.collectStatus,
-            receiptRef: sale.receiptRef,
-          }
-        : null,
+      purchase: purchaseBlock,
+      production: productionBlock,
+      sale: saleBlock,
+      ganancia,
+      gananciaPct,
     });
   }
   return rows;

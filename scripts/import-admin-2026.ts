@@ -2,7 +2,24 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
+function databaseUrl() {
+  const raw = process.env.DATABASE_URL?.trim();
+  if (!raw) throw new Error("Falta DATABASE_URL.");
+  let url = raw;
+  const add = (param: string) => {
+    if (new RegExp(`[?&]${param.split("=")[0]}=`).test(url)) return;
+    url += (url.includes("?") ? "&" : "?") + param;
+  };
+  add("connect_timeout=15");
+  if (/render\.com|dpg-/i.test(url)) add("sslmode=require");
+  return url;
+}
+
+function dbHost(url: string) {
+  return url.replace(/:\/\/([^:@]+):?([^@]*)@/, "://***@").split("?")[0];
+}
+
+const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl() } } });
 
 type Comp = {
   raw?: string | null;
@@ -121,7 +138,16 @@ function pickId(map: Map<string, string>, name: string | null | undefined) {
 
 async function main() {
   const file = path.join(process.cwd(), "data", "admin-2026.json");
+  console.log(`JSON ${file}`);
+  console.log(`DB   ${dbHost(databaseUrl())}`);
+  process.stdout.write("Conectando… ");
+  await prisma.$connect();
+  console.log("ok");
+
   const data = JSON.parse(readFileSync(file, "utf8")) as Payload;
+  console.log(
+    `Payload: ${data.clients.length} clientes · ${data.vendors.length} proveedores · ${data.orders.length} órdenes`,
+  );
 
   let company = await prisma.erpCompany.findFirst({
     where: { OR: [{ id: "seed-nextmedia" }, { name: "NextMedia" }] },
@@ -138,6 +164,7 @@ async function main() {
   }
 
   const clientIds = new Map<string, string>();
+  console.log("Clientes…");
   for (const c of data.clients) {
     const existing = await prisma.erpClient.findFirst({ where: { name: c.name } });
     const row = existing
@@ -156,6 +183,7 @@ async function main() {
   }
 
   const vendorIds = new Map<string, string>();
+  console.log("Proveedores…");
   for (const v of data.vendors) {
     const existing = await prisma.erpVendor.findFirst({ where: { name: v.name } });
     const row = existing
@@ -174,6 +202,7 @@ async function main() {
   }
 
   let createdOrders = 0;
+  console.log("Órdenes…");
   for (const o of data.orders) {
     const clientId = clientIds.get(o.client);
     if (!clientId) continue;
@@ -200,6 +229,9 @@ async function main() {
       ? await prisma.erpSaleOrder.update({ where: { id: order.id }, data: payload })
       : await prisma.erpSaleOrder.create({ data: payload });
     createdOrders += 1;
+    if (createdOrders % 5 === 0 || createdOrders === data.orders.length) {
+      console.log(`  ${createdOrders}/${data.orders.length} ${o.number}`);
+    }
 
     await prisma.erpCampaignItem.deleteMany({ where: { saleOrderId: order.id } });
     if (o.items.length) {
@@ -424,6 +456,7 @@ async function main() {
   }
 
   let createdLots = 0;
+  console.log("Órdenes de pago…");
   for (const lot of data.paymentLots ?? []) {
     const vendorId = pickId(vendorIds, lot.vendor);
     if (!vendorId) continue;
@@ -536,6 +569,7 @@ async function main() {
   }
 
   let createdLines = 0;
+  console.log("Gestión…");
   const orderByNumber = new Map<string, string>();
   for (const o of data.orders) {
     const row = await prisma.erpSaleOrder.findFirst({

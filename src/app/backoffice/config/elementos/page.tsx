@@ -2,18 +2,16 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { Badge, EmptyState, Input, PageHeader, Select, Table, TBody, TD, TH, THead, TR } from "@/components/ui";
+import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
+import { ElementosTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
-import { ErpRowActions } from "@/components/erp/ErpRowActions";
 import { ErpCatalogSyncButton } from "@/components/erp/ErpCatalogSyncButton";
 import {
   createErpElement,
-  deleteErpElement,
   syncErpElementsFromCampaigns,
   updateErpElement,
 } from "@/app/actions/erp-masters";
-import { erpRecordLabel } from "@/lib/erp";
 
 export const metadata = { title: productTitle("Elementos") };
 
@@ -66,32 +64,7 @@ export default async function ErpElementosPage({
             title="Sin elementos"
           />
         ) : (
-          <Table>
-            <THead>
-              <TR>
-                <TH>Elemento</TH>
-                <TH>Estado</TH>
-                <TH className="text-right">Acciones</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {elements.map((e) => (
-                <TR key={e.id}>
-                  <TD className="font-medium">{e.name}</TD>
-                  <TD>
-                    <Badge variant={e.estado === 1 ? "success" : "default"}>{erpRecordLabel(e.estado)}</Badge>
-                  </TD>
-                  <TD>
-                    <ErpRowActions
-                      deleteAction={deleteErpElement.bind(null, e.id)}
-                      deleteConfirm={`¿Borrar ${e.name}?`}
-                      editHref={`/backoffice/config/elementos?edit=${e.id}`}
-                    />
-                  </TD>
-                </TR>
-              ))}
-            </TBody>
-          </Table>
+          <ElementosTable rows={elements.map((e) => ({ id: e.id, name: e.name, estado: e.estado }))} />
         )}
       </div>
     </div>

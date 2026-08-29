@@ -2,12 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { EmptyState, Input, PageHeader, Select, Table, TBody, TD, TH, THead, TR } from "@/components/ui";
+import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
+import { GastosTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
-import { ErpRowActions } from "@/components/erp/ErpRowActions";
-import { deleteErpExpense, upsertErpExpense } from "@/app/actions/erp-masters";
-import { ERP_MONTHS, erpInputNumber, money } from "@/lib/erp";
+import { upsertErpExpense } from "@/app/actions/erp-masters";
+import { ERP_MONTHS, erpInputNumber } from "@/lib/erp";
 
 export const metadata = { title: productTitle("Gastos") };
 
@@ -66,43 +66,17 @@ export default async function ErpGastosPage({
         {expenses.length === 0 ? (
           <EmptyState description="No hay gastos cargados." title="Sin gastos" />
         ) : (
-          <Table>
-            <THead>
-              <TR>
-                <TH>Período</TH>
-                <TH>Fijo</TH>
-                <TH>Banco</TH>
-                <TH>IVA</TH>
-                <TH>Comisiones</TH>
-                <TH>Total</TH>
-                <TH className="text-right">Acciones</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {expenses.map((e) => {
-                const total = Number(e.fixed) + Number(e.bank) + Number(e.vat) + Number(e.commissions);
-                return (
-                  <TR key={e.id}>
-                    <TD className="font-medium">
-                      {ERP_MONTHS[e.month]} {e.year}
-                    </TD>
-                    <TD className="tabular-nums">{money(e.fixed)}</TD>
-                    <TD className="tabular-nums">{money(e.bank)}</TD>
-                    <TD className="tabular-nums">{money(e.vat)}</TD>
-                    <TD className="tabular-nums">{money(e.commissions)}</TD>
-                    <TD className="tabular-nums font-medium">{money(total)}</TD>
-                    <TD>
-                      <ErpRowActions
-                        deleteAction={deleteErpExpense.bind(null, e.id)}
-                        deleteConfirm={`¿Borrar gastos de ${ERP_MONTHS[e.month]} ${e.year}?`}
-                        editHref={`/backoffice/gastos?edit=${e.id}`}
-                      />
-                    </TD>
-                  </TR>
-                );
-              })}
-            </TBody>
-          </Table>
+          <GastosTable
+            rows={expenses.map((e) => ({
+              id: e.id,
+              month: e.month,
+              year: e.year,
+              fixed: Number(e.fixed),
+              bank: Number(e.bank),
+              vat: Number(e.vat),
+              commissions: Number(e.commissions),
+            }))}
+          />
         )}
       </div>
     </div>

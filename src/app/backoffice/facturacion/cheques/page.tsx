@@ -2,12 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { Badge, EmptyState, Input, PageHeader, Select, Table, TBody, TD, TH, THead, TR } from "@/components/ui";
+import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
+import { ChequesTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
-import { ErpRowActions } from "@/components/erp/ErpRowActions";
-import { createErpIssuedCheque, deleteErpCheque, updateErpCheque } from "@/app/actions/erp-billing";
-import { displayDate, ERP_PAY, erpInputNumber, isoDate, money } from "@/lib/erp";
+import { createErpIssuedCheque, updateErpCheque } from "@/app/actions/erp-billing";
+import { ERP_PAY, erpInputNumber, isoDate } from "@/lib/erp";
 
 export const metadata = { title: productTitle("Cheques") };
 
@@ -73,38 +73,18 @@ export default async function ErpChequesPage({
           {received.length === 0 ? (
             <EmptyState description="Se generan al cargar un recibo con cheque." title="Sin cheques recibidos" />
           ) : (
-            <Table>
-              <THead>
-                <TR>
-                  <TH>Nº</TH>
-                  <TH>Tipo</TH>
-                  <TH>Cliente</TH>
-                  <TH>Emisión</TH>
-                  <TH>Pago</TH>
-                  <TH>Importe</TH>
-                  <TH className="text-right">Acciones</TH>
-                </TR>
-              </THead>
-              <TBody>
-                {received.map((p) => (
-                  <TR key={p.id}>
-                    <TD className="font-medium">{p.number ?? "—"}</TD>
-                    <TD>{p.paymentKind === ERP_PAY.transfer ? "Transfer" : "E-cheq"}</TD>
-                    <TD>{p.saleReceipt?.client.name ?? "—"}</TD>
-                    <TD>{p.issuedAt ? displayDate(p.issuedAt) : "—"}</TD>
-                    <TD>{p.paidAt ? displayDate(p.paidAt) : "—"}</TD>
-                    <TD className="tabular-nums">{money(p.amount)}</TD>
-                    <TD>
-                      <ErpRowActions
-                        deleteAction={deleteErpCheque.bind(null, p.id)}
-                        deleteConfirm="¿Borrar este cheque?"
-                        editHref={`/backoffice/facturacion/cheques?edit=${p.id}`}
-                      />
-                    </TD>
-                  </TR>
-                ))}
-              </TBody>
-            </Table>
+            <ChequesTable
+              storageKey="erp.table.cheques-recibidos.v1"
+              rows={received.map((p) => ({
+                id: p.id,
+                number: p.number,
+                paymentKind: p.paymentKind,
+                party: p.saleReceipt?.client.name ?? "—",
+                issuedAt: p.issuedAt,
+                paidAt: p.paidAt,
+                amount: Number(p.amount),
+              }))}
+            />
           )}
         </section>
 
@@ -113,42 +93,20 @@ export default async function ErpChequesPage({
           {issued.length === 0 ? (
             <EmptyState description="Cargá un cheque emitido arriba." title="Sin cheques emitidos" />
           ) : (
-            <Table>
-              <THead>
-                <TR>
-                  <TH>Nº</TH>
-                  <TH>Tipo</TH>
-                  <TH>Proveedor</TH>
-                  <TH>Emisión</TH>
-                  <TH>Pago</TH>
-                  <TH>Importe</TH>
-                  <TH>Estado</TH>
-                  <TH className="text-right">Acciones</TH>
-                </TR>
-              </THead>
-              <TBody>
-                {issued.map((p) => (
-                  <TR key={p.id}>
-                    <TD className="font-medium">{p.number ?? "—"}</TD>
-                    <TD>{p.paymentKind === ERP_PAY.transfer ? "Transfer" : "E-cheq"}</TD>
-                    <TD>{p.purchaseReceipt?.vendor.name ?? "—"}</TD>
-                    <TD>{p.issuedAt ? displayDate(p.issuedAt) : "—"}</TD>
-                    <TD>{p.paidAt ? displayDate(p.paidAt) : "—"}</TD>
-                    <TD className="tabular-nums">{money(p.amount)}</TD>
-                    <TD>
-                      <Badge>{p.estado === 1 ? "Pagado" : "Pendiente"}</Badge>
-                    </TD>
-                    <TD>
-                      <ErpRowActions
-                        deleteAction={deleteErpCheque.bind(null, p.id)}
-                        deleteConfirm="¿Borrar este cheque?"
-                        editHref={`/backoffice/facturacion/cheques?edit=${p.id}`}
-                      />
-                    </TD>
-                  </TR>
-                ))}
-              </TBody>
-            </Table>
+            <ChequesTable
+              showEstado
+              storageKey="erp.table.cheques-emitidos.v1"
+              rows={issued.map((p) => ({
+                id: p.id,
+                number: p.number,
+                paymentKind: p.paymentKind,
+                party: p.purchaseReceipt?.vendor.name ?? "—",
+                issuedAt: p.issuedAt,
+                paidAt: p.paidAt,
+                amount: Number(p.amount),
+                estado: p.estado,
+              }))}
+            />
           )}
         </section>
       </div>

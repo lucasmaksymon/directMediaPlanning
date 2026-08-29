@@ -148,8 +148,11 @@ export function isoDate(d: Date) {
   return d.toISOString().slice(0, 10);
 }
 
-export function displayDate(d: Date) {
-  return d.toLocaleDateString("es-AR");
+export function displayDate(d: Date | string | null | undefined) {
+  if (d == null || d === "") return "—";
+  const date = d instanceof Date ? d : new Date(d);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("es-AR");
 }
 
 export function shouldCloseOrder(invoicedTotal: number, orderAmount: number) {

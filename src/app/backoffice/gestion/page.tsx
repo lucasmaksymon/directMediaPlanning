@@ -2,11 +2,10 @@ import Link from "next/link";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { Badge, EmptyState, Input, PageHeader, Select, Table, TBody, TD, TH, THead, TR } from "@/components/ui";
-import { ErpRowActions } from "@/components/erp/ErpRowActions";
+import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
+import { ErpGestionTable } from "@/components/erp/ErpGestionTable";
 import { loadGestionLines } from "@/lib/erp-gestion";
-import { displayDate, ERP_COLLECT, ERP_MONTHS, ERP_SETTLE, money } from "@/lib/erp";
-import { setErpPurchasePayStatus, setErpSaleCollectStatus } from "@/app/actions/erp-billing";
+import { ERP_COLLECT, ERP_MONTHS, ERP_SETTLE, money } from "@/lib/erp";
 
 export const metadata = { title: productTitle("Gestión") };
 
@@ -34,16 +33,18 @@ export default async function ErpGestionPage({
       (r.purchase && r.purchase.payStatus !== ERP_SETTLE.paid) ||
       (r.production && r.production.payStatus !== ERP_SETTLE.paid),
   ).length;
+  const gananciaTotal = rows.reduce((sum, r) => sum + (r.ganancia ?? 0), 0);
 
   return (
-    <div className={cn(adminPage, "gap-4")}>
+    <div className={cn(adminPage, "gap-4 overflow-hidden")}>
       <PageHeader
-        description="Misma planilla que ADMIN 2026: una fila = ítem + compra + producción + venta."
+        className="shrink-0"
+        description="Misma planilla que el Excel GESTIÓN 2026: campaña, compra (IVA, IIBB, perc. IVA), producción, venta (retenciones) y ganancia bruta."
         eyebrow="Administración"
         title="Gestión"
       />
-      <div className={cn(adminPageBody, "flex flex-col gap-3 pb-8")}>
-        <form className="flex flex-wrap items-end gap-3" method="get">
+      <div className={cn(adminPageBody, "flex min-h-0 flex-1 flex-col gap-3 overflow-hidden pb-2")}>
+        <form className="flex shrink-0 flex-wrap items-end gap-3" method="get">
           <label className="space-y-1 text-sm">
             <span className="text-muted-foreground">Mes</span>
             <Select defaultValue={String(month)} name="mes">
@@ -91,8 +92,9 @@ export default async function ErpGestionPage({
           </Link>
         </form>
 
-        <p className="text-xs text-muted-foreground">
-          {rows.length} filas · {toInvoice} a facturar · {pendingSale} cobro pendiente · {pendingPay} pago pendiente
+        <p className="shrink-0 text-xs text-muted-foreground">
+          {rows.length} filas · {toInvoice} a facturar · {pendingSale} cobro pendiente · {pendingPay} pago
+          pendiente · ganancia bruta {money(gananciaTotal)}
         </p>
 
         {rows.length === 0 ? (
@@ -101,142 +103,7 @@ export default async function ErpGestionPage({
             title="Sin campañas"
           />
         ) : (
-          <Table className="min-w-[86rem] text-xs">
-            <THead>
-              <TR>
-                <TH>Orden</TH>
-                <TH>Cliente</TH>
-                <TH>Ítem</TH>
-                <TH>Plaza</TH>
-                <TH>Cant.</TH>
-                <TH>Período</TH>
-                <TH>FC compra</TH>
-                <TH>Medio</TH>
-                <TH>Neto</TH>
-                <TH>IIBB</TH>
-                <TH>Diego</TH>
-                <TH>Pago</TH>
-                <TH>Producción</TH>
-                <TH>FC venta</TH>
-                <TH>Neto vta</TH>
-                <TH>Cobro</TH>
-                <TH className="text-right">Acciones</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {rows.map((r) => (
-                <TR key={r.id}>
-                  <TD className="font-medium">
-                    <Link className="hover:underline" href={`/backoffice/ordenes/venta?edit=${r.orderId}`}>
-                      {r.number}
-                    </Link>
-                    <span className="block text-[10px] text-muted-foreground">
-                      {ERP_MONTHS[r.month]} {r.year}
-                    </span>
-                  </TD>
-                  <TD>
-                    {r.client}
-                    {r.legalName ? (
-                      <span className="block text-[10px] text-muted-foreground">{r.legalName}</span>
-                    ) : null}
-                  </TD>
-                  <TD>{r.element ?? "—"}</TD>
-                  <TD>{r.location ?? "—"}</TD>
-                  <TD className="tabular-nums">{r.quantity || "—"}</TD>
-                  <TD className="text-muted-foreground">
-                    {r.startsAt ? displayDate(r.startsAt) : "—"}
-                    {r.endsAt ? ` → ${displayDate(r.endsAt)}` : ""}
-                  </TD>
-                  <TD>
-                    {r.purchase ? (
-                      <Link className="hover:underline" href={`/backoffice/facturacion/compra?edit=${r.purchase.id}`}>
-                        {r.purchase.doc}
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                  </TD>
-                  <TD>{r.purchase?.vendor ?? "—"}</TD>
-                  <TD className="tabular-nums">{r.purchase ? money(r.purchase.net) : "—"}</TD>
-                  <TD className="tabular-nums text-muted-foreground">
-                    {r.purchase?.iibb || r.purchase?.percVat
-                      ? money((r.purchase?.iibb ?? 0) + (r.purchase?.percVat ?? 0))
-                      : "—"}
-                  </TD>
-                  <TD className="tabular-nums">{r.purchase?.diegoFee ? money(r.purchase.diegoFee) : "—"}</TD>
-                  <TD>
-                    {r.purchase ? (
-                      <Badge variant={r.purchase.payStatus === ERP_SETTLE.paid ? "success" : "warning"}>
-                        {r.purchase.payStatus === ERP_SETTLE.paid ? "Pagado" : "Pendiente"}
-                      </Badge>
-                    ) : (
-                      "—"
-                    )}
-                  </TD>
-                  <TD>
-                    {r.production ? (
-                      <span>
-                        {r.production.doc}
-                        <span className="block text-[10px] text-muted-foreground">
-                          {r.production.vendor} · {money(r.production.net)}
-                        </span>
-                      </span>
-                    ) : (
-                      "—"
-                    )}
-                  </TD>
-                  <TD>
-                    {r.sale ? (
-                      <Link className="hover:underline" href={`/backoffice/facturacion/venta?edit=${r.sale.id}`}>
-                        {r.sale.doc}
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                  </TD>
-                  <TD className="tabular-nums">{r.sale ? money(r.sale.net) : "—"}</TD>
-                  <TD>
-                    {r.sale ? (
-                      <span>
-                        <Badge variant={r.sale.collectStatus === ERP_COLLECT.collected ? "success" : "info"}>
-                          {r.sale.collectStatus === ERP_COLLECT.collected ? "Cobrado" : "Pendiente"}
-                        </Badge>
-                        {r.sale.receiptRef ? (
-                          <span className="block text-[10px] text-muted-foreground">{r.sale.receiptRef}</span>
-                        ) : null}
-                      </span>
-                    ) : (
-                      <Badge variant="warning">A facturar</Badge>
-                    )}
-                  </TD>
-                  <TD>
-                    <ErpRowActions
-                      confirmAction={
-                        r.sale && r.sale.collectStatus !== ERP_COLLECT.collected
-                          ? setErpSaleCollectStatus.bind(null, r.sale.id, ERP_COLLECT.collected)
-                          : r.purchase && r.purchase.payStatus !== ERP_SETTLE.paid
-                            ? setErpPurchasePayStatus.bind(null, r.purchase.id, ERP_SETTLE.paid)
-                            : r.production && r.production.payStatus !== ERP_SETTLE.paid
-                              ? setErpPurchasePayStatus.bind(null, r.production.id, ERP_SETTLE.paid)
-                              : undefined
-                      }
-                      confirmLabel={
-                        r.sale && r.sale.collectStatus !== ERP_COLLECT.collected
-                          ? "Cobrada"
-                          : r.purchase && r.purchase.payStatus !== ERP_SETTLE.paid
-                            ? "Pagada"
-                            : r.production && r.production.payStatus !== ERP_SETTLE.paid
-                              ? "Pagada"
-                              : undefined
-                      }
-                      confirmPrompt="¿Confirmar el cambio de estado?"
-                      editHref={`/backoffice/ordenes/venta?edit=${r.orderId}`}
-                    />
-                  </TD>
-                </TR>
-              ))}
-            </TBody>
-          </Table>
+          <ErpGestionTable rows={rows} />
         )}
       </div>
     </div>

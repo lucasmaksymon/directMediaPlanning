@@ -2,11 +2,10 @@ import Link from "next/link";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { Badge, EmptyState, PageHeader, Table, TBody, TD, TH, THead, TR } from "@/components/ui";
-import { ErpRowActions } from "@/components/erp/ErpRowActions";
+import { EmptyState, PageHeader } from "@/components/ui";
+import { PendientesTable } from "@/components/erp/erp-standard-tables";
 import { loadPendingPayables } from "@/lib/erp-gestion";
-import { displayDate, ERP_SETTLE, money } from "@/lib/erp";
-import { setErpPurchasePayStatus } from "@/app/actions/erp-billing";
+import { money } from "@/lib/erp";
 
 export const metadata = { title: productTitle("Pagos pendientes") };
 
@@ -35,47 +34,7 @@ export default async function ErpPagosPendientesPage() {
         {rows.length === 0 ? (
           <EmptyState description="No hay facturas de compra pendientes." title="Al día" />
         ) : (
-          <Table>
-            <THead>
-              <TR>
-                <TH>Vence</TH>
-                <TH>Factura</TH>
-                <TH>Proveedor</TH>
-                <TH>Orden</TH>
-                <TH>Importe</TH>
-                <TH className="text-right">Acciones</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {rows.map((r) => (
-                <TR key={r.id}>
-                  <TD className={r.overdue ? "font-semibold text-[var(--error)]" : ""}>
-                    {displayDate(r.dueAt)}
-                    <span className="block text-xs text-muted-foreground">FC {displayDate(r.issuedAt)}</span>
-                  </TD>
-                  <TD className="font-medium">
-                    {r.doc}
-                    {r.overdue ? (
-                      <Badge className="ml-2" variant="warning">
-                        Vencido
-                      </Badge>
-                    ) : null}
-                  </TD>
-                  <TD>{r.vendor}</TD>
-                  <TD>{r.order}</TD>
-                  <TD className="tabular-nums">{money(r.amount)}</TD>
-                  <TD>
-                    <ErpRowActions
-                      confirmAction={setErpPurchasePayStatus.bind(null, r.id, ERP_SETTLE.paid)}
-                      confirmLabel="Pagada"
-                      confirmPrompt="¿Marcar esta factura como pagada?"
-                      editHref={`/backoffice/facturacion/compra?edit=${r.id}`}
-                    />
-                  </TD>
-                </TR>
-              ))}
-            </TBody>
-          </Table>
+          <PendientesTable rows={rows} />
         )}
       </div>
     </div>

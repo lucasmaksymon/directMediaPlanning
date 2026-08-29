@@ -2,14 +2,13 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { EmptyState, Input, PageHeader, Table, TBody, TD, TH, THead, TR } from "@/components/ui";
+import { EmptyState, Input, PageHeader } from "@/components/ui";
+import { MonedasTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
-import { ErpRowActions } from "@/components/erp/ErpRowActions";
 import { ErpCatalogSyncButton } from "@/components/erp/ErpCatalogSyncButton";
 import {
   createErpCurrency,
-  deleteErpCurrency,
   syncErpCatalogFromInventory,
   updateErpCurrency,
 } from "@/app/actions/erp-masters";
@@ -61,32 +60,14 @@ export default async function ErpMonedasPage({
             title="Sin monedas"
           />
         ) : (
-          <Table>
-            <THead>
-              <TR>
-                <TH>Código</TH>
-                <TH>Nombre</TH>
-                <TH>Cotización</TH>
-                <TH className="text-right">Acciones</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {currencies.map((c) => (
-                <TR key={c.id}>
-                  <TD className="font-medium">{c.code}</TD>
-                  <TD>{c.name}</TD>
-                  <TD className="tabular-nums">{Number(c.rate)}</TD>
-                  <TD>
-                    <ErpRowActions
-                      deleteAction={deleteErpCurrency.bind(null, c.id)}
-                      deleteConfirm={`¿Borrar ${c.code}?`}
-                      editHref={`/backoffice/config/monedas?edit=${c.id}`}
-                    />
-                  </TD>
-                </TR>
-              ))}
-            </TBody>
-          </Table>
+          <MonedasTable
+            rows={currencies.map((c) => ({
+              id: c.id,
+              code: c.code,
+              name: c.name,
+              rate: Number(c.rate),
+            }))}
+          />
         )}
       </div>
     </div>
