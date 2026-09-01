@@ -5,7 +5,7 @@ export type PresentationHighlight = {
   enabled?: boolean;
 };
 
-/** cover = llena el panel (recorta); contain = imagen completa (bandas). Nunca deforma. */
+/** cover = llena el panel (recorta); contain = imagen completa, fondo = panel izquierdo. Nunca deforma. */
 export type PresentationImageFit = "cover" | "contain";
 
 export const PRESENTATION_FIELD_KEYS = [

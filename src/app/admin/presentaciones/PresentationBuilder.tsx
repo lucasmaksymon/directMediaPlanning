@@ -49,6 +49,7 @@ import type {
 } from "@/lib/presentations/types";
 import { PRESENTATION_FIELD_KEYS } from "@/lib/presentations/types";
 import { normalizeImageFit } from "@/lib/presentations/image-layout";
+import { cleanLocationLabel } from "@/lib/inventory/unit-specs";
 import { btnPrimary, btnSecondary, fieldClass, selectClassCompact, surfaceCard } from "@/lib/ui-classes";
 
 const compactField = cn(fieldClass, "h-8 px-2.5 py-1 text-xs");
@@ -170,6 +171,15 @@ function zonaOf(unit: UnitCard) {
   return extractUnitSpecs(unit).zona?.trim() || "";
 }
 
+/** Evita el ruido "Espacio — CABA — AV. FOO" en el listado. */
+function catalogUnitLabel(unit: UnitCard) {
+  const loc = cleanLocationLabel(unit.locationLabel) || unit.locationLabel.trim();
+  if (loc.length >= 4) return loc;
+  const parts = unit.name.split(/\s*[—–]\s*/).map((p) => p.trim()).filter(Boolean);
+  if (parts.length >= 2 && /^espacio$/i.test(parts[0])) return parts[parts.length - 1];
+  return unit.name;
+}
+
 function buildSlide(unit: UnitCard, imageFit: PresentationImageFit): EditableSlide {
   const defaults = unitToSlideDefaults(unit);
   const imageUrl = unit.imageUrls[0] ?? null;
@@ -177,7 +187,7 @@ function buildSlide(unit: UnitCard, imageFit: PresentationImageFit): EditableSli
     ...defaults,
     imageFit: isKitPageImage(imageUrl) ? "contain" : imageFit,
     imageUrl,
-    unitName: unit.name,
+    unitName: catalogUnitLabel(unit),
     providerName: unit.provider.companyName,
   };
 }
@@ -558,7 +568,7 @@ function SlidePreview({
   const rows = slideSpecRows(slide, visibleFields);
 
   return (
-    <div className="flex h-full w-full overflow-hidden border border-border bg-background">
+    <div className="flex h-full w-full overflow-hidden border border-border bg-card">
       <div className="flex w-[45%] flex-col justify-center gap-5 bg-card px-10 py-9">
         {isFieldVisible(visibleFields, "zona") ? (
           slide.zona ? (
@@ -596,7 +606,7 @@ function SlidePreview({
           ))}
         </dl>
       </div>
-      <div className="relative w-[55%] overflow-hidden bg-muted">
+      <div className="relative w-[55%] overflow-hidden bg-card">
         {slide.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -690,6 +700,7 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
 
   const addVisibleLabel = (() => {
     const n = remainingVisible.length;
+    if (n === 0) return "Ya están en el deck";
     const bits: string[] = [];
     if (providerFilter.length === 1) bits.push(providerFilter[0]);
     else if (providerFilter.length > 1) bits.push(`${providerFilter.length} medios`);
@@ -700,7 +711,7 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
     }
     if (bits.length > 0) return `Agregar ${n} de ${bits.join(" · ")}`;
     if (query.trim()) return `Agregar ${n} de la búsqueda`;
-    return n === 0 ? "Ya están en el deck" : `Agregar todos (${n})`;
+    return `Agregar todos (${n})`;
   })();
 
   async function fillImpacto(unitId: string) {
@@ -924,7 +935,18 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
               type="button"
               className={cn(btnSecondary, "h-9 px-2.5 text-xs")}
               disabled={remainingVisible.length === 0}
-              onClick={() => addUnits(filtered)}
+              onClick={() => {
+                const n = remainingVisible.length;
+                if (
+                  n > 25 &&
+                  !window.confirm(
+                    `Esto agrega ${n} carteles a la presentación. ¿Seguís?`,
+                  )
+                ) {
+                  return;
+                }
+                addUnits(filtered);
+              }}
             >
               {addVisibleLabel}
             </button>
@@ -951,7 +973,7 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
                     ) : null}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[11px] font-medium text-foreground">{u.name}</p>
+                    <p className="truncate text-[11px] font-medium text-foreground">{catalogUnitLabel(u)}</p>
                     <p className="truncate text-[10px] text-muted-foreground">
                       {u.provider.companyName} · {u.locationLabel}
                     </p>
@@ -1043,7 +1065,23 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
           <section className={cn(surfaceCard(), "flex shrink-0 flex-col gap-1.5 p-2")}>
             <div className="flex items-baseline justify-between gap-2 px-0.5">
               <h2 className="text-sm font-semibold text-foreground">Orden</h2>
-              <span className="text-[11px] tabular-nums text-muted-foreground">{slides.length}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] tabular-nums text-muted-foreground">{slides.length}</span>
+                {slides.length > 0 ? (
+                  <button
+                    className="text-[11px] text-muted-foreground hover:text-foreground"
+                    onClick={() => {
+                      setSlides([]);
+                      setActiveIndex(0);
+                      setPreviewKind("cover");
+                      setError(null);
+                    }}
+                    type="button"
+                  >
+                    Vaciar
+                  </button>
+                ) : null}
+              </div>
             </div>
             <div className="min-h-0 overflow-x-auto overflow-y-hidden [scrollbar-gutter:stable]">
               {slides.length === 0 ? (
