@@ -17,8 +17,14 @@ export const maxDuration = 120;
 
 let exportBusy = false;
 
-function toResponseBody(buf: Buffer): Uint8Array {
-  return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+function fileResponse(buf: Buffer, contentType: string, filename: string) {
+  const body = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
+  return new Response(body, {
+    headers: {
+      "Content-Type": contentType,
+      "Content-Disposition": `attachment; filename="${filename}"`,
+    },
+  });
 }
 
 function clipped(max: number) {
@@ -210,20 +216,13 @@ async function runExport(
 
   if (input.format === "pdf") {
     const buffer = await renderToBuffer(PresentationDocument({ deck }));
-    return new Response(toResponseBody(buffer), {
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${CLIENT_BRAND.toLowerCase()}-${slug}.pdf"`,
-      },
-    });
+    return fileResponse(buffer, "application/pdf", `${CLIENT_BRAND.toLowerCase()}-${slug}.pdf`);
   }
 
   const pptxBuf = await buildPresentationPptx(deck);
-  return new Response(toResponseBody(pptxBuf), {
-    headers: {
-      "Content-Type":
-        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-      "Content-Disposition": `attachment; filename="${CLIENT_BRAND.toLowerCase()}-${slug}.pptx"`,
-    },
-  });
+  return fileResponse(
+    pptxBuf,
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    `${CLIENT_BRAND.toLowerCase()}-${slug}.pptx`,
+  );
 }
