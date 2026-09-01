@@ -17,6 +17,10 @@ export const maxDuration = 120;
 
 let exportBusy = false;
 
+function toResponseBody(buf: Buffer): Uint8Array {
+  return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+}
+
 function clipped(max: number) {
   return z.string().transform((s) => s.slice(0, max));
 }
@@ -206,7 +210,7 @@ async function runExport(
 
   if (input.format === "pdf") {
     const buffer = await renderToBuffer(PresentationDocument({ deck }));
-    return new Response(buffer, {
+    return new Response(toResponseBody(buffer), {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${CLIENT_BRAND.toLowerCase()}-${slug}.pdf"`,
@@ -215,7 +219,7 @@ async function runExport(
   }
 
   const pptxBuf = await buildPresentationPptx(deck);
-  return new Response(pptxBuf, {
+  return new Response(toResponseBody(pptxBuf), {
     headers: {
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.presentationml.presentation",
