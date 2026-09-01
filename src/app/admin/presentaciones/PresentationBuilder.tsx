@@ -653,6 +653,11 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [previewKind, setPreviewKind] = useState<"cover" | "unit" | "closing">("cover");
   const [exporting, setExporting] = useState<"pdf" | "pptx" | null>(null);
+  const exportAbort = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => exportAbort.current?.abort();
+  }, []);
   const [error, setError] = useState<string | null>(null);
   const [defaultImageFit, setDefaultImageFit] = useState<PresentationImageFit>("cover");
   const [visibleFields, setVisibleFields] = useState(defaultVisibleFields);
@@ -827,12 +832,16 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
       setError("Ingresá un título para la presentación.");
       return;
     }
+    exportAbort.current?.abort();
+    const ac = new AbortController();
+    exportAbort.current = ac;
     setExporting(format);
     setError(null);
     try {
       const res = await fetch("/api/presentations/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: ac.signal,
         body: JSON.stringify({
           format,
           theme: normalizePresentationTheme(resolvedTheme),
@@ -886,10 +895,22 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
+      if (ac.signal.aborted || (e instanceof Error && e.name === "AbortError")) {
+        setError(null);
+        return;
+      }
       setError(e instanceof Error ? e.message : "Error al exportar.");
     } finally {
+      if (exportAbort.current === ac) exportAbort.current = null;
       setExporting(null);
     }
+  }
+
+  function cancelExport() {
+    exportAbort.current?.abort();
+    exportAbort.current = null;
+    setExporting(null);
+    setError(null);
   }
 
   return (
@@ -1438,22 +1459,39 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
           </p>
         )}
         <div className="flex flex-wrap gap-1.5 sm:justify-end">
-          <button
-            type="button"
-            className={cn(btnSecondary, "h-8 min-w-0 flex-1 px-3 text-xs sm:min-w-[7rem] sm:flex-none")}
-            disabled={!!exporting || slides.length === 0}
-            onClick={() => exportDeck("pptx")}
-          >
-            {exporting === "pptx" ? "Generando…" : "Exportar PPTX"}
-          </button>
-          <button
-            type="button"
-            className={cn(btnPrimary, "h-8 min-w-0 flex-1 px-3 text-xs sm:min-w-[7rem] sm:flex-none")}
-            disabled={!!exporting || slides.length === 0}
-            onClick={() => exportDeck("pdf")}
-          >
-            {exporting === "pdf" ? "Generando…" : "Exportar PDF"}
-          </button>
+          {exporting ? (
+            <>
+              <p className="self-center text-[11px] text-muted-foreground">
+                Generando {exporting === "pdf" ? "PDF" : "PPTX"}…
+              </p>
+              <button
+                type="button"
+                className={cn(btnSecondary, "h-8 min-w-0 flex-1 px-3 text-xs sm:min-w-[7rem] sm:flex-none")}
+                onClick={cancelExport}
+              >
+                Cancelar
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                className={cn(btnSecondary, "h-8 min-w-0 flex-1 px-3 text-xs sm:min-w-[7rem] sm:flex-none")}
+                disabled={slides.length === 0}
+                onClick={() => exportDeck("pptx")}
+              >
+                Exportar PPTX
+              </button>
+              <button
+                type="button"
+                className={cn(btnPrimary, "h-8 min-w-0 flex-1 px-3 text-xs sm:min-w-[7rem] sm:flex-none")}
+                disabled={slides.length === 0}
+                onClick={() => exportDeck("pdf")}
+              >
+                Exportar PDF
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

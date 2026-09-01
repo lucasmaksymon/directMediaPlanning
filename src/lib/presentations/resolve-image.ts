@@ -2,21 +2,12 @@ import { existsSync } from "fs";
 import { readFile } from "fs/promises";
 import path from "path";
 import { imageSize } from "image-size";
+import sharp from "sharp";
 import type { PresentationSlideResolved } from "@/lib/presentations/types";
 
-function mimeFromPathOrUrl(src: string, contentType?: string | null): string {
-  if (contentType?.startsWith("image/")) {
-    if (contentType.includes("png")) return "image/png";
-    if (contentType.includes("webp")) return "image/webp";
-    if (contentType.includes("gif")) return "image/gif";
-    return "image/jpeg";
-  }
-  const lower = src.toLowerCase();
-  if (lower.includes(".png")) return "image/png";
-  if (lower.includes(".webp")) return "image/webp";
-  if (lower.includes(".gif")) return "image/gif";
-  return "image/jpeg";
-}
+/** Lado largo para ficha A4/PPTX: alcanza y evita OOM en Render. */
+const EXPORT_MAX_EDGE = 1280;
+const EXPORT_JPEG_QUALITY = 72;
 
 function dimsFromBuffer(buf: Buffer): { width: number | null; height: number | null } {
   try {
@@ -49,37 +40,64 @@ type LoadedImage = {
  * Carga una imagen de inventario como data URI + dimensiones naturales.
  * Necesario para @react-pdf en Windows: las rutas de archivo no se embeden.
  */
+function throwIfAborted(signal?: AbortSignal) {
+  if (!signal?.aborted) return;
+  const err = new Error("Exportación cancelada.");
+  err.name = "AbortError";
+  throw err;
+}
+
+async function compressForExport(buf: Buffer): Promise<LoadedImage> {
+  try {
+    const out = await sharp(buf, { failOn: "none", limitInputPixels: 40_000_000 })
+      .rotate()
+      .resize({
+        width: EXPORT_MAX_EDGE,
+        height: EXPORT_MAX_EDGE,
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .jpeg({ quality: EXPORT_JPEG_QUALITY, mozjpeg: true })
+      .toBuffer({ resolveWithObject: true });
+    return {
+      src: `data:image/jpeg;base64,${out.data.toString("base64")}`,
+      width: out.info.width,
+      height: out.info.height,
+    };
+  } catch {
+    const dims = dimsFromBuffer(buf);
+    const mime = "image/jpeg";
+    return { src: `data:${mime};base64,${buf.toString("base64")}`, ...dims };
+  }
+}
+
 export async function loadImageAsDataUri(
   imageUrl: string | null | undefined,
+  signal?: AbortSignal,
 ): Promise<LoadedImage | null> {
   if (!imageUrl?.trim()) return null;
   const url = imageUrl.trim();
+  throwIfAborted(signal);
 
   try {
     if (url.startsWith("/")) {
       const local = resolveLocalImagePath(url);
       if (!local) return null;
       const buf = await readFile(local);
-      const mime = mimeFromPathOrUrl(local);
-      const dims = dimsFromBuffer(buf);
-      return {
-        src: `data:${mime};base64,${buf.toString("base64")}`,
-        ...dims,
-      };
+      return await compressForExport(buf);
     }
 
     if (url.startsWith("http://") || url.startsWith("https://")) {
-      const res = await fetch(url);
+      const res = await fetch(url, { signal });
       if (!res.ok) return null;
       const buf = Buffer.from(await res.arrayBuffer());
-      const mime = mimeFromPathOrUrl(url, res.headers.get("content-type"));
-      const dims = dimsFromBuffer(buf);
-      return {
-        src: `data:${mime};base64,${buf.toString("base64")}`,
-        ...dims,
-      };
+      return await compressForExport(buf);
     }
-  } catch {
+  } catch (e) {
+    if (signal?.aborted || (e instanceof Error && e.name === "AbortError")) {
+      throwIfAborted(signal);
+      throw e;
+    }
     return null;
   }
 
@@ -95,19 +113,31 @@ export function resolveImageSource(imageUrl: string | null | undefined): string 
   return null;
 }
 
-const IMAGE_CONCURRENCY = 6;
+const IMAGE_CONCURRENCY = 2;
 
 export async function withResolvedImages(
   slides: Omit<PresentationSlideResolved, "imageSrc" | "imageWidth" | "imageHeight">[],
   mode: "dataUri" | "path" = "dataUri",
+  signal?: AbortSignal,
 ): Promise<PresentationSlideResolved[]> {
+  const cache = new Map<string, Promise<LoadedImage | null>>();
+  const load = (url: string | null) => {
+    if (!url) return Promise.resolve(null);
+    const hit = cache.get(url);
+    if (hit) return hit;
+    const pending = loadImageAsDataUri(url, signal);
+    cache.set(url, pending);
+    return pending;
+  };
+
   const out: PresentationSlideResolved[] = [];
   for (let i = 0; i < slides.length; i += IMAGE_CONCURRENCY) {
+    throwIfAborted(signal);
     const batch = slides.slice(i, i + IMAGE_CONCURRENCY);
     const resolved = await Promise.all(
       batch.map(async (s) => {
         if (mode === "dataUri") {
-          const loaded = await loadImageAsDataUri(s.imageUrl);
+          const loaded = await load(s.imageUrl);
           return {
             ...s,
             imageSrc: loaded?.src ?? null,

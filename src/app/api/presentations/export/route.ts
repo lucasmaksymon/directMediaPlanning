@@ -15,6 +15,8 @@ import type { PresentationDeck } from "@/lib/presentations/types";
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
+let exportBusy = false;
+
 function clipped(max: number) {
   return z.string().transform((s) => s.slice(0, max));
 }
@@ -102,6 +104,25 @@ export async function POST(req: Request) {
   }
 
   const input = parsed.data;
+  if (exportBusy) {
+    return Response.json(
+      { error: "Ya hay una exportación en curso. Esperá a que termine e intentá de nuevo." },
+      { status: 429 },
+    );
+  }
+  exportBusy = true;
+
+  try {
+    return await runExport(input, req.signal);
+  } finally {
+    exportBusy = false;
+  }
+}
+
+async function runExport(
+  input: z.infer<typeof bodySchema>,
+  signal: AbortSignal,
+) {
   const unitIds = input.slides.map((s) => s.unitId);
   const units = await prisma.inventoryUnit.findMany({
     where: { id: { in: unitIds } },
@@ -132,10 +153,18 @@ export async function POST(req: Request) {
     };
   });
 
-  // Siempre data URI + dimensiones naturales:
-  // - PDF: en Windows las rutas locales no se embeden
-  // - PPTX: sizing:cover necesita el aspect ratio real (si no, deforma)
-  const slides = await withResolvedImages(slideInputs, "dataUri");
+  let slides;
+  try {
+    slides = await withResolvedImages(slideInputs, "dataUri", signal);
+    if (signal.aborted) {
+      return new Response(null, { status: 499 });
+    }
+  } catch (e) {
+    if (signal.aborted || (e instanceof Error && e.name === "AbortError")) {
+      return new Response(null, { status: 499 });
+    }
+    throw e;
+  }
 
   const deck: PresentationDeck = {
     title: input.title.trim(),
@@ -171,9 +200,13 @@ export async function POST(req: Request) {
     .replace(/^-|-$/g, "")
     .slice(0, 48) || "presentacion";
 
+  if (signal.aborted) {
+    return new Response(null, { status: 499 });
+  }
+
   if (input.format === "pdf") {
     const buffer = await renderToBuffer(PresentationDocument({ deck }));
-    return new Response(new Uint8Array(buffer), {
+    return new Response(buffer, {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${CLIENT_BRAND.toLowerCase()}-${slug}.pdf"`,
@@ -182,7 +215,7 @@ export async function POST(req: Request) {
   }
 
   const pptxBuf = await buildPresentationPptx(deck);
-  return new Response(new Uint8Array(pptxBuf), {
+  return new Response(pptxBuf, {
     headers: {
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.presentationml.presentation",
