@@ -6,58 +6,67 @@ import { prisma } from "@/lib/prisma";
 import { PresentationDocument } from "@/lib/presentations/presentation-document";
 import { buildPresentationPptx } from "@/lib/presentations/pptx";
 import { withResolvedImages } from "@/lib/presentations/resolve-image";
+import { MAX_PRESENTATION_SLIDES } from "@/lib/presentations/limits";
+import { PRESENTATION_FIELD_KEYS } from "@/lib/presentations/types";
+import { normalizeVisibleFields } from "@/lib/presentations/slide-data";
 import { normalizePresentationTheme } from "@/lib/presentations/theme";
 import type { PresentationDeck } from "@/lib/presentations/types";
 
 export const runtime = "nodejs";
+export const maxDuration = 120;
+
+function clipped(max: number) {
+  return z.string().transform((s) => s.slice(0, max));
+}
 
 const bodySchema = z.object({
   format: z.enum(["pdf", "pptx"]),
-  title: z.string().min(1).max(200),
-  titleHighlight: z.string().max(120).default(""),
-  eyebrow: z.string().max(120).default(""),
-  subtitle: z.string().max(500).default(""),
+  title: z.string().min(1).pipe(clipped(200)),
+  titleHighlight: clipped(120).default(""),
+  eyebrow: clipped(120).default(""),
+  subtitle: clipped(500).default(""),
   theme: z.enum(["light", "dark"]).optional(),
   highlights: z
     .array(
       z.object({
-        value: z.string().max(80),
-        label: z.string().max(80),
+        value: clipped(80),
+        label: clipped(80),
         enabled: z.boolean().optional(),
       }),
     )
     .max(3)
     .default([]),
-  closingLine: z.string().max(300).optional(),
-  closingLineAccent: z.string().max(200).optional(),
-  closingBadge: z.string().max(80).optional(),
-  contactAddress: z.string().max(240).optional(),
-  contactEmail: z.string().max(120).optional(),
-  contactWeb: z.string().max(120).optional(),
+  closingLine: clipped(300).optional(),
+  closingLineAccent: clipped(200).optional(),
+  closingBadge: clipped(80).optional(),
+  contactAddress: clipped(240).optional(),
+  contactEmail: clipped(120).optional(),
+  contactWeb: clipped(120).optional(),
+  visibleFields: z.record(z.enum(PRESENTATION_FIELD_KEYS), z.boolean()).optional(),
   slides: z
     .array(
       z.object({
         unitId: z.string().min(1),
-        slideTitle: z.string().min(1).max(120),
-        location: z.string().max(300),
-        zona: z.string().max(120).optional(),
-        medida: z.string().max(200).optional(),
-        visibilidad: z.string().max(300).optional(),
-        caras: z.string().max(80).optional(),
-        impacto: z.string().max(200).optional(),
+        slideTitle: z.string().min(1).pipe(clipped(120)),
+        location: clipped(300),
+        zona: clipped(120).optional(),
+        medida: clipped(200).optional(),
+        visibilidad: clipped(300).optional(),
+        caras: clipped(80).optional(),
+        impacto: clipped(200).optional(),
         impactoPeriodo: z.enum(["diario", "semanal", "mensual"]).optional(),
-        frecuencia: z.string().max(200).optional(),
-        spot: z.string().max(200).optional(),
-        encendido: z.string().max(200).optional(),
-        resolucion: z.string().max(200).optional(),
-        pauta: z.string().max(120).optional(),
-        costoMensual: z.string().max(120).optional(),
-        mapsUrl: z.string().max(2000).optional(),
+        frecuencia: clipped(200).optional(),
+        spot: clipped(200).optional(),
+        encendido: clipped(200).optional(),
+        resolucion: clipped(200).optional(),
+        pauta: clipped(120).optional(),
+        costoMensual: clipped(120).optional(),
+        mapsUrl: clipped(2000).optional(),
         imageFit: z.enum(["cover", "contain"]).optional(),
       }),
     )
     .min(1)
-    .max(80),
+    .max(MAX_PRESENTATION_SLIDES),
 });
 
 export async function POST(req: Request) {
@@ -78,8 +87,16 @@ export async function POST(req: Request) {
 
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) {
+    const tooMany = parsed.error.issues.some(
+      (issue) => issue.path[0] === "slides" && issue.code === "too_big",
+    );
     return Response.json(
-      { error: "Datos inválidos.", details: parsed.error.flatten() },
+      {
+        error: tooMany
+          ? `Máximo ${MAX_PRESENTATION_SLIDES} carteles por presentación.`
+          : "Datos inválidos.",
+        details: parsed.error.flatten(),
+      },
       { status: 400 },
     );
   }
@@ -129,6 +146,7 @@ export async function POST(req: Request) {
       (h) => h.enabled !== false && (h.value.trim() || h.label.trim()),
     ),
     slides,
+    visibleFields: normalizeVisibleFields(input.visibleFields),
     closingLine: input.closingLine?.trim() || "Creamos conexiones que",
     closingLineAccent: input.closingLineAccent?.trim() || "generan resultados",
     closingBadge: input.closingBadge?.trim() || "Contacto Comercial",

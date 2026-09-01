@@ -42,7 +42,7 @@ export default async function AdminPresentacionesPage() {
       <header className={cn(adminOpsPageHeader, "flex flex-wrap items-baseline gap-x-3")}>
         <h1 className="nm-page-title text-xl">Presentaciones</h1>
         <p className="text-xs text-muted-foreground">
-          Elegí carteles, previsualizá y exportá PDF o PowerPoint.
+          Elegí carteles (todos, por medio o por zona), previsualizá y exportá PDF o PowerPoint.
         </p>
       </header>
       <div className={cn(adminOpsPageBody, "min-w-0 overflow-x-hidden overflow-y-auto lg:overflow-hidden")}>

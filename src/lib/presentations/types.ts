@@ -8,6 +8,27 @@ export type PresentationHighlight = {
 /** cover = llena el panel (recorta); contain = imagen completa (bandas). Nunca deforma. */
 export type PresentationImageFit = "cover" | "contain";
 
+export const PRESENTATION_FIELD_KEYS = [
+  "zona",
+  "location",
+  "medida",
+  "visibilidad",
+  "caras",
+  "impacto",
+  "frecuencia",
+  "spot",
+  "encendido",
+  "resolucion",
+  "pauta",
+  "costoMensual",
+  "mapsUrl",
+] as const;
+
+export type PresentationFieldKey = (typeof PRESENTATION_FIELD_KEYS)[number];
+
+/** Si un campo es false, no se muestra en ningún cartel (preview + export). */
+export type PresentationVisibleFields = Partial<Record<PresentationFieldKey, boolean>>;
+
 export type PresentationSlideInput = {
   unitId: string;
   slideTitle: string;
@@ -36,6 +57,7 @@ export type PresentationExportRequest = {
   subtitle: string;
   highlights: PresentationHighlight[];
   slides: PresentationSlideInput[];
+  visibleFields?: PresentationVisibleFields;
   closingLine?: string;
   closingLineAccent?: string;
   closingBadge?: string;
@@ -61,6 +83,7 @@ export type PresentationDeck = {
   subtitle: string;
   highlights: PresentationHighlight[];
   slides: PresentationSlideResolved[];
+  visibleFields: PresentationVisibleFields;
   closingLine: string;
   closingLineAccent: string;
   closingBadge: string;

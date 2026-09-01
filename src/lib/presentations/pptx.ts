@@ -2,7 +2,7 @@ import PptxGenJS from "pptxgenjs";
 import { CLIENT_BRAND } from "@/lib/brand";
 import { imageForPptx } from "@/lib/presentations/image-for-pptx";
 import { normalizeImageFit } from "@/lib/presentations/image-layout";
-import { slideSpecRows } from "@/lib/presentations/slide-data";
+import { isFieldVisible, slideSpecRows } from "@/lib/presentations/slide-data";
 import { getPresentationPptxPalette } from "@/lib/presentations/theme";
 import type { PresentationDeck } from "@/lib/presentations/types";
 
@@ -205,7 +205,7 @@ export async function buildPresentationPptx(deck: PresentationDeck): Promise<Buf
     }
 
     let y = 0.85;
-    if (slide.zona || slide.providerName) {
+    if (isFieldVisible(deck.visibleFields, "zona") && (slide.zona || slide.providerName)) {
       s.addText(slide.zona || slide.providerName, {
         x: SPEC_X,
         y,
@@ -230,7 +230,7 @@ export async function buildPresentationPptx(deck: PresentationDeck): Promise<Buf
     });
     y += 0.65;
 
-    const rows = slideSpecRows(slide).map((r) =>
+    const rows = slideSpecRows(slide, deck.visibleFields).map((r) =>
       r.label === "Mapa"
         ? { ...r, value: "Ver en Google Maps", href: r.value }
         : { ...r, href: undefined as string | undefined },

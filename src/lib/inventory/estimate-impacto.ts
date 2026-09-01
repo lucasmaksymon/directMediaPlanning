@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { estimateWeeklyAudience, getNearbyPOIs } from "@/lib/audience";
 import { HTTP_USER_AGENT } from "@/lib/brand";
 import {
+  extractKitImpacto,
   formatImpacto,
   normalizeImpactoDisplay,
   parseImpactoNumber,
@@ -123,11 +124,30 @@ export async function ensureInventoryImpacto(unitId: string): Promise<EnsuredImp
     metadata: meta,
   });
 
-  const existing = specs.impacto || meta.impacto || "";
+  const fromKit = extractKitImpacto(
+    [
+      unit.description,
+      unit.name,
+      unit.locationLabel,
+      specs.impacto,
+      meta.impacto,
+      meta.visual,
+      meta.visibilidad,
+      meta.coberturaNeta,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  );
+  const existing = fromKit?.impacto || specs.impacto || meta.impacto || "";
   if (parseImpactoNumber(existing)) {
-    const normalized = normalizeImpactoDisplay(existing);
+    const normalized = fromKit || normalizeImpactoDisplay(existing);
+    const source: EnsuredImpacto["source"] = fromKit
+      ? "kit"
+      : (meta.impactoSource as EnsuredImpacto["source"]) || "kit";
     const already =
-      meta.impacto === normalized.impacto && meta.impactoPeriodo === normalized.periodo;
+      meta.impacto === normalized.impacto &&
+      meta.impactoPeriodo === normalized.periodo &&
+      (meta.impactoSource || "kit") === source;
     if (!already) {
       await prisma.inventoryUnit.update({
         where: { id: unit.id },
@@ -136,12 +156,12 @@ export async function ensureInventoryImpacto(unitId: string): Promise<EnsuredImp
             ...meta,
             impacto: normalized.impacto,
             impactoPeriodo: normalized.periodo,
-            impactoSource: meta.impactoSource || "kit",
+            impactoSource: source,
           },
         },
       });
     }
-    return { ...normalized, source: (meta.impactoSource as EnsuredImpacto["source"]) || "kit" };
+    return { ...normalized, source };
   }
 
   let lat = unit.latitude;

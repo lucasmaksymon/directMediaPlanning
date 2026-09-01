@@ -1,7 +1,10 @@
 import type {
   InventoryUnitForPresentation,
+  PresentationFieldKey,
   PresentationSlideInput,
+  PresentationVisibleFields,
 } from "@/lib/presentations/types";
+import { PRESENTATION_FIELD_KEYS } from "@/lib/presentations/types";
 import { parseUnitSpecs, cleanLocationLabel } from "@/lib/inventory/unit-specs";
 import { normalizeImpactoDisplay } from "@/lib/inventory/impacto";
 import { formatArs } from "@/lib/format";
@@ -80,34 +83,86 @@ export function unitToSlideDefaults(unit: InventoryUnitForPresentation): Present
   };
 }
 
-export function slideSpecRows(slide: {
-  location?: string;
-  zona?: string;
-  medida?: string;
-  visibilidad?: string;
-  caras?: string;
-  impacto?: string;
-  impactoPeriodo?: string;
-  frecuencia?: string;
-  spot?: string;
-  encendido?: string;
-  resolucion?: string;
-  pauta?: string;
-  costoMensual?: string;
-  mapsUrl?: string;
-}): { label: string; value: string }[] {
-  const rows: { label: string; value: string }[] = [];
-  if (slide.location?.trim()) rows.push({ label: "Ubicación", value: slide.location.trim() });
-  if (slide.medida?.trim()) rows.push({ label: "Medida", value: slide.medida.trim() });
-  if (slide.visibilidad?.trim()) rows.push({ label: "Visibilidad", value: slide.visibilidad.trim() });
-  if (slide.caras?.trim()) rows.push({ label: "Caras", value: slide.caras.trim() });
-  if (slide.impacto?.trim()) rows.push({ label: "Impacto", value: slide.impacto.trim() });
-  if (slide.frecuencia?.trim()) rows.push({ label: "Frecuencia", value: slide.frecuencia.trim() });
-  if (slide.spot?.trim()) rows.push({ label: "Spot", value: slide.spot.trim() });
-  if (slide.encendido?.trim()) rows.push({ label: "Encendido", value: slide.encendido.trim() });
-  if (slide.resolucion?.trim()) rows.push({ label: "Resolución", value: slide.resolucion.trim() });
-  if (slide.pauta?.trim()) rows.push({ label: "Pauta", value: slide.pauta.trim() });
-  if (slide.costoMensual?.trim()) rows.push({ label: "Costo Mensual", value: slide.costoMensual.trim() });
-  if (slide.mapsUrl?.trim()) rows.push({ label: "Mapa", value: slide.mapsUrl.trim() });
+export const PRESENTATION_FIELD_LABELS: Record<PresentationFieldKey, string> = {
+  zona: "Zona",
+  location: "Ubicación",
+  medida: "Medida",
+  visibilidad: "Visibilidad",
+  caras: "Caras",
+  impacto: "Impacto",
+  frecuencia: "Frecuencia",
+  spot: "Spot",
+  encendido: "Encendido",
+  resolucion: "Resolución",
+  pauta: "Pauta",
+  costoMensual: "Costo",
+  mapsUrl: "Mapa",
+};
+
+export function defaultVisibleFields(): Record<PresentationFieldKey, boolean> {
+  return Object.fromEntries(PRESENTATION_FIELD_KEYS.map((key) => [key, true])) as Record<
+    PresentationFieldKey,
+    boolean
+  >;
+}
+
+export function isFieldVisible(
+  visible: PresentationVisibleFields | undefined,
+  key: PresentationFieldKey,
+) {
+  return visible?.[key] !== false;
+}
+
+export function normalizeVisibleFields(
+  input?: PresentationVisibleFields | null,
+): Record<PresentationFieldKey, boolean> {
+  const out = defaultVisibleFields();
+  if (!input) return out;
+  for (const key of PRESENTATION_FIELD_KEYS) {
+    if (typeof input[key] === "boolean") out[key] = input[key]!;
+  }
+  return out;
+}
+
+const SPEC_ROW_FIELDS = [
+  ["location", "Ubicación"],
+  ["medida", "Medida"],
+  ["visibilidad", "Visibilidad"],
+  ["caras", "Caras"],
+  ["impacto", "Impacto"],
+  ["frecuencia", "Frecuencia"],
+  ["spot", "Spot"],
+  ["encendido", "Encendido"],
+  ["resolucion", "Resolución"],
+  ["pauta", "Pauta"],
+  ["costoMensual", "Costo Mensual"],
+  ["mapsUrl", "Mapa"],
+] as const satisfies ReadonlyArray<readonly [PresentationFieldKey, string]>;
+
+export function slideSpecRows(
+  slide: {
+    location?: string;
+    zona?: string;
+    medida?: string;
+    visibilidad?: string;
+    caras?: string;
+    impacto?: string;
+    impactoPeriodo?: string;
+    frecuencia?: string;
+    spot?: string;
+    encendido?: string;
+    resolucion?: string;
+    pauta?: string;
+    costoMensual?: string;
+    mapsUrl?: string;
+  },
+  visible?: PresentationVisibleFields,
+): { key: PresentationFieldKey; label: string; value: string }[] {
+  const rows: { key: PresentationFieldKey; label: string; value: string }[] = [];
+  for (const [key, label] of SPEC_ROW_FIELDS) {
+    const value = slide[key]?.trim();
+    if (!value || !isFieldVisible(visible, key)) continue;
+    rows.push({ key, label, value });
+  }
   return rows;
 }

@@ -1,4 +1,4 @@
-import { normalizeImpactoDisplay } from "@/lib/inventory/impacto";
+import { extractKitImpacto, normalizeImpactoDisplay } from "@/lib/inventory/impacto";
 
 export type InventoryUnitSpecs = {
   medida?: string;
@@ -54,6 +54,16 @@ function cleanNoise(value: string): string {
     .replace(/\s*[·|]\s*Precio\s*\/\s*Disp\..*$/i, "")
     .replace(/\s*[·|]\s*\$\s*[\d.]+.*$/i, "")
     .replace(/\s+/g, " ")
+    .trim();
+}
+
+function stripImpactoFromVisibilidad(value: string): string {
+  return value
+    .replace(/\s+Impactos?\s*semanales\s*[:：].*$/i, "")
+    .replace(/\s+Impactos?\s*[/:]?\s*(?:c[oó]d(?:igo)?|valor)\b.*$/i, "")
+    .replace(/\s+Impactos?\s+[\d.].*$/i, "")
+    .replace(/\s+[\d.]{3,}\s*impactos?\b.*$/i, "")
+    .replace(/\s+Impactos?\s*[—\-].*$/i, "")
     .trim();
 }
 
@@ -212,16 +222,15 @@ export function parseUnitSpecs(unit: SpecSource): InventoryUnitSpecs {
       /Detalle\s+((?:Tr[aá]nsito|Transito)[^\n·]+)/i,
     ]);
   if (visibilidad) {
-    visibilidad = cleanNoise(visibilidad)
-      .replace(/^Visual\s*[:：]\s*/i, "")
-      .replace(/^Detalle\s+/i, "")
-      .replace(/\s+[\d.]{3,}\s*impactos?\s*(?:semanales|diarios|mensuales)?.*$/i, "")
-      .replace(/\s+Impactos?\s+[\d.].*$/i, "")
-      .trim();
+    visibilidad = stripImpactoFromVisibilidad(
+      cleanNoise(visibilidad)
+        .replace(/^Visual\s*[:：]\s*/i, "")
+        .replace(/^Detalle\s+/i, ""),
+    );
   }
   // Si visual del meta trae precio, quedarse con la parte de dirección
   if (meta.visual && !meta.visibilidad) {
-    const fromVisual = cleanNoise(meta.visual);
+    const fromVisual = stripImpactoFromVisibilidad(cleanNoise(meta.visual));
     if (fromVisual && (!visibilidad || visibilidad.length > fromVisual.length + 20)) {
       visibilidad = fromVisual;
     } else if (!visibilidad && fromVisual) {
@@ -235,16 +244,24 @@ export function parseUnitSpecs(unit: SpecSource): InventoryUnitSpecs {
     detectCaras(meta.medida || "") ||
     "";
 
-  let impacto =
-    meta.impacto ||
-    firstMatch(blob, [
-      /Impacto\s*[:：]\s*([^\n]+)/i,
-      /Impactos?\s*[:：]?\s*([\d.]+(?:\s*impactos?)?(?:\s*(?:semanales|diarios|mensuales))?)/i,
-      /([\d.]{4,}\s*impactos?\s*(?:semanales|diarios|mensuales)?)/i,
-    ]);
+  const kitBlob = [
+    unit.name,
+    unit.description,
+    unit.locationLabel,
+    meta.visual,
+    meta.visibilidad,
+    meta.coberturaNeta,
+  ]
+    .filter(Boolean)
+    .join("\n");
+  const fromKit = extractKitImpacto(kitBlob);
+  let impacto = "";
   let impactoPeriodo = meta.impactoPeriodo || "";
-  if (impacto) {
-    const normalized = normalizeImpactoDisplay(impacto);
+  if (fromKit) {
+    impacto = fromKit.impacto;
+    impactoPeriodo = fromKit.periodo;
+  } else if (meta.impacto) {
+    const normalized = normalizeImpactoDisplay(meta.impacto);
     impacto = normalized.impacto;
     impactoPeriodo = normalized.periodo;
   }

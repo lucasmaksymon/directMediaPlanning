@@ -95,27 +95,35 @@ export function resolveImageSource(imageUrl: string | null | undefined): string 
   return null;
 }
 
+const IMAGE_CONCURRENCY = 6;
+
 export async function withResolvedImages(
   slides: Omit<PresentationSlideResolved, "imageSrc" | "imageWidth" | "imageHeight">[],
   mode: "dataUri" | "path" = "dataUri",
 ): Promise<PresentationSlideResolved[]> {
-  return Promise.all(
-    slides.map(async (s) => {
-      if (mode === "dataUri") {
-        const loaded = await loadImageAsDataUri(s.imageUrl);
+  const out: PresentationSlideResolved[] = [];
+  for (let i = 0; i < slides.length; i += IMAGE_CONCURRENCY) {
+    const batch = slides.slice(i, i + IMAGE_CONCURRENCY);
+    const resolved = await Promise.all(
+      batch.map(async (s) => {
+        if (mode === "dataUri") {
+          const loaded = await loadImageAsDataUri(s.imageUrl);
+          return {
+            ...s,
+            imageSrc: loaded?.src ?? null,
+            imageWidth: loaded?.width ?? null,
+            imageHeight: loaded?.height ?? null,
+          };
+        }
         return {
           ...s,
-          imageSrc: loaded?.src ?? null,
-          imageWidth: loaded?.width ?? null,
-          imageHeight: loaded?.height ?? null,
+          imageSrc: resolveImageSource(s.imageUrl),
+          imageWidth: null,
+          imageHeight: null,
         };
-      }
-      return {
-        ...s,
-        imageSrc: resolveImageSource(s.imageUrl),
-        imageWidth: null,
-        imageHeight: null,
-      };
-    }),
-  );
+      }),
+    );
+    out.push(...resolved);
+  }
+  return out;
 }

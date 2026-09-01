@@ -209,7 +209,12 @@ function fieldAfter(texts: string[], label: string): string {
   const parts: string[] = [];
   for (let j = i + 1; j < texts.length; j++) {
     const t = texts[j];
-    if (/^(ubicación|ubicacion|medida|visual|valor|precio|formato|pauta|costo mensual)$/i.test(t)) break;
+    if (
+      /^(ubicación|ubicacion|medida|visual|valor|precio|formato|pauta|costo mensual|impactos?|cobertura neta)$/i.test(
+        t,
+      )
+    )
+      break;
     if (/^(espectaculares|columnas?|medianeras?|supervallas?|totems?|led|frontlight|backlight)$/i.test(t) && parts.length)
       break;
     parts.push(t);
@@ -236,6 +241,12 @@ function parseSlideToUnit(
     fieldAfter(texts, "Costo Mensual") ||
     fieldAfter(texts, "Costo mensual");
   const pauta = fieldAfter(texts, "Pauta");
+  const impacto =
+    fieldAfter(texts, "Impactos") ||
+    fieldAfter(texts, "Impacto") ||
+    fieldAfter(texts, "Impactos semanales") ||
+    fieldAfter(texts, "Cobertura Neta") ||
+    fieldAfter(texts, "Cobertura neta");
 
   // tipo / zona from early lines
   const tipoCandidates = texts.filter((t) =>
@@ -265,6 +276,7 @@ function parseSlideToUnit(
     medida && `Medida: ${medida}`,
     visual && `Visual: ${visual}`,
     pauta && `Pauta: ${pauta}`,
+    impacto && `Impactos: ${impacto}`,
     valor && `Tarifa media kit: ${valor}`,
     tail && !medida && !visual ? tail : "",
   ]
@@ -280,6 +292,7 @@ function parseSlideToUnit(
       valorRaw: valor,
       ...(pauta ? { pauta } : {}),
       ...(valor ? { costoMensual: valor } : {}),
+      ...(impacto ? { impacto } : {}),
     },
     {
       name: name || locationLabel.slice(0, 120),
@@ -294,6 +307,7 @@ function parseSlideToUnit(
         valorRaw: valor,
         ...(pauta ? { pauta } : {}),
         ...(valor ? { costoMensual: valor } : {}),
+        ...(impacto ? { impacto } : {}),
       },
     },
   );

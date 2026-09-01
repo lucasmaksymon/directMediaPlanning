@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   closestCenter,
@@ -26,18 +26,30 @@ import {
   IMPACTO_PERIODO_LABEL,
   applyImpactoPeriodo,
   detectImpactoPeriodo,
+  parseImpactoNumber,
   type ImpactoPeriodo,
 } from "@/lib/inventory/impacto";
-import { unitToSlideDefaults } from "@/lib/presentations/slide-data";
+import { MAX_PRESENTATION_SLIDES } from "@/lib/presentations/limits";
+import {
+  defaultVisibleFields,
+  extractUnitSpecs,
+  isFieldVisible,
+  PRESENTATION_FIELD_LABELS,
+  slideSpecRows,
+  unitToSlideDefaults,
+} from "@/lib/presentations/slide-data";
 import { normalizePresentationTheme } from "@/lib/presentations/theme";
 import type {
   InventoryUnitForPresentation,
+  PresentationFieldKey,
   PresentationHighlight,
   PresentationImageFit,
   PresentationSlideInput,
+  PresentationVisibleFields,
 } from "@/lib/presentations/types";
+import { PRESENTATION_FIELD_KEYS } from "@/lib/presentations/types";
 import { normalizeImageFit } from "@/lib/presentations/image-layout";
-import { btnPrimary, btnSecondary, fieldClass, surfaceCard } from "@/lib/ui-classes";
+import { btnPrimary, btnSecondary, fieldClass, selectClassCompact, surfaceCard } from "@/lib/ui-classes";
 
 const compactField = cn(fieldClass, "h-8 px-2.5 py-1 text-xs");
 const compactLabel = "block text-[10px] font-medium tracking-wide text-muted-foreground";
@@ -152,6 +164,38 @@ const DEFAULT_HIGHLIGHTS: PresentationHighlight[] = [
   { value: "100%", label: "Contenido dinámico", enabled: true },
 ];
 
+const SIN_ZONA = "__sin_zona__";
+
+function zonaOf(unit: UnitCard) {
+  return extractUnitSpecs(unit).zona?.trim() || "";
+}
+
+function buildSlide(unit: UnitCard, imageFit: PresentationImageFit): EditableSlide {
+  const defaults = unitToSlideDefaults(unit);
+  const imageUrl = unit.imageUrls[0] ?? null;
+  return {
+    ...defaults,
+    imageFit: isKitPageImage(imageUrl) ? "contain" : imageFit,
+    imageUrl,
+    unitName: unit.name,
+    providerName: unit.provider.companyName,
+  };
+}
+
+function bumpHighlightCount(count: number, prev: PresentationHighlight[]) {
+  const copy = [...prev];
+  const label = copy[0]?.label || "Pantallas";
+  if (!copy[0]?.value) {
+    copy[0] = { value: String(count), label };
+  } else if (
+    label.toLowerCase().includes("pantalla") ||
+    label.toLowerCase().includes("paquete")
+  ) {
+    copy[0] = { ...copy[0], value: String(count) };
+  }
+  return copy;
+}
+
 function SortableOrderItem({
   slide,
   index,
@@ -211,6 +255,167 @@ function SortableOrderItem({
   );
 }
 
+function FilterMultiSelect({
+  labelAll,
+  labelOne,
+  labelMany,
+  options,
+  selected,
+  onChange,
+  ariaLabel,
+}: {
+  labelAll: string;
+  labelOne?: string;
+  labelMany: (n: number) => string;
+  options: { value: string; label: string }[];
+  selected: string[];
+  onChange: (next: string[]) => void;
+  ariaLabel: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent) {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  const summary =
+    selected.length === 0
+      ? labelAll
+      : selected.length === 1
+        ? (labelOne ?? options.find((o) => o.value === selected[0])?.label ?? labelAll)
+        : labelMany(selected.length);
+
+  function toggle(value: string) {
+    onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value]);
+  }
+
+  return (
+    <div ref={rootRef} className="relative min-w-0">
+      <button
+        type="button"
+        className={cn(selectClassCompact, "flex items-center text-left")}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-label={ariaLabel}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="min-w-0 flex-1 truncate">{summary}</span>
+      </button>
+      {open ? (
+        <div
+          className="absolute z-30 mt-1 max-h-56 w-full min-w-[12rem] overflow-y-auto rounded-[var(--radius-md)] border border-border bg-card p-1 shadow-[var(--shadow-md)]"
+          role="listbox"
+          aria-multiselectable
+        >
+          {options.map((opt) => {
+            const on = selected.includes(opt.value);
+            return (
+              <label
+                key={opt.value}
+                className={cn(
+                  "flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs",
+                  on ? "bg-led/10 text-foreground" : "text-foreground hover:bg-muted",
+                )}
+              >
+                <input
+                  type="checkbox"
+                  className="size-3.5 shrink-0 accent-[var(--led)]"
+                  checked={on}
+                  onChange={() => toggle(opt.value)}
+                />
+                <span className="min-w-0 truncate">{opt.label}</span>
+              </label>
+            );
+          })}
+          {selected.length > 0 ? (
+            <button
+              type="button"
+              className="mt-0.5 w-full rounded-md px-2 py-1 text-[10px] font-medium text-muted-foreground hover:text-foreground"
+              onClick={() => onChange([])}
+            >
+              Limpiar
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function FieldVisibilityBar({
+  visibleFields,
+  onChange,
+}: {
+  visibleFields: Record<PresentationFieldKey, boolean>;
+  onChange: (next: Record<PresentationFieldKey, boolean>) => void;
+}) {
+  const enabledCount = PRESENTATION_FIELD_KEYS.filter((key) => visibleFields[key]).length;
+
+  return (
+    <div className="sm:col-span-2 lg:col-span-3 2xl:col-span-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
+        <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+          Datos en todos los carteles
+        </p>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] tabular-nums text-muted-foreground">
+            {enabledCount}/{PRESENTATION_FIELD_KEYS.length}
+          </span>
+          <button
+            type="button"
+            className="text-[10px] font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            onClick={() => onChange(defaultVisibleFields())}
+          >
+            Todos
+          </button>
+          <button
+            type="button"
+            className="text-[10px] font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            onClick={() =>
+              onChange(
+                Object.fromEntries(PRESENTATION_FIELD_KEYS.map((key) => [key, false])) as Record<
+                  PresentationFieldKey,
+                  boolean
+                >,
+              )
+            }
+          >
+            Ninguno
+          </button>
+        </div>
+      </div>
+      <div className="mt-1.5 flex flex-wrap gap-1">
+        {PRESENTATION_FIELD_KEYS.map((key) => {
+          const on = visibleFields[key];
+          return (
+            <label
+              key={key}
+              className={cn(
+                "cursor-pointer rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition",
+                on ? "bg-led text-black" : "bg-muted text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <input
+                type="checkbox"
+                className="sr-only"
+                checked={on}
+                onChange={(e) => onChange({ ...visibleFields, [key]: e.target.checked })}
+              />
+              {PRESENTATION_FIELD_LABELS[key]}
+            </label>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function SlidePreview({
   kind,
   title,
@@ -219,6 +424,7 @@ function SlidePreview({
   subtitle,
   highlights,
   slide,
+  visibleFields,
   closingLine,
   closingLineAccent,
   closingBadge,
@@ -233,6 +439,7 @@ function SlidePreview({
   subtitle: string;
   highlights: PresentationHighlight[];
   slide: EditableSlide | null;
+  visibleFields: PresentationVisibleFields;
   closingLine: string;
   closingLineAccent: string;
   closingBadge: string;
@@ -348,30 +555,19 @@ function SlidePreview({
     );
   }
 
-  const rows = [
-    { label: "Ubicación", value: slide.location },
-    { label: "Medida", value: slide.medida },
-    { label: "Visibilidad", value: slide.visibilidad },
-    { label: "Caras", value: slide.caras },
-    { label: "Impacto", value: slide.impacto },
-    { label: "Frecuencia", value: slide.frecuencia },
-    { label: "Spot", value: slide.spot },
-    { label: "Encendido", value: slide.encendido },
-    { label: "Resolución", value: slide.resolucion },
-    { label: "Pauta", value: slide.pauta },
-    { label: "Costo Mensual", value: slide.costoMensual },
-    { label: "Mapa", value: slide.mapsUrl },
-  ].filter((r) => r.value?.trim());
+  const rows = slideSpecRows(slide, visibleFields);
 
   return (
     <div className="flex h-full w-full overflow-hidden border border-border bg-background">
       <div className="flex w-[45%] flex-col justify-center gap-5 bg-card px-10 py-9">
-        {slide.zona ? (
-          <span className="w-fit rounded-full border border-led/30 bg-led/10 px-3 py-1 text-[13px] font-semibold text-led">
-            {slide.zona}
-          </span>
-        ) : slide.providerName ? (
-          <p className="text-[16px] font-semibold text-led">{slide.providerName}</p>
+        {isFieldVisible(visibleFields, "zona") ? (
+          slide.zona ? (
+            <span className="w-fit rounded-full border border-led/30 bg-led/10 px-3 py-1 text-[13px] font-semibold text-led">
+              {slide.zona}
+            </span>
+          ) : slide.providerName ? (
+            <p className="text-[16px] font-semibold text-led">{slide.providerName}</p>
+          ) : null
         ) : null}
         <p className="text-[32px] font-semibold leading-tight tracking-tight text-foreground">
           {slide.slideTitle}
@@ -441,38 +637,135 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
   const [contactEmail, setContactEmail] = useState("admin@nextmedia.com.ar");
   const [contactWeb, setContactWeb] = useState("nextmedia.com.ar");
   const [query, setQuery] = useState("");
-  const [providerFilter, setProviderFilter] = useState("");
+  const [providerFilter, setProviderFilter] = useState<string[]>([]);
+  const [zonaFilter, setZonaFilter] = useState<string[]>([]);
   const [slides, setSlides] = useState<EditableSlide[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [previewKind, setPreviewKind] = useState<"cover" | "unit" | "closing">("cover");
   const [exporting, setExporting] = useState<"pdf" | "pptx" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [defaultImageFit, setDefaultImageFit] = useState<PresentationImageFit>("cover");
+  const [visibleFields, setVisibleFields] = useState(defaultVisibleFields);
 
   const providers = useMemo(() => {
     const set = new Set(units.map((u) => u.provider.companyName));
     return Array.from(set).sort((a, b) => a.localeCompare(b, "es"));
   }, [units]);
 
+  const zonas = useMemo(() => {
+    const set = new Set<string>();
+    let hasEmpty = false;
+    for (const u of units) {
+      const z = zonaOf(u);
+      if (z) set.add(z);
+      else hasEmpty = true;
+    }
+    const list = Array.from(set).sort((a, b) => a.localeCompare(b, "es"));
+    return { list, hasEmpty };
+  }, [units]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const providersSel = new Set(providerFilter);
+    const zonasSel = new Set(zonaFilter);
     return units.filter((u) => {
-      if (providerFilter && u.provider.companyName !== providerFilter) return false;
+      if (providersSel.size > 0 && !providersSel.has(u.provider.companyName)) return false;
+      if (zonasSel.size > 0) {
+        const zonaKey = zonaOf(u) || SIN_ZONA;
+        if (!zonasSel.has(zonaKey)) return false;
+      }
       if (!q) return true;
       return (
         u.name.toLowerCase().includes(q) ||
         u.locationLabel.toLowerCase().includes(q) ||
-        u.provider.companyName.toLowerCase().includes(q)
+        u.provider.companyName.toLowerCase().includes(q) ||
+        zonaOf(u).toLowerCase().includes(q)
       );
     });
-  }, [units, query, providerFilter]);
+  }, [units, query, providerFilter, zonaFilter]);
 
   const selectedIds = useMemo(() => new Set(slides.map((s) => s.unitId)), [slides]);
 
-  async function toggleUnit(unit: UnitCard) {
-    setError(null);
-    const exists = slides.find((s) => s.unitId === unit.id);
-    if (exists) {
+  const remainingVisible = filtered.filter((u) => !selectedIds.has(u.id));
+
+  const addVisibleLabel = (() => {
+    const n = remainingVisible.length;
+    const bits: string[] = [];
+    if (providerFilter.length === 1) bits.push(providerFilter[0]);
+    else if (providerFilter.length > 1) bits.push(`${providerFilter.length} medios`);
+    if (zonaFilter.length === 1) {
+      bits.push(zonaFilter[0] === SIN_ZONA ? "sin zona" : zonaFilter[0]);
+    } else if (zonaFilter.length > 1) {
+      bits.push(`${zonaFilter.length} zonas`);
+    }
+    if (bits.length > 0) return `Agregar ${n} de ${bits.join(" · ")}`;
+    if (query.trim()) return `Agregar ${n} de la búsqueda`;
+    return n === 0 ? "Ya están en el deck" : `Agregar todos (${n})`;
+  })();
+
+  async function fillImpacto(unitId: string) {
+    try {
+      const res = await ensureUnitImpacto(unitId);
+      if (!res.ok) return;
+      setSlides((prev) =>
+        prev.map((s) =>
+          s.unitId === unitId
+            ? { ...s, impacto: res.impacto, impactoPeriodo: res.periodo }
+            : s,
+        ),
+      );
+    } catch {
+      // El slide ya sale con el impacto del kit; no frenar el alta masiva.
+    }
+  }
+
+  function addUnits(candidates: UnitCard[]) {
+    const have = new Set(slides.map((s) => s.unitId));
+    let fresh = candidates.filter((u) => !have.has(u.id));
+    if (fresh.length === 0) {
+      if (candidates.length > 0) setError("Esos carteles ya están en la presentación.");
+      return;
+    }
+
+    const room = MAX_PRESENTATION_SLIDES - slides.length;
+    if (room <= 0) {
+      setError(`Máximo ${MAX_PRESENTATION_SLIDES} carteles por presentación.`);
+      return;
+    }
+
+    let overflow = false;
+    if (fresh.length > room) {
+      fresh = fresh.slice(0, room);
+      overflow = true;
+    }
+
+    setError(
+      overflow
+        ? `Se agregaron ${fresh.length}. Máximo ${MAX_PRESENTATION_SLIDES} carteles por presentación.`
+        : null,
+    );
+
+    const nextLength = slides.length + fresh.length;
+    setSlides((prev) => {
+      const ids = new Set(prev.map((s) => s.unitId));
+      const extra = fresh.filter((u) => !ids.has(u.id));
+      if (extra.length === 0) return prev;
+      return [...prev, ...extra.map((u) => buildSlide(u, defaultImageFit))];
+    });
+    setActiveIndex(nextLength - 1);
+    setPreviewKind("unit");
+    setHighlights((h) => bumpHighlightCount(nextLength, h));
+
+    // Solo estimar si el kit del medio no trae impacto. En lote no disparamos N actions.
+    if (fresh.length === 1) {
+      const slide = buildSlide(fresh[0], defaultImageFit);
+      if (!parseImpactoNumber(slide.impacto || "")) void fillImpacto(fresh[0].id);
+    }
+  }
+
+  function toggleUnit(unit: UnitCard) {
+    if (slides.some((s) => s.unitId === unit.id)) {
+      setError(null);
       setSlides((prev) => {
         const next = prev.filter((s) => s.unitId !== unit.id);
         setActiveIndex((i) => Math.max(0, Math.min(i, next.length - 1)));
@@ -480,43 +773,7 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
       });
       return;
     }
-
-    const defaults = unitToSlideDefaults(unit);
-    const imageUrl = unit.imageUrls[0] ?? null;
-    setSlides((prev) => {
-      const next: EditableSlide[] = [
-        ...prev,
-        {
-          ...defaults,
-          imageFit: isKitPageImage(imageUrl) ? "contain" : defaultImageFit,
-          imageUrl,
-          unitName: unit.name,
-          providerName: unit.provider.companyName,
-        },
-      ];
-      setActiveIndex(next.length - 1);
-      setPreviewKind("unit");
-      setHighlights((h) => {
-        const copy = [...h];
-        if (!copy[0]?.value) copy[0] = { value: String(next.length), label: copy[0]?.label || "Pantallas" };
-        else if (copy[0].label.toLowerCase().includes("pantalla") || copy[0].label.toLowerCase().includes("paquete")) {
-          copy[0] = { ...copy[0], value: String(next.length) };
-        }
-        return copy;
-      });
-      return next;
-    });
-
-    const res = await ensureUnitImpacto(unit.id);
-    if (res.ok) {
-      setSlides((prev) =>
-        prev.map((s) =>
-          s.unitId === unit.id
-            ? { ...s, impacto: res.impacto, impactoPeriodo: res.periodo }
-            : s,
-        ),
-      );
-    }
+    addUnits([unit]);
   }
 
   const sensors = useSensors(
@@ -551,6 +808,10 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
       setError("Seleccioná al menos un cartel.");
       return;
     }
+    if (slides.length > MAX_PRESENTATION_SLIDES) {
+      setError(`Máximo ${MAX_PRESENTATION_SLIDES} carteles por presentación.`);
+      return;
+    }
     if (!title.trim()) {
       setError("Ingresá un título para la presentación.");
       return;
@@ -571,6 +832,7 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
           highlights: highlights.filter(
             (h) => h.enabled !== false && (h.value.trim() || h.label.trim()),
           ),
+          visibleFields,
           closingLine: closingLine.trim(),
           closingLineAccent: closingLineAccent.trim(),
           closingBadge: closingBadge.trim(),
@@ -623,11 +885,11 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
     <div className="flex min-h-0 min-w-0 flex-col gap-2 lg:h-full">
       <div className="grid min-w-0 gap-2 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[minmax(20rem,26rem)_minmax(0,1fr)] 2xl:grid-cols-[minmax(22rem,28rem)_minmax(0,1fr)]">
         {/* Catálogo */}
-        <section className={cn(surfaceCard(), "flex max-h-64 min-h-0 min-w-0 flex-col gap-2 p-3 lg:max-h-none lg:overflow-hidden")}>
+        <section className={cn(surfaceCard(), "flex max-h-64 min-h-0 min-w-0 flex-col gap-2 overflow-visible p-3 lg:max-h-none")}>
           <div className="flex items-baseline justify-between gap-2">
             <h2 className="text-sm font-semibold text-foreground">Carteles</h2>
             <p className="text-[11px] tabular-nums text-muted-foreground">
-              {selectedIds.size}/{filtered.length}
+              {selectedIds.size} en el deck · {filtered.length} visibles
             </p>
           </div>
           <div className="grid gap-1.5">
@@ -637,18 +899,35 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
-            <select
-              className={cn(compactField, "nm-select")}
-              value={providerFilter}
-              onChange={(e) => setProviderFilter(e.target.value)}
+            <div className="grid grid-cols-2 gap-1.5">
+              <FilterMultiSelect
+                ariaLabel="Filtrar por medios"
+                labelAll="Todos los medios"
+                labelMany={(n) => `${n} medios`}
+                options={providers.map((p) => ({ value: p, label: p }))}
+                selected={providerFilter}
+                onChange={setProviderFilter}
+              />
+              <FilterMultiSelect
+                ariaLabel="Filtrar por zonas"
+                labelAll="Todas las zonas"
+                labelMany={(n) => `${n} zonas`}
+                options={[
+                  ...zonas.list.map((z) => ({ value: z, label: z })),
+                  ...(zonas.hasEmpty ? [{ value: SIN_ZONA, label: "Sin zona" }] : []),
+                ]}
+                selected={zonaFilter}
+                onChange={setZonaFilter}
+              />
+            </div>
+            <button
+              type="button"
+              className={cn(btnSecondary, "h-9 px-2.5 text-xs")}
+              disabled={remainingVisible.length === 0}
+              onClick={() => addUnits(filtered)}
             >
-              <option value="">Todos los medios</option>
-              {providers.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
+              {addVisibleLabel}
+            </button>
           </div>
           <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1 [scrollbar-gutter:stable]">
             {filtered.slice(0, 200).map((u) => {
@@ -749,6 +1028,7 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
                   subtitle={subtitle}
                   highlights={highlights}
                   slide={activeSlide}
+                  visibleFields={visibleFields}
                   closingLine={closingLine}
                   closingLineAccent={closingLineAccent}
                   closingBadge={closingBadge}
@@ -890,8 +1170,10 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
             ) : null}
 
             {previewKind === "unit" ? (
-              activeSlide ? (
-                <div className="grid min-h-0 flex-1 grid-cols-1 content-start gap-x-2 gap-y-1.5 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-2">
+              <div className="grid min-h-0 flex-1 grid-cols-1 content-start gap-x-2 gap-y-1.5 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-2">
+                <FieldVisibilityBar visibleFields={visibleFields} onChange={setVisibleFields} />
+                {activeSlide ? (
+                  <>
                   <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 sm:col-span-2 lg:col-span-3 2xl:col-span-2">
                     <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
                       Cartel {activeIndex + 1}/{slides.length}
@@ -953,32 +1235,41 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
                     label="Zona"
                     value={activeSlide.zona}
                     onChange={(v) => updateActiveSlide({ zona: v })}
+                    className={cn(!visibleFields.zona && "opacity-45")}
                   />
                   <SlideField
                     id="slide-medida"
                     label="Medida"
                     value={activeSlide.medida}
                     onChange={(v) => updateActiveSlide({ medida: v })}
+                    className={cn(!visibleFields.medida && "opacity-45")}
                   />
                   <SlideField
                     id="slide-location"
                     label="Ubicación"
                     value={activeSlide.location}
                     onChange={(v) => updateActiveSlide({ location: v })}
+                    className={cn(!visibleFields.location && "opacity-45")}
                   />
                   <SlideField
                     id="slide-visibilidad"
                     label="Visibilidad"
                     value={activeSlide.visibilidad}
                     onChange={(v) => updateActiveSlide({ visibilidad: v })}
+                    className={cn(!visibleFields.visibilidad && "opacity-45")}
                   />
                   <SlideField
                     id="slide-caras"
                     label="Caras"
                     value={activeSlide.caras}
                     onChange={(v) => updateActiveSlide({ caras: v })}
+                    className={cn(!visibleFields.caras && "opacity-45")}
                   />
-                  <SlideField id="slide-impacto" label="Impacto" className="sm:col-span-2">
+                  <SlideField
+                    id="slide-impacto"
+                    label="Impacto"
+                    className={cn("sm:col-span-2", !visibleFields.impacto && "opacity-45")}
+                  >
                     <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
                       <input
                         id="slide-impacto"
@@ -1034,6 +1325,7 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
                     label="Pauta"
                     value={activeSlide.pauta}
                     onChange={(v) => updateActiveSlide({ pauta: v })}
+                    className={cn(!visibleFields.pauta && "opacity-45")}
                   />
                   {(
                     [
@@ -1051,6 +1343,7 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
                         label={label}
                         value={activeSlide[key]}
                         onChange={(v) => updateActiveSlide({ [key]: v })}
+                        className={cn(!visibleFields[key] && "opacity-45")}
                       />
                     ))}
                   <SlideField
@@ -1058,20 +1351,25 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
                     label="Costo mensual"
                     value={activeSlide.costoMensual}
                     onChange={(v) => updateActiveSlide({ costoMensual: v })}
+                    className={cn(!visibleFields.costoMensual && "opacity-45")}
                   />
                   <SlideField
                     id="slide-mapsUrl"
                     label="Link mapa"
                     value={activeSlide.mapsUrl}
                     onChange={(v) => updateActiveSlide({ mapsUrl: v })}
-                    className="sm:col-span-2 lg:col-span-3 2xl:col-span-2"
+                    className={cn(
+                      "sm:col-span-2 lg:col-span-3 2xl:col-span-2",
+                      !visibleFields.mapsUrl && "opacity-45",
+                    )}
                   />
-                </div>
-              ) : (
-                <p className="py-2 text-center text-xs text-muted-foreground">
-                  Seleccioná un cartel del listado o del orden debajo del preview para editar sus datos.
-                </p>
-              )
+                  </>
+                ) : (
+                  <p className="py-2 text-center text-xs text-muted-foreground sm:col-span-2 lg:col-span-3 2xl:col-span-2">
+                    Seleccioná un cartel del listado o del orden debajo del preview para editar sus datos.
+                  </p>
+                )}
+              </div>
             ) : null}
 
             {previewKind === "closing" ? (

@@ -10,7 +10,7 @@ import {
 } from "@react-pdf/renderer";
 import { CLIENT_BRAND } from "@/lib/brand";
 import { fitRect, normalizeImageFit, pdfImagePaneSize } from "@/lib/presentations/image-layout";
-import { slideSpecRows } from "@/lib/presentations/slide-data";
+import { isFieldVisible, slideSpecRows } from "@/lib/presentations/slide-data";
 import {
   getPresentationPalette,
   type PresentationPalette,
@@ -360,14 +360,16 @@ function UnitPage({
   total,
   styles,
   palette,
+  visibleFields,
 }: {
   slide: PresentationDeck["slides"][number];
   index: number;
   total: number;
   styles: Styles;
   palette: PresentationPalette;
+  visibleFields: PresentationDeck["visibleFields"];
 }) {
-  const rows = slideSpecRows(slide).map((r) =>
+  const rows = slideSpecRows(slide, visibleFields).map((r) =>
     r.label === "Mapa"
       ? { label: r.label, value: "Ver en Google Maps", href: r.value }
       : { label: r.label, value: r.value, href: undefined as string | undefined },
@@ -383,12 +385,14 @@ function UnitPage({
     <Page size="A4" orientation="landscape" style={styles.page}>
       <View style={styles.slideBody}>
         <View style={styles.specsPane}>
-          {slide.zona ? (
-            <View style={styles.zonaPill}>
-              <Text style={styles.zonaText}>{slide.zona}</Text>
-            </View>
-          ) : slide.providerName ? (
-            <Text style={styles.provider}>{slide.providerName}</Text>
+          {isFieldVisible(visibleFields, "zona") ? (
+            slide.zona ? (
+              <View style={styles.zonaPill}>
+                <Text style={styles.zonaText}>{slide.zona}</Text>
+              </View>
+            ) : slide.providerName ? (
+              <Text style={styles.provider}>{slide.providerName}</Text>
+            ) : null
           ) : null}
           <Text style={styles.slideTitle}>{slide.slideTitle}</Text>
           {rows.map((r, i) => (
@@ -505,6 +509,7 @@ export function PresentationDocument({ deck }: { deck: PresentationDeck }) {
           total={deck.slides.length}
           styles={styles}
           palette={palette}
+          visibleFields={deck.visibleFields}
         />
       ))}
       <ClosingPage deck={deck} styles={styles} />
