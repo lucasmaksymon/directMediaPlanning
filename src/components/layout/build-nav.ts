@@ -17,8 +17,8 @@ export function buildHeaderNav(session: AuthLike): {
       { href: "/register", label: "Crear cuenta" },
     ];
     return {
-      desktop: [catalog, ...authLinks],
-      mobilePrimary: [catalog, ...authLinks],
+      desktop: authLinks,
+      mobilePrimary: authLinks,
     };
   }
 

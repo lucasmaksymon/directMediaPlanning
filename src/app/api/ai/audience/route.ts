@@ -1,9 +1,15 @@
+import { auth } from "@/auth";
 import { openai } from "@/lib/openai";
 import { prisma } from "@/lib/prisma";
 import { getNearbyPOIs, estimateWeeklyAudience, estimateCPM } from "@/lib/audience";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "No autenticado." }, { status: 401 });
+  }
+
   const { searchParams } = new URL(req.url);
   const unitId = searchParams.get("unitId");
   if (!unitId) return NextResponse.json({ error: "unitId requerido." }, { status: 400 });

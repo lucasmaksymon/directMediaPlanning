@@ -21,11 +21,16 @@ export function LoginForm() {
     const form = e.currentTarget;
     const email = (form.elements.namedItem("email") as HTMLInputElement).value;
     const password = (form.elements.namedItem("password") as HTMLInputElement).value;
+    const rawCallback = searchParams.get("callbackUrl");
+    const callbackUrl =
+      rawCallback && rawCallback.startsWith("/") && !rawCallback.startsWith("//")
+        ? rawCallback
+        : "/inicio";
     const result = await signIn("credentials", {
       email,
       password,
       redirect: false,
-      callbackUrl: "/inicio",
+      callbackUrl,
     });
     setPending(false);
     if (result?.error) {
@@ -35,7 +40,7 @@ export function LoginForm() {
     if (result?.url) {
       window.location.href = result.url;
     } else {
-      window.location.href = "/inicio";
+      window.location.href = callbackUrl;
     }
   }
 

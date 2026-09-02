@@ -60,14 +60,22 @@ export async function HomePageContent() {
   const isAdvertiser = role === "advertiser";
   const isAdmin = role === "admin";
 
-  const [lastMinute, publishedCount] = await Promise.all([
-    getLastMinuteUnits(),
-    prisma.inventoryUnit.count({ where: { status: "published" } }),
-  ]);
+  const [lastMinute, publishedCount] = isLoggedIn
+    ? await Promise.all([
+        getLastMinuteUnits(),
+        prisma.inventoryUnit.count({ where: { status: "published" } }),
+      ])
+    : [[], 0];
   const preview = lastMinute.slice(0, 3);
 
-  const primaryHref = isAdmin ? "/admin" : isAdvertiser ? "/advertiser" : "/explorar";
-  const primaryLabel = isAdmin ? "Ir a operaciones" : isAdvertiser ? "Mi cuenta" : "Ver catálogo";
+  const primaryHref = isAdmin ? "/admin" : isAdvertiser ? "/advertiser" : isLoggedIn ? "/explorar" : "/login";
+  const primaryLabel = isAdmin
+    ? "Ir a operaciones"
+    : isAdvertiser
+      ? "Mi cuenta"
+      : isLoggedIn
+        ? "Ver catálogo"
+        : "Iniciar sesión";
   const secondaryHref = isLoggedIn ? "/explorar" : "/register";
   const secondaryLabel = isLoggedIn ? "Explorar catálogo" : "Crear cuenta gratis";
 
@@ -98,27 +106,29 @@ export async function HomePageContent() {
                 <Link className={btnMarketingSecondary} href={secondaryHref}>
                   {secondaryLabel}
                 </Link>
-                {!isLoggedIn && (
-                  <Link
-                    className="inline-flex min-h-11 items-center justify-center px-4 text-sm font-medium text-muted-foreground transition hover:text-foreground"
-                    href="/login"
-                  >
-                    Ya tengo cuenta
-                  </Link>
-                )}
               </div>
             </div>
 
-            <div className="grid w-full shrink-0 grid-cols-2 gap-3 sm:grid-cols-3 lg:w-[min(100%,300px)] lg:grid-cols-1">
-              <StatBadge value={String(publishedCount)} label="Espacios publicados" />
-              <StatBadge value={String(lastMinute.length)} label="Last minute hoy" accent="signal" />
-              <StatBadge
-                value="1"
-                label="Operador"
-                sub={CLIENT_BRAND}
-                className="col-span-2 sm:col-span-1"
-              />
-            </div>
+            {isLoggedIn ? (
+              <div className="grid w-full shrink-0 grid-cols-2 gap-3 sm:grid-cols-3 lg:w-[min(100%,300px)] lg:grid-cols-1">
+                <StatBadge value={String(publishedCount)} label="Espacios publicados" />
+                <StatBadge value={String(lastMinute.length)} label="Last minute hoy" accent="signal" />
+                <StatBadge
+                  value="1"
+                  label="Operador"
+                  sub={CLIENT_BRAND}
+                  className="col-span-2 sm:col-span-1"
+                />
+              </div>
+            ) : (
+              <div className="grid w-full shrink-0 grid-cols-1 gap-3 lg:w-[min(100%,300px)]">
+                <StatBadge
+                  value="1"
+                  label="Operador"
+                  sub={CLIENT_BRAND}
+                />
+              </div>
+            )}
           </div>
         </section>
       </div>
@@ -151,7 +161,7 @@ export async function HomePageContent() {
         <div className="mt-8 grid gap-5 lg:grid-cols-3">
           {features.map((f) => {
             const needsAuth = "auth" in f && f.auth;
-            const href = needsAuth && !isLoggedIn ? "/register" : f.href;
+            const href = !isLoggedIn ? (needsAuth ? "/register" : "/login") : f.href;
             return (
               <Link
                 key={f.title}
@@ -172,7 +182,7 @@ export async function HomePageContent() {
         </div>
       </section>
 
-      {preview.length > 0 && (
+      {isLoggedIn && preview.length > 0 && (
         <section className={cn(marketingContent, "mt-16")}>
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
