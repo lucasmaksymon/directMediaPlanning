@@ -30,6 +30,7 @@ import {
   type ImpactoPeriodo,
 } from "@/lib/inventory/impacto";
 import { MAX_PRESENTATION_SLIDES } from "@/lib/presentations/limits";
+import { brandWordmarkPublicSrc } from "@/lib/presentations/brand-logo";
 import {
   defaultVisibleFields,
   extractUnitSpecs,
@@ -361,9 +362,13 @@ function FilterMultiSelect({
 function FieldVisibilityBar({
   visibleFields,
   onChange,
+  showSlideNumbers,
+  onShowSlideNumbersChange,
 }: {
   visibleFields: Record<PresentationFieldKey, boolean>;
   onChange: (next: Record<PresentationFieldKey, boolean>) => void;
+  showSlideNumbers: boolean;
+  onShowSlideNumbersChange: (next: boolean) => void;
 }) {
   const enabledCount = PRESENTATION_FIELD_KEYS.filter((key) => visibleFields[key]).length;
 
@@ -422,6 +427,15 @@ function FieldVisibilityBar({
           );
         })}
       </div>
+      <label className="mt-2 flex w-fit cursor-pointer items-center gap-2 text-[11px] font-medium text-muted-foreground hover:text-foreground">
+        <input
+          type="checkbox"
+          className="size-3.5 accent-[var(--led)]"
+          checked={showSlideNumbers}
+          onChange={(e) => onShowSlideNumbersChange(e.target.checked)}
+        />
+        Números de diapositiva
+      </label>
     </div>
   );
 }
@@ -435,6 +449,10 @@ function SlidePreview({
   highlights,
   slide,
   visibleFields,
+  showSlideNumbers,
+  slideIndex,
+  slideCount,
+  theme,
   closingLine,
   closingLineAccent,
   closingBadge,
@@ -450,6 +468,10 @@ function SlidePreview({
   highlights: PresentationHighlight[];
   slide: EditableSlide | null;
   visibleFields: PresentationVisibleFields;
+  showSlideNumbers: boolean;
+  slideIndex: number;
+  slideCount: number;
+  theme: "light" | "dark";
   closingLine: string;
   closingLineAccent: string;
   closingBadge: string;
@@ -566,10 +588,11 @@ function SlidePreview({
   }
 
   const rows = slideSpecRows(slide, visibleFields);
+  const wordmarkSrc = brandWordmarkPublicSrc(theme);
 
   return (
-    <div className="flex h-full w-full overflow-hidden border border-border bg-card">
-      <div className="flex w-[45%] flex-col justify-center gap-5 bg-card px-10 py-9">
+    <div className="relative flex h-full w-full overflow-hidden border border-border bg-card">
+      <div className="flex w-[45%] flex-col justify-center gap-5 bg-card px-10 py-9 pb-16">
         {isFieldVisible(visibleFields, "zona") ? (
           slide.zona ? (
             <span className="w-fit rounded-full border border-led/30 bg-led/10 px-3 py-1 text-[13px] font-semibold text-led">
@@ -625,6 +648,15 @@ function SlidePreview({
           </div>
         )}
       </div>
+      <div className="pointer-events-none absolute inset-x-8 bottom-4 flex items-center justify-between">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img alt="NextMedia" className="h-[18px] w-auto" src={wordmarkSrc} />
+        {showSlideNumbers ? (
+          <span className="text-[12px] tabular-nums text-muted-foreground">
+            {slideIndex + 1} / {slideCount}
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -661,6 +693,7 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
   const [error, setError] = useState<string | null>(null);
   const [defaultImageFit, setDefaultImageFit] = useState<PresentationImageFit>("cover");
   const [visibleFields, setVisibleFields] = useState(defaultVisibleFields);
+  const [showSlideNumbers, setShowSlideNumbers] = useState(false);
 
   const providers = useMemo(() => {
     const set = new Set(units.map((u) => u.provider.companyName));
@@ -853,6 +886,7 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
             (h) => h.enabled !== false && (h.value.trim() || h.label.trim()),
           ),
           visibleFields,
+          showSlideNumbers,
           closingLine: closingLine.trim(),
           closingLineAccent: closingLineAccent.trim(),
           closingBadge: closingBadge.trim(),
@@ -1072,6 +1106,10 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
                   highlights={highlights}
                   slide={activeSlide}
                   visibleFields={visibleFields}
+                  showSlideNumbers={showSlideNumbers}
+                  slideIndex={activeIndex}
+                  slideCount={slides.length}
+                  theme={normalizePresentationTheme(resolvedTheme)}
                   closingLine={closingLine}
                   closingLineAccent={closingLineAccent}
                   closingBadge={closingBadge}
@@ -1230,7 +1268,12 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
 
             {previewKind === "unit" ? (
               <div className="grid min-h-0 flex-1 grid-cols-1 content-start gap-x-2 gap-y-1.5 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-2">
-                <FieldVisibilityBar visibleFields={visibleFields} onChange={setVisibleFields} />
+                <FieldVisibilityBar
+                  visibleFields={visibleFields}
+                  onChange={setVisibleFields}
+                  showSlideNumbers={showSlideNumbers}
+                  onShowSlideNumbersChange={setShowSlideNumbers}
+                />
                 {activeSlide ? (
                   <>
                   <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 sm:col-span-2 lg:col-span-3 2xl:col-span-2">

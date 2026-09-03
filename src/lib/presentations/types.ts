@@ -58,6 +58,8 @@ export type PresentationExportRequest = {
   highlights: PresentationHighlight[];
   slides: PresentationSlideInput[];
   visibleFields?: PresentationVisibleFields;
+  /** Si true, muestra "n / total" en el pie de cada cartel. Default: no. */
+  showSlideNumbers?: boolean;
   closingLine?: string;
   closingLineAccent?: string;
   closingBadge?: string;
@@ -84,6 +86,7 @@ export type PresentationDeck = {
   highlights: PresentationHighlight[];
   slides: PresentationSlideResolved[];
   visibleFields: PresentationVisibleFields;
+  showSlideNumbers: boolean;
   closingLine: string;
   closingLineAccent: string;
   closingBadge: string;

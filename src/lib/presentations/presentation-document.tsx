@@ -9,6 +9,10 @@ import {
   Link,
 } from "@react-pdf/renderer";
 import { CLIENT_BRAND } from "@/lib/brand";
+import {
+  BRAND_WORDMARK_ASPECT,
+} from "@/lib/presentations/brand-logo";
+import { brandWordmarkDataUri } from "@/lib/presentations/brand-logo-server";
 import { fitRect, normalizeImageFit, pdfImagePaneSize } from "@/lib/presentations/image-layout";
 import { isFieldVisible, slideSpecRows } from "@/lib/presentations/slide-data";
 import {
@@ -155,7 +159,7 @@ function createStyles(p: PresentationPalette) {
       width: "45%",
       height: "100%",
       paddingTop: 36,
-      paddingBottom: 36,
+      paddingBottom: 48,
       paddingLeft: 28,
       paddingRight: 24,
       justifyContent: "center",
@@ -289,11 +293,16 @@ function createStyles(p: PresentationPalette) {
     },
     footer: {
       position: "absolute",
-      bottom: 18,
+      bottom: 16,
       left: 32,
       right: 32,
       flexDirection: "row",
       justifyContent: "space-between",
+      alignItems: "center",
+    },
+    footerLogo: {
+      height: 18,
+      width: 18 * BRAND_WORDMARK_ASPECT,
     },
     footerText: {
       fontSize: 8,
@@ -361,6 +370,8 @@ function UnitPage({
   styles,
   palette,
   visibleFields,
+  showSlideNumbers,
+  wordmarkSrc,
 }: {
   slide: PresentationDeck["slides"][number];
   index: number;
@@ -368,6 +379,8 @@ function UnitPage({
   styles: Styles;
   palette: PresentationPalette;
   visibleFields: PresentationDeck["visibleFields"];
+  showSlideNumbers: boolean;
+  wordmarkSrc: string;
 }) {
   const rows = slideSpecRows(slide, visibleFields).map((r) =>
     r.label === "Mapa"
@@ -444,10 +457,15 @@ function UnitPage({
         </View>
       </View>
       <View style={styles.footer}>
-        <Text style={styles.footerText}>{CLIENT_BRAND}</Text>
-        <Text style={styles.footerText}>
-          {index + 1} / {total}
-        </Text>
+        {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf Image */}
+        <Image src={wordmarkSrc} style={styles.footerLogo} />
+        {showSlideNumbers ? (
+          <Text style={styles.footerText}>
+            {index + 1} / {total}
+          </Text>
+        ) : (
+          <View />
+        )}
       </View>
     </Page>
   );
@@ -497,6 +515,7 @@ function ClosingPage({
 export function PresentationDocument({ deck }: { deck: PresentationDeck }) {
   const palette = getPresentationPalette(deck.theme);
   const styles = createStyles(palette);
+  const wordmarkSrc = brandWordmarkDataUri(deck.theme);
 
   return (
     <Document title={deck.title} author={CLIENT_BRAND}>
@@ -510,6 +529,8 @@ export function PresentationDocument({ deck }: { deck: PresentationDeck }) {
           styles={styles}
           palette={palette}
           visibleFields={deck.visibleFields}
+          showSlideNumbers={deck.showSlideNumbers}
+          wordmarkSrc={wordmarkSrc}
         />
       ))}
       <ClosingPage deck={deck} styles={styles} />

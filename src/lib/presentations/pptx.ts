@@ -1,5 +1,9 @@
 import PptxGenJS from "pptxgenjs";
 import { CLIENT_BRAND } from "@/lib/brand";
+import {
+  BRAND_WORDMARK_ASPECT,
+} from "@/lib/presentations/brand-logo";
+import { brandWordmarkAbsolutePath } from "@/lib/presentations/brand-logo-server";
 import { imageForPptx } from "@/lib/presentations/image-for-pptx";
 import { normalizeImageFit } from "@/lib/presentations/image-layout";
 import { isFieldVisible, slideSpecRows } from "@/lib/presentations/slide-data";
@@ -263,25 +267,25 @@ export async function buildPresentationPptx(deck: PresentationDeck): Promise<Buf
       y += 0.48;
     });
 
-    s.addText(CLIENT_BRAND, {
+    s.addImage({
+      path: brandWordmarkAbsolutePath(deck.theme),
       x: SPEC_X,
-      y: 6.95,
-      w: 2.5,
-      h: 0.25,
-      fontSize: 10,
-      color: c.muted,
-      fontFace: "Arial",
+      y: 7.05,
+      w: 0.22 * BRAND_WORDMARK_ASPECT,
+      h: 0.22,
     });
-    s.addText(`${index + 1} / ${deck.slides.length}`, {
-      x: IMG_X - 2.2,
-      y: 6.95,
-      w: 1.8,
-      h: 0.25,
-      fontSize: 10,
-      color: c.muted,
-      align: "right",
-      fontFace: "Arial",
-    });
+    if (deck.showSlideNumbers) {
+      s.addText(`${index + 1} / ${deck.slides.length}`, {
+        x: IMG_X - 2.2,
+        y: 7.08,
+        w: 1.8,
+        h: 0.22,
+        fontSize: 10,
+        color: c.muted,
+        align: "right",
+        fontFace: "Arial",
+      });
+    }
   }
 
   {

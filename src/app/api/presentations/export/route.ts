@@ -55,6 +55,7 @@ const bodySchema = z.object({
   contactEmail: clipped(120).optional(),
   contactWeb: clipped(120).optional(),
   visibleFields: z.record(z.enum(PRESENTATION_FIELD_KEYS), z.boolean()).optional(),
+  showSlideNumbers: z.boolean().optional(),
   slides: z
     .array(
       z.object({
@@ -186,6 +187,7 @@ async function runExport(
     ),
     slides,
     visibleFields: normalizeVisibleFields(input.visibleFields),
+    showSlideNumbers: input.showSlideNumbers === true,
     closingLine: input.closingLine?.trim() || "Creamos conexiones que",
     closingLineAccent: input.closingLineAccent?.trim() || "generan resultados",
     closingBadge: input.closingBadge?.trim() || "Contacto Comercial",
