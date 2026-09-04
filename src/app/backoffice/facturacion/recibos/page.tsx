@@ -6,8 +6,20 @@ import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
 import { RecibosTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
+import { ErpLineList } from "@/components/erp/ErpLineList";
 import { createErpSaleReceipt, updateErpSaleReceipt } from "@/app/actions/erp-billing";
-import { erpInputNumber, isoDate, money } from "@/lib/erp";
+import {
+  ERP_CHECK_MODE,
+  ERP_CHECK_ORDER,
+  ERP_CHECK_TYPE,
+  ERP_PAY_SALE,
+  ERP_PAY_SALE_STATUS,
+  erpInputNumber,
+  isoDate,
+  isoDateOrEmpty,
+  money,
+  selectOptions,
+} from "@/lib/erp";
 
 export const metadata = { title: productTitle("Recibos de venta") };
 
@@ -21,7 +33,11 @@ export default async function ErpRecibosPage({
   const [receipts, clients, invoices] = await Promise.all([
     prisma.erpSaleReceipt.findMany({
       orderBy: { issuedAt: "desc" },
-      include: { client: { select: { name: true } }, invoices: true, payments: true },
+      include: {
+        client: { select: { name: true } },
+        invoices: true,
+        payments: { orderBy: { createdAt: "asc" } },
+      },
       take: 200,
     }),
     prisma.erpClient.findMany({ where: { estado: 1 }, orderBy: { name: "asc" } }),
@@ -37,7 +53,7 @@ export default async function ErpRecibosPage({
   return (
     <div className={cn(adminPage, "gap-4")}>
       <PageHeader
-        description="Cobra facturas de venta. Si cargás un cheque, se registra en tesorería (tipoPago=1)."
+        description="Cobra facturas de venta. Los pagos (transferencia, cheque, efectivo y retenciones) quedan en tesorería."
         eyebrow="Facturación"
         title="Recibos de venta"
       />
@@ -88,16 +104,38 @@ export default async function ErpRecibosPage({
               ))}
             </select>
           </ErpField>
-          {!current ? (
-            <>
-              <ErpField htmlFor="chequeNumber" label="Cheque (opcional)">
-                <Input id="chequeNumber" name="chequeNumber" />
-              </ErpField>
-              <ErpField htmlFor="chequeAmount" label="Importe cheque">
-                <Input defaultValue="0" id="chequeAmount" name="chequeAmount" />
-              </ErpField>
-            </>
-          ) : null}
+          <ErpLineList
+            addLabel="Agregar pago"
+            fields={[
+              { name: "paymentKind", label: "Tipo pago", options: selectOptions(ERP_PAY_SALE) },
+              { name: "number", label: "Número" },
+              { name: "issuedAt", label: "Fecha emisión", type: "date" },
+              { name: "paidAt", label: "Fecha de pago", type: "date" },
+              { name: "checkOrder", label: "Orden cheque", options: selectOptions(ERP_CHECK_ORDER) },
+              { name: "checkType", label: "Tipo cheque", options: selectOptions(ERP_CHECK_TYPE) },
+              { name: "checkMode", label: "Modo cheque", options: selectOptions(ERP_CHECK_MODE) },
+              { name: "amount", label: "Importe", type: "number" },
+              { name: "estado", label: "Estado", options: selectOptions(ERP_PAY_SALE_STATUS) },
+            ]}
+            prefix="py"
+            rows={
+              current?.payments.map((p) => ({
+                id: p.id,
+                values: {
+                  paymentKind: String(p.paymentKind),
+                  number: p.number ?? "",
+                  issuedAt: isoDateOrEmpty(p.issuedAt),
+                  paidAt: isoDateOrEmpty(p.paidAt),
+                  checkOrder: String(p.checkOrder),
+                  checkType: String(p.checkType),
+                  checkMode: String(p.checkMode),
+                  amount: erpInputNumber(p.amount),
+                  estado: String(p.estado),
+                },
+              })) ?? []
+            }
+            title="Pagos recibidos"
+          />
         </ErpForm>
 
         {receipts.length === 0 ? (

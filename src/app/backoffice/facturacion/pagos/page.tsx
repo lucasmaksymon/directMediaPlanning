@@ -6,9 +6,21 @@ import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
 import { PagosTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
+import { ErpLineList } from "@/components/erp/ErpLineList";
 import { createErpPaymentOrder, updateErpPaymentOrder } from "@/app/actions/erp-billing";
 import { ErpPayMethodSelect } from "@/components/erp/ErpPayMethodSelect";
-import { erpInputNumber, isoDate, money } from "@/lib/erp";
+import {
+  ERP_CHECK_MODE,
+  ERP_CHECK_ORDER,
+  ERP_CHECK_TYPE,
+  ERP_PAY_PURCHASE,
+  ERP_PAY_PURCHASE_STATUS,
+  erpInputNumber,
+  isoDate,
+  isoDateOrEmpty,
+  money,
+  selectOptions,
+} from "@/lib/erp";
 
 export const metadata = { title: productTitle("Órdenes de pago") };
 
@@ -22,7 +34,11 @@ export default async function ErpOrdenesPagoPage({
   const [orders, vendors, invoices] = await Promise.all([
     prisma.erpPaymentOrder.findMany({
       orderBy: { issuedAt: "desc" },
-      include: { vendor: { select: { name: true } }, invoices: true },
+      include: {
+        vendor: { select: { name: true } },
+        invoices: true,
+        treasury: { orderBy: { createdAt: "asc" } },
+      },
       take: 200,
     }),
     prisma.erpVendor.findMany({ where: { estado: 1 }, orderBy: { name: "asc" } }),
@@ -38,7 +54,7 @@ export default async function ErpOrdenesPagoPage({
   return (
     <div className={cn(adminPage, "gap-4")}>
       <PageHeader
-        description="Orden de pago al proveedor, vinculada a facturas de compra."
+        description="Orden de pago al proveedor. Los pagos (transferencia, cheque, endoso y retenciones) quedan en tesorería."
         eyebrow="Facturación"
         title="Órdenes de pago"
       />
@@ -92,6 +108,38 @@ export default async function ErpOrdenesPagoPage({
               ))}
             </select>
           </ErpField>
+          <ErpLineList
+            addLabel="Agregar pago"
+            fields={[
+              { name: "paymentKind", label: "Tipo pago", options: selectOptions(ERP_PAY_PURCHASE) },
+              { name: "number", label: "Número" },
+              { name: "issuedAt", label: "Fecha emisión", type: "date" },
+              { name: "paidAt", label: "Fecha de pago", type: "date" },
+              { name: "checkOrder", label: "Orden cheque", options: selectOptions(ERP_CHECK_ORDER) },
+              { name: "checkType", label: "Tipo cheque", options: selectOptions(ERP_CHECK_TYPE) },
+              { name: "checkMode", label: "Modo cheque", options: selectOptions(ERP_CHECK_MODE) },
+              { name: "amount", label: "Importe", type: "number" },
+              { name: "estado", label: "Estado", options: selectOptions(ERP_PAY_PURCHASE_STATUS) },
+            ]}
+            prefix="py"
+            rows={
+              current?.treasury.map((p) => ({
+                id: p.id,
+                values: {
+                  paymentKind: String(p.paymentKind),
+                  number: p.number ?? "",
+                  issuedAt: isoDateOrEmpty(p.issuedAt),
+                  paidAt: isoDateOrEmpty(p.paidAt),
+                  checkOrder: String(p.checkOrder),
+                  checkType: String(p.checkType),
+                  checkMode: String(p.checkMode),
+                  amount: erpInputNumber(p.amount),
+                  estado: String(p.estado),
+                },
+              })) ?? []
+            }
+            title="Pagos efectuados"
+          />
         </ErpForm>
 
         {orders.length === 0 ? (

@@ -15,16 +15,71 @@ export const ERP_COLLECT = { pending: 0, collected: 1 } as const;
 /** Pago de factura de compra (Excel: PENDIENTE / PAGADO). */
 export const ERP_SETTLE = { pending: 0, paid: 1 } as const;
 
-/** tipoPago=1 es cheque (recibidos = recibo venta, emitidos = recibo compra). */
+/** tipoPago de pagos de recibo de venta (ADMINISTRACION). */
 export const ERP_PAY = {
+  transfer: 0,
   cheque: 1,
-  transfer: 2,
+  cash: 2,
   retVat: 3,
   retIibb: 4,
   retIibbAlt: 5,
   retGan: 6,
   retSuss: 7,
 } as const;
+
+/** tiposPagoVentas del legado. */
+export const ERP_PAY_SALE = [
+  "Transferencia",
+  "Cheque",
+  "Efectivo",
+  "Retención IVA",
+  "Retención IIBB",
+  "Retención IIBB CABA",
+  "Retención Ganancias",
+  "Retención SUSS",
+] as const;
+
+/** ordenCheque: 0 sin dato. */
+export const ERP_CHECK_ORDER = ["—", "Al día", "Diferido"] as const;
+
+/** tipoCheque: 0 sin dato. */
+export const ERP_CHECK_TYPE = ["—", "Físico", "E-cheq"] as const;
+
+/** modoCheque: 0 sin dato. */
+export const ERP_CHECK_MODE = ["—", "A la orden", "Cruzado"] as const;
+
+/** estadoPagoVentas del legado. */
+export const ERP_PAY_SALE_STATUS = ["Pendiente", "Cobrado", "Anulado"] as const;
+
+/** Mismos códigos 0/1/2; en OP el 1 es pagado (sale sale como cobrado). */
+export const ERP_PAY_PURCHASE_STATUS = ["Pendiente", "Pagado", "Anulado"] as const;
+
+/** tipoPago de compra que lleva datos de cheque. */
+export const ERP_PAY_PURCHASE_CHEQUE = [1, 2] as const;
+
+export function erpPaySaleLabel(kind: number) {
+  return ERP_PAY_SALE[kind] ?? `Pago ${kind}`;
+}
+
+export function erpCheckOrderLabel(v: number) {
+  return ERP_CHECK_ORDER[v] ?? "—";
+}
+
+export function erpCheckTypeLabel(v: number) {
+  return ERP_CHECK_TYPE[v] ?? "—";
+}
+
+export function erpCheckModeLabel(v: number) {
+  return ERP_CHECK_MODE[v] ?? "—";
+}
+
+export function erpPaySaleStatusLabel(v: number) {
+  return ERP_PAY_SALE_STATUS[v] ?? `Estado ${v}`;
+}
+
+export function selectOptions(labels: readonly string[]) {
+  return labels.map((label, value) => ({ value: String(value), label }));
+}
 
 export const ERP_DOC_TYPES = ["A", "B", "C", "E", "NC"] as const;
 
@@ -177,6 +232,13 @@ export function erpInputNumber(v: unknown) {
 
 export function isoDate(d: Date) {
   return d.toISOString().slice(0, 10);
+}
+
+export function isoDateOrEmpty(d: Date | string | null | undefined) {
+  if (d == null || d === "") return "";
+  const date = d instanceof Date ? d : new Date(d);
+  if (Number.isNaN(date.getTime()) || date.getFullYear() <= 1901) return "";
+  return isoDate(date);
 }
 
 export function displayDate(d: Date | string | null | undefined) {

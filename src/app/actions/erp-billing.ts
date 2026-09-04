@@ -6,12 +6,49 @@ import { requireOpsSession } from "@/lib/ops-access";
 import {
   ERP_COLLECT,
   ERP_PAY,
+  ERP_PAY_PURCHASE_CHEQUE,
   ERP_SETTLE,
+  optionalString,
   parseDateField,
   parseIntField,
   parseMoney,
   requiredString,
 } from "@/lib/erp";
+import { parseFormLines } from "@/lib/erp-form-lines";
+
+const RECEIPT_PAY_FIELDS = [
+  "paymentKind",
+  "number",
+  "issuedAt",
+  "paidAt",
+  "checkOrder",
+  "checkType",
+  "checkMode",
+  "amount",
+  "estado",
+] as const;
+
+function receiptPaymentsFromForm(formData: FormData, chequeKinds: readonly number[] = [ERP_PAY.cheque]) {
+  return parseFormLines(formData, "py", [...RECEIPT_PAY_FIELDS])
+    .filter((line) => line.values.amount || line.values.number || line.values.paymentKind)
+    .map((line) => {
+      const paymentKind = parseIntField(line.values.paymentKind, ERP_PAY.transfer);
+      const isCheque = chequeKinds.includes(paymentKind);
+      return {
+        id: line.id,
+        paymentKind,
+        number: optionalString(line.values.number),
+        issuedAt: parseDateField(line.values.issuedAt),
+        paidAt: parseDateField(line.values.paidAt),
+        checkOrder: isCheque ? parseIntField(line.values.checkOrder, 0) : 0,
+        checkType: isCheque ? parseIntField(line.values.checkType, 0) : 0,
+        checkMode: isCheque ? parseIntField(line.values.checkMode, 0) : 0,
+        amount: parseMoney(line.values.amount),
+        estado: parseIntField(line.values.estado, 0),
+      };
+    })
+    .filter((row) => row.amount > 0 || row.number);
+}
 import {
   erpFail,
   requiredId,
@@ -333,7 +370,12 @@ export async function createErpSaleReceipt(formData: FormData): Promise<Result> 
     const issuedAt = parseDateField(formData.get("issuedAt"));
     if (!issuedAt) throw new Error("Indicá la fecha.");
     const invoiceIds = formData.getAll("invoiceId").map(String).filter(Boolean);
-    const receipt = await prisma.erpSaleReceipt.create({
+    const payments = receiptPaymentsFromForm(formData).map((line) => {
+      const row = { ...line };
+      delete (row as { id?: string | null }).id;
+      return row;
+    });
+    await prisma.erpSaleReceipt.create({
       data: {
         clientId,
         issuedAt,
@@ -341,23 +383,9 @@ export async function createErpSaleReceipt(formData: FormData): Promise<Result> 
         amount: parseMoney(formData.get("amount")),
         balance: parseMoney(formData.get("balance")),
         invoices: { create: invoiceIds.map((invoiceId) => ({ invoiceId })) },
+        payments: payments.length ? { create: payments } : undefined,
       },
     });
-
-    const cheque = parseMoney(formData.get("chequeAmount"));
-    if (cheque > 0) {
-      await prisma.erpTreasuryPayment.create({
-        data: {
-          saleReceiptId: receipt.id,
-          paymentKind: ERP_PAY.cheque,
-          number: String(formData.get("chequeNumber") ?? "").trim() || null,
-          issuedAt: parseDateField(formData.get("chequeIssuedAt")) ?? issuedAt,
-          paidAt: parseDateField(formData.get("chequePaidAt")) ?? issuedAt,
-          amount: cheque,
-          estado: 0,
-        },
-      });
-    }
     refreshBilling();
     return { ok: true };
   } catch (e) {
@@ -372,9 +400,10 @@ export async function updateErpSaleReceipt(formData: FormData): Promise<Result> 
     const issuedAt = parseDateField(formData.get("issuedAt"));
     if (!issuedAt) throw new Error("Indicá la fecha.");
     const invoiceIds = formData.getAll("invoiceId").map(String).filter(Boolean);
-    await prisma.$transaction([
-      prisma.erpSaleReceiptInvoice.deleteMany({ where: { receiptId: id } }),
-      prisma.erpSaleReceipt.update({
+    const lines = receiptPaymentsFromForm(formData);
+    const keep = lines.map((l) => l.id).filter((lineId): lineId is string => Boolean(lineId));
+    await prisma.$transaction(async (tx) => {
+      await tx.erpSaleReceipt.update({
         where: { id },
         data: {
           clientId: requiredString(formData.get("clientId"), "el cliente"),
@@ -382,10 +411,23 @@ export async function updateErpSaleReceipt(formData: FormData): Promise<Result> 
           number: parseIntField(formData.get("number")),
           amount: parseMoney(formData.get("amount")),
           balance: parseMoney(formData.get("balance")),
-          invoices: { create: invoiceIds.map((invoiceId) => ({ invoiceId })) },
         },
-      }),
-    ]);
+      });
+      await tx.erpSaleReceiptInvoice.deleteMany({ where: { receiptId: id } });
+      if (invoiceIds.length) {
+        await tx.erpSaleReceiptInvoice.createMany({
+          data: invoiceIds.map((invoiceId) => ({ receiptId: id, invoiceId })),
+        });
+      }
+      await tx.erpTreasuryPayment.deleteMany({
+        where: { saleReceiptId: id, ...(keep.length ? { id: { notIn: keep } } : {}) },
+      });
+      for (const line of lines) {
+        const { id: lineId, ...row } = line;
+        if (lineId) await tx.erpTreasuryPayment.update({ where: { id: lineId }, data: row });
+        else await tx.erpTreasuryPayment.create({ data: { saleReceiptId: id, ...row } });
+      }
+    });
     refreshBilling();
     return { ok: true };
   } catch (e) {
@@ -412,6 +454,11 @@ export async function createErpPaymentOrder(formData: FormData): Promise<Result>
     const issuedAt = parseDateField(formData.get("issuedAt"));
     if (!issuedAt) throw new Error("Indicá la fecha.");
     const invoiceIds = formData.getAll("invoiceId").map(String).filter(Boolean);
+    const payments = receiptPaymentsFromForm(formData, ERP_PAY_PURCHASE_CHEQUE).map((line) => {
+      const row = { ...line };
+      delete (row as { id?: string | null }).id;
+      return row;
+    });
     await prisma.erpPaymentOrder.create({
       data: {
         vendorId,
@@ -421,6 +468,7 @@ export async function createErpPaymentOrder(formData: FormData): Promise<Result>
         balance: parseMoney(formData.get("balance")),
         notes: String(formData.get("notes") ?? "").trim() || null,
         invoices: { create: invoiceIds.map((invoiceId) => ({ invoiceId })) },
+        treasury: payments.length ? { create: payments } : undefined,
       },
     });
     refreshBilling();
@@ -437,9 +485,10 @@ export async function updateErpPaymentOrder(formData: FormData): Promise<Result>
     const issuedAt = parseDateField(formData.get("issuedAt"));
     if (!issuedAt) throw new Error("Indicá la fecha.");
     const invoiceIds = formData.getAll("invoiceId").map(String).filter(Boolean);
-    await prisma.$transaction([
-      prisma.erpPaymentOrderInvoice.deleteMany({ where: { paymentOrderId: id } }),
-      prisma.erpPaymentOrder.update({
+    const lines = receiptPaymentsFromForm(formData, ERP_PAY_PURCHASE_CHEQUE);
+    const keep = lines.map((l) => l.id).filter((lineId): lineId is string => Boolean(lineId));
+    await prisma.$transaction(async (tx) => {
+      await tx.erpPaymentOrder.update({
         where: { id },
         data: {
           vendorId: requiredString(formData.get("vendorId"), "el proveedor"),
@@ -448,10 +497,23 @@ export async function updateErpPaymentOrder(formData: FormData): Promise<Result>
           amount: parseMoney(formData.get("amount")),
           balance: parseMoney(formData.get("balance")),
           notes: String(formData.get("notes") ?? "").trim() || null,
-          invoices: { create: invoiceIds.map((invoiceId) => ({ invoiceId })) },
         },
-      }),
-    ]);
+      });
+      await tx.erpPaymentOrderInvoice.deleteMany({ where: { paymentOrderId: id } });
+      if (invoiceIds.length) {
+        await tx.erpPaymentOrderInvoice.createMany({
+          data: invoiceIds.map((invoiceId) => ({ paymentOrderId: id, invoiceId })),
+        });
+      }
+      await tx.erpTreasuryPayment.deleteMany({
+        where: { paymentOrderId: id, ...(keep.length ? { id: { notIn: keep } } : {}) },
+      });
+      for (const line of lines) {
+        const { id: lineId, ...row } = line;
+        if (lineId) await tx.erpTreasuryPayment.update({ where: { id: lineId }, data: row });
+        else await tx.erpTreasuryPayment.create({ data: { paymentOrderId: id, ...row } });
+      }
+    });
     refreshBilling();
     return { ok: true };
   } catch (e) {
@@ -462,6 +524,7 @@ export async function updateErpPaymentOrder(formData: FormData): Promise<Result>
 export async function deleteErpPaymentOrder(id: string): Promise<Result> {
   try {
     await requireOpsSession();
+    await prisma.erpTreasuryPayment.deleteMany({ where: { paymentOrderId: id } });
     await prisma.erpPaymentOrder.delete({ where: { id } });
     refreshBilling();
     return { ok: true };
