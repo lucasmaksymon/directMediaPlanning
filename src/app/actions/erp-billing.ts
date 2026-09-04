@@ -49,6 +49,20 @@ function receiptPaymentsFromForm(formData: FormData, chequeKinds: readonly numbe
     })
     .filter((row) => row.amount > 0 || row.number);
 }
+
+function paymentCreateData(line: ReturnType<typeof receiptPaymentsFromForm>[number]) {
+  return {
+    paymentKind: line.paymentKind,
+    number: line.number,
+    issuedAt: line.issuedAt,
+    paidAt: line.paidAt,
+    checkOrder: line.checkOrder,
+    checkType: line.checkType,
+    checkMode: line.checkMode,
+    amount: line.amount,
+    estado: line.estado,
+  };
+}
 import {
   erpFail,
   requiredId,
@@ -370,11 +384,7 @@ export async function createErpSaleReceipt(formData: FormData): Promise<Result> 
     const issuedAt = parseDateField(formData.get("issuedAt"));
     if (!issuedAt) throw new Error("Indicá la fecha.");
     const invoiceIds = formData.getAll("invoiceId").map(String).filter(Boolean);
-    const payments = receiptPaymentsFromForm(formData).map((line) => {
-      const row = { ...line };
-      delete (row as { id?: string | null }).id;
-      return row;
-    });
+    const payments = receiptPaymentsFromForm(formData).map(paymentCreateData);
     await prisma.erpSaleReceipt.create({
       data: {
         clientId,
@@ -454,11 +464,7 @@ export async function createErpPaymentOrder(formData: FormData): Promise<Result>
     const issuedAt = parseDateField(formData.get("issuedAt"));
     if (!issuedAt) throw new Error("Indicá la fecha.");
     const invoiceIds = formData.getAll("invoiceId").map(String).filter(Boolean);
-    const payments = receiptPaymentsFromForm(formData, ERP_PAY_PURCHASE_CHEQUE).map((line) => {
-      const row = { ...line };
-      delete (row as { id?: string | null }).id;
-      return row;
-    });
+    const payments = receiptPaymentsFromForm(formData, ERP_PAY_PURCHASE_CHEQUE).map(paymentCreateData);
     await prisma.erpPaymentOrder.create({
       data: {
         vendorId,
