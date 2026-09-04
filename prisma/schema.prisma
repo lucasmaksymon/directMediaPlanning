@@ -624,6 +624,11 @@ model ErpSaleOrder {
   month         Int
   year          Int
   number        String
+  product       String?
+  plaza         String?
+  periodLabel   String?
+  observations  String?  @db.Text
+  agencyFee     Decimal? @db.Decimal(8, 4)
   net           Decimal  @db.Decimal(14, 2)
   vat           Decimal  @db.Decimal(14, 2)
   amount        Decimal  @db.Decimal(14, 2)
@@ -644,15 +649,23 @@ model ErpSaleOrder {
 
 /// Ítem de campaña (hoja GESTIÓN: elemento, plaza, cantidad, período).
 model ErpCampaignItem {
-  id          String       @id @default(cuid())
-  saleOrderId String
-  saleOrder   ErpSaleOrder @relation(fields: [saleOrderId], references: [id], onDelete: Cascade)
-  element     String
-  location    String?
-  quantity    Decimal      @default(0) @db.Decimal(12, 2)
-  startsAt    DateTime?
-  endsAt      DateTime?
-  createdAt   DateTime     @default(now())
+  id            String       @id @default(cuid())
+  saleOrderId   String
+  saleOrder     ErpSaleOrder @relation(fields: [saleOrderId], references: [id], onDelete: Cascade)
+  element       String
+  location      String?
+  plaza         String?
+  quantity      Decimal      @default(0) @db.Decimal(12, 2)
+  days          Int?
+  faces         Decimal      @default(0) @db.Decimal(12, 2)
+  measures      String?
+  unitCost      Decimal      @default(0) @db.Decimal(14, 2)
+  exhibitionNet Decimal      @default(0) @db.Decimal(14, 2)
+  bonusNet      Decimal      @default(0) @db.Decimal(14, 2)
+  productionNet Decimal      @default(0) @db.Decimal(14, 2)
+  startsAt      DateTime?
+  endsAt        DateTime?
+  createdAt     DateTime     @default(now())
 
   @@index([saleOrderId])
 }
@@ -687,6 +700,18 @@ model ErpPurchaseOrder {
   vendor        ErpVendor    @relation(fields: [vendorId], references: [id], onDelete: Restrict)
   issuedAt      DateTime
   number        String
+  product       String?
+  media         String?
+  measures      String?
+  locations     String?      @db.Text
+  startsAt      DateTime?
+  endsAt        DateTime?
+  paidQty       Decimal      @default(0) @db.Decimal(12, 2)
+  bonusQty      Decimal      @default(0) @db.Decimal(12, 2)
+  unitCost      Decimal      @default(0) @db.Decimal(14, 2)
+  observations  String?      @db.Text
+  printShop     String?
+  printSupport  String?
   net           Decimal      @db.Decimal(14, 2)
   vat           Decimal      @db.Decimal(14, 2)
   amount        Decimal      @db.Decimal(14, 2)
@@ -695,10 +720,27 @@ model ErpPurchaseOrder {
   attachmentExt String?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
+  items         ErpPurchaseOrderItem[]
   invoiceLinks  ErpPurchaseInvoiceOrder[]
 
   @@index([saleOrderId])
   @@index([vendorId])
+}
+
+model ErpPurchaseOrderItem {
+  id              String           @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder   ErpPurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  element         String
+  location        String?
+  quantity        Decimal          @default(0) @db.Decimal(12, 2)
+  days            Int?
+  measures        String?
+  unitCost        Decimal          @default(0) @db.Decimal(14, 2)
+  net             Decimal          @default(0) @db.Decimal(14, 2)
+  createdAt       DateTime         @default(now())
+
+  @@index([purchaseOrderId])
 }
 
 model ErpProductionOrder {
@@ -709,6 +751,16 @@ model ErpProductionOrder {
   vendor        ErpVendor    @relation(fields: [vendorId], references: [id], onDelete: Restrict)
   issuedAt      DateTime
   number        String
+  product       String?
+  measures      String?
+  printSupport  String?
+  quantity      Decimal      @default(0) @db.Decimal(12, 2)
+  motifs        String?
+  unitCost      Decimal      @default(0) @db.Decimal(14, 2)
+  invoiceDetail String?
+  observations  String?      @db.Text
+  pickup        String?
+  colorProof    String?
   net           Decimal      @db.Decimal(14, 2)
   vat           Decimal      @db.Decimal(14, 2)
   amount        Decimal      @db.Decimal(14, 2)
@@ -717,10 +769,38 @@ model ErpProductionOrder {
   attachmentExt String?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
+  items         ErpProductionOrderItem[]
+  deliveries    ErpProductionDelivery[]
   invoiceLinks  ErpPurchaseInvoiceOrder[] @relation("ProductionInvoiceOrders")
 
   @@index([saleOrderId])
   @@index([vendorId])
+}
+
+model ErpProductionOrderItem {
+  id                String             @id @default(cuid())
+  productionOrderId String
+  productionOrder   ErpProductionOrder @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+  element           String
+  location          String?
+  quantity          Decimal            @default(0) @db.Decimal(12, 2)
+  measures          String?
+  printSupport      String?
+  net               Decimal            @default(0) @db.Decimal(14, 2)
+  createdAt         DateTime           @default(now())
+
+  @@index([productionOrderId])
+}
+
+model ErpProductionDelivery {
+  id                String             @id @default(cuid())
+  productionOrderId String
+  productionOrder   ErpProductionOrder @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+  destination       String
+  quantity          Decimal            @default(0) @db.Decimal(12, 2)
+  createdAt         DateTime           @default(now())
+
+  @@index([productionOrderId])
 }
 
 model ErpSaleInvoice {

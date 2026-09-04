@@ -3,12 +3,15 @@
 import { useMemo, useState } from "react";
 import { Input, Select } from "@/components/ui";
 import { ErpField } from "@/components/erp/ErpField";
+import { erpInputNumber } from "@/lib/erp";
 
 export type ErpSaleOrderOption = {
   id: string;
   label: string;
   clientId: string;
   legalName: string;
+  net: number;
+  vat: number;
 };
 
 export type ErpReceiptOption = {
@@ -23,16 +26,26 @@ export function ErpSaleInvoiceLinks({
   defaultOrderId,
   defaultLegalName,
   defaultReceiptRef,
+  defaultAmount,
+  defaultVat,
 }: {
   orders: ErpSaleOrderOption[];
   receipts: ErpReceiptOption[];
   defaultOrderId?: string;
   defaultLegalName?: string | null;
   defaultReceiptRef?: string | null;
+  defaultAmount?: number | string | null;
+  defaultVat?: number | string | null;
 }) {
   const [orderId, setOrderId] = useState(defaultOrderId ?? "");
   const selected = orders.find((o) => o.id === orderId);
   const [legalName, setLegalName] = useState(defaultLegalName || selected?.legalName || "");
+  const [amount, setAmount] = useState(
+    defaultAmount != null && defaultAmount !== "" ? erpInputNumber(defaultAmount) : selected ? erpInputNumber(selected.net) : "0",
+  );
+  const [vat, setVat] = useState(
+    defaultVat != null && defaultVat !== "" ? erpInputNumber(defaultVat) : selected ? erpInputNumber(selected.vat) : "0",
+  );
   const clientReceipts = useMemo(
     () => (selected ? receipts.filter((r) => r.clientId === selected.clientId) : receipts),
     [receipts, selected],
@@ -52,7 +65,11 @@ export function ErpSaleInvoiceLinks({
             const id = e.target.value;
             setOrderId(id);
             const next = orders.find((o) => o.id === id);
-            if (next) setLegalName(next.legalName);
+            if (next) {
+              setLegalName(next.legalName);
+              setAmount(erpInputNumber(next.net));
+              setVat(erpInputNumber(next.vat));
+            }
           }}
         >
           <option value="">Seleccioná</option>
@@ -86,6 +103,24 @@ export function ErpSaleInvoiceLinks({
           ))}
           {receiptValue && !receiptKnown ? <option value={receiptValue}>{receiptValue}</option> : null}
         </Select>
+      </ErpField>
+      <ErpField htmlFor="amount" label="Importe">
+        <Input
+          id="amount"
+          inputMode="decimal"
+          name="amount"
+          onChange={(e) => setAmount(e.target.value)}
+          value={amount}
+        />
+      </ErpField>
+      <ErpField htmlFor="vat" label="IVA">
+        <Input
+          id="vat"
+          inputMode="decimal"
+          name="vat"
+          onChange={(e) => setVat(e.target.value)}
+          value={vat}
+        />
       </ErpField>
     </>
   );

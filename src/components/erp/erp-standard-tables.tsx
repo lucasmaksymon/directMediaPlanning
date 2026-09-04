@@ -24,8 +24,11 @@ import {
 } from "@/app/actions/erp-masters";
 import {
   deleteErpCampaignItem,
+  deleteErpProductionDelivery,
   deleteErpProductionOrder,
+  deleteErpProductionOrderItem,
   deleteErpPurchaseOrder,
+  deleteErpPurchaseOrderItem,
   deleteErpSaleOrder,
 } from "@/app/actions/erp-orders";
 import {
@@ -567,6 +570,7 @@ export function PagosTable({
           deleteAction={deleteErpPaymentOrder.bind(null, r.id)}
           deleteConfirm="¿Borrar esta orden de pago?"
           editHref={`/backoffice/facturacion/pagos?edit=${r.id}`}
+          pdfHref={`/api/pdf/erp/orden-pago?id=${r.id}`}
         />
       )}
     />
@@ -638,6 +642,7 @@ export function OrdenesVentaTable({
     id: string;
     number: string;
     client: string;
+    product?: string | null;
     month: number;
     year: number;
     issuedAt: string | Date;
@@ -655,6 +660,7 @@ export function OrdenesVentaTable({
       columns={[
         { id: "number", label: "Número", value: (r) => r.number, cell: (r) => <span className="font-medium">{r.number}</span> },
         { id: "client", label: "Cliente", value: (r) => r.client, cell: (r) => r.client },
+        { id: "product", label: "Producto", value: (r) => r.product, cell: (r) => r.product || "—" },
         {
           id: "periodo",
           label: "Período",
@@ -698,20 +704,43 @@ export function CampaignItemsTable({
     id: string;
     element: string;
     location: string | null;
+    plaza?: string | null;
     quantity: number;
+    days?: number | null;
+    faces?: number;
+    measures?: string | null;
+    exhibitionNet?: number;
+    productionNet?: number;
     startsAt: string | Date | null;
     endsAt: string | Date | null;
   }[];
 }) {
   return (
     <ErpDataTable
-      storageKey="erp.table.campaign-items.v1"
+      storageKey="erp.table.campaign-items.v2"
       rows={rows}
       rowKey={(r) => r.id}
       columns={[
         { id: "element", label: "Elemento", value: (r) => r.element, cell: (r) => <span className="font-medium">{r.element}</span> },
         { id: "location", label: "Ubicación", value: (r) => r.location, cell: (r) => r.location ?? "—" },
+        { id: "plaza", label: "Plaza", value: (r) => r.plaza, cell: (r) => r.plaza || "—" },
         { id: "quantity", label: "Cant.", align: "right", value: (r) => r.quantity, cell: (r) => r.quantity },
+        { id: "days", label: "Días", align: "right", value: (r) => r.days, cell: (r) => r.days ?? "—" },
+        { id: "measures", label: "Medidas", value: (r) => r.measures, cell: (r) => r.measures || "—" },
+        {
+          id: "exhibitionNet",
+          label: "Exhibición",
+          align: "right",
+          value: (r) => r.exhibitionNet ?? 0,
+          cell: (r) => (r.exhibitionNet ? money(r.exhibitionNet) : "—"),
+        },
+        {
+          id: "productionNet",
+          label: "Producción",
+          align: "right",
+          value: (r) => r.productionNet ?? 0,
+          cell: (r) => (r.productionNet ? money(r.productionNet) : "—"),
+        },
         {
           id: "periodo",
           label: "Período",
@@ -737,6 +766,7 @@ export function OrdenesCompraTable({
     number: string;
     saleNumber: string;
     client: string;
+    product?: string | null;
     vendor: string;
     issuedAt: string | Date;
     amount: number;
@@ -763,6 +793,7 @@ export function OrdenesCompraTable({
             </span>
           ),
         },
+        { id: "product", label: "Producto", value: (r) => r.product, cell: (r) => r.product || "—" },
         { id: "vendor", label: isBuy ? "Proveedor" : "Productor", value: (r) => r.vendor, cell: (r) => r.vendor },
         { id: "issuedAt", label: "Fecha", value: (r) => String(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
         { id: "amount", label: "Importe", align: "right", value: (r) => r.amount, cell: (r) => money(r.amount) },
@@ -790,6 +821,95 @@ export function OrdenesCompraTable({
           editHref={`/backoffice/ordenes/${kind}?edit=${r.id}`}
           pdfHref={`/api/pdf/erp/orden?tipo=${kind}&id=${r.id}`}
         />
+      )}
+    />
+  );
+}
+
+export function PurchaseOrderItemsTable({
+  rows,
+}: {
+  rows: {
+    id: string;
+    element: string;
+    location: string | null;
+    quantity: number;
+    days: number | null;
+    measures: string | null;
+    unitCost: number;
+    net: number;
+  }[];
+}) {
+  return (
+    <ErpDataTable
+      storageKey="erp.table.purchase-order-items.v1"
+      rows={rows}
+      rowKey={(r) => r.id}
+      columns={[
+        { id: "element", label: "Elemento", value: (r) => r.element, cell: (r) => <span className="font-medium">{r.element}</span> },
+        { id: "location", label: "Ubicación", value: (r) => r.location, cell: (r) => r.location ?? "—" },
+        { id: "quantity", label: "Cant.", align: "right", value: (r) => r.quantity, cell: (r) => r.quantity || "—" },
+        { id: "days", label: "Días", align: "right", value: (r) => r.days, cell: (r) => r.days ?? "—" },
+        { id: "measures", label: "Medidas", value: (r) => r.measures, cell: (r) => r.measures || "—" },
+        { id: "unitCost", label: "Unitario", align: "right", value: (r) => r.unitCost, cell: (r) => (r.unitCost ? money(r.unitCost) : "—") },
+        { id: "net", label: "Neto", align: "right", value: (r) => r.net, cell: (r) => (r.net ? money(r.net) : "—") },
+      ]}
+      actions={(r) => (
+        <ErpRowActions deleteAction={deleteErpPurchaseOrderItem.bind(null, r.id)} deleteConfirm="¿Borrar esta línea?" />
+      )}
+    />
+  );
+}
+
+export function ProductionOrderItemsTable({
+  rows,
+}: {
+  rows: {
+    id: string;
+    element: string;
+    location: string | null;
+    quantity: number;
+    measures: string | null;
+    printSupport: string | null;
+    net: number;
+  }[];
+}) {
+  return (
+    <ErpDataTable
+      storageKey="erp.table.production-order-items.v1"
+      rows={rows}
+      rowKey={(r) => r.id}
+      columns={[
+        { id: "element", label: "Dispositivo", value: (r) => r.element, cell: (r) => <span className="font-medium">{r.element}</span> },
+        { id: "location", label: "Dirección", value: (r) => r.location, cell: (r) => r.location ?? "—" },
+        { id: "quantity", label: "Cant.", align: "right", value: (r) => r.quantity, cell: (r) => r.quantity || "—" },
+        { id: "measures", label: "Medidas", value: (r) => r.measures, cell: (r) => r.measures || "—" },
+        { id: "printSupport", label: "Soporte", value: (r) => r.printSupport, cell: (r) => r.printSupport || "—" },
+        { id: "net", label: "Costo", align: "right", value: (r) => r.net, cell: (r) => (r.net ? money(r.net) : "—") },
+      ]}
+      actions={(r) => (
+        <ErpRowActions deleteAction={deleteErpProductionOrderItem.bind(null, r.id)} deleteConfirm="¿Borrar este dispositivo?" />
+      )}
+    />
+  );
+}
+
+export function ProductionDeliveriesTable({
+  rows,
+}: {
+  rows: { id: string; destination: string; quantity: number }[];
+}) {
+  return (
+    <ErpDataTable
+      storageKey="erp.table.production-deliveries.v1"
+      rows={rows}
+      rowKey={(r) => r.id}
+      columns={[
+        { id: "destination", label: "Destino", value: (r) => r.destination, cell: (r) => <span className="font-medium">{r.destination}</span> },
+        { id: "quantity", label: "Cantidad", align: "right", value: (r) => r.quantity, cell: (r) => r.quantity },
+      ]}
+      actions={(r) => (
+        <ErpRowActions deleteAction={deleteErpProductionDelivery.bind(null, r.id)} deleteConfirm="¿Borrar este destino?" />
       )}
     />
   );

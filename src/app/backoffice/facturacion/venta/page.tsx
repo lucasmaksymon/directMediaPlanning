@@ -66,14 +66,18 @@ export default async function ErpFacturasVentaPage({
         >
           {current ? <input name="id" type="hidden" value={current.id} /> : null}
           <ErpSaleInvoiceLinks
+            defaultAmount={current?.amount}
             defaultLegalName={current?.legalName}
             defaultOrderId={current?.saleOrderId}
             defaultReceiptRef={current?.receiptRef}
+            defaultVat={current?.vat}
             orders={orderOptions.map((o) => ({
               id: o.id,
               label: `${o.number} · ${o.client.name} · ${money(o.amount)}`,
               clientId: o.clientId,
               legalName: o.client.legalName?.trim() || o.client.name,
+              net: Number(o.net),
+              vat: Number(o.vat),
             }))}
             receipts={receipts.map((r) => ({
               clientId: r.clientId,
@@ -92,12 +96,6 @@ export default async function ErpFacturasVentaPage({
           </ErpField>
           <ErpField htmlFor="number" label="Número">
             <Input defaultValue={current?.number} id="number" name="number" required type="number" />
-          </ErpField>
-          <ErpField htmlFor="amount" label="Importe">
-            <Input defaultValue={erpInputNumber(current?.amount)} id="amount" name="amount" />
-          </ErpField>
-          <ErpField htmlFor="vat" label="IVA">
-            <Input defaultValue={erpInputNumber(current?.vat)} id="vat" name="vat" />
           </ErpField>
           <ErpField htmlFor="detail" label="Detalle">
             <Input defaultValue={current?.detail ?? ""} id="detail" name="detail" />

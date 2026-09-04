@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { generateUploadDropzone } from "@uploadthing/react";
 import type { OurFileRouter } from "@/app/api/uploadthing/core";
 import { Input } from "@/components/ui";
@@ -15,6 +15,15 @@ export function ErpAttach({
   defaultValue?: string | null;
 }) {
   const [url, setUrl] = useState(defaultValue ?? "");
+  const dropzoneRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const root = dropzoneRef.current;
+    if (!root) return;
+    for (const input of root.querySelectorAll("input[type=file]")) {
+      input.setAttribute("form", "");
+    }
+  });
 
   return (
     <div className="space-y-2">
@@ -29,15 +38,17 @@ export function ErpAttach({
           Ver adjunto
         </a>
       ) : null}
-      <UploadDropzone
-        appearance={{ container: "ut-compact border-border" }}
-        className="ut-label:text-xs ut-allowed-content:text-[10px] ut-button:bg-primary ut-button:text-xs"
-        endpoint="erpDocument"
-        onClientUploadComplete={(files) => {
-          const next = files[0]?.ufsUrl ?? files[0]?.url;
-          if (next) setUrl(next);
-        }}
-      />
+      <div ref={dropzoneRef}>
+        <UploadDropzone
+          appearance={{ container: "ut-compact border-border" }}
+          className="ut-label:text-xs ut-allowed-content:text-[10px] ut-button:bg-primary ut-button:text-xs"
+          endpoint="erpDocument"
+          onClientUploadComplete={(files) => {
+            const next = files[0]?.ufsUrl ?? files[0]?.url;
+            if (next) setUrl(next);
+          }}
+        />
+      </div>
     </div>
   );
 }

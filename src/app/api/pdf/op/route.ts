@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { CLIENT_BRAND, PRODUCT_NAME } from "@/lib/brand";
+import { brandLogoColorDataUri } from "@/lib/presentations/brand-logo-server";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: Request) {
@@ -29,6 +30,7 @@ export async function GET(req: Request) {
   const formatArs = (n: unknown) => `$${Number(n).toLocaleString("es-AR")}`;
   const opNumber = `OP-${reservation.id.slice(-8).toUpperCase()}`;
   const generatedAt = new Date().toLocaleDateString("es-AR");
+  const logoSrc = brandLogoColorDataUri();
 
   const html = `<!DOCTYPE html>
 <html lang="es">
@@ -39,8 +41,7 @@ export async function GET(req: Request) {
   *, *::before, *::after { box-sizing: border-box; }
   body { font-family: -apple-system, 'Segoe UI', sans-serif; color: #111; margin: 0 auto; padding: 40px; background: #fff; max-width: 800px; }
   .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; padding-bottom: 20px; border-bottom: 3px solid #111; }
-  .logo { font-size: 20px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
-  .logo span { color: #00b6c7; }
+  .logo { height: 36px; width: auto; display: block; }
   .op-number { font-size: 22px; font-weight: 800; text-align: right; }
   .op-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #888; margin-bottom: 4px; }
   .section { margin-bottom: 28px; }
@@ -63,8 +64,8 @@ export async function GET(req: Request) {
 
 <div class="header">
   <div>
-    <div class="logo">${PRODUCT_NAME} · <span>${CLIENT_BRAND}</span></div>
-    <div style="font-size:12px;color:#888;margin-top:4px;">Orden de publicidad OOH</div>
+    <img class="logo" src="${logoSrc}" alt="${CLIENT_BRAND}" />
+    <div style="font-size:12px;color:#888;margin-top:8px;">Orden de publicidad OOH</div>
   </div>
   <div>
     <div class="op-label">Orden de Publicidad</div>

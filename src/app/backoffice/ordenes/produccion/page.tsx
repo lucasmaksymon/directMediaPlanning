@@ -2,10 +2,11 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
+import { EmptyState, Input, PageHeader, Select, Textarea } from "@/components/ui";
 import { OrdenesCompraTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
+import { ErpLineList } from "@/components/erp/ErpLineList";
 import { ErpSettlementField } from "@/components/erp/ErpSettlementField";
 import { createErpProductionOrder, updateErpProductionOrder } from "@/app/actions/erp-orders";
 import { ERP_VENDOR, erpInputNumber, isoDate } from "@/lib/erp";
@@ -25,7 +26,9 @@ export default async function ErpOProduccionPage({
       orderBy: { issuedAt: "desc" },
       include: {
         vendor: { select: { name: true } },
-        saleOrder: { select: { number: true, client: { select: { name: true } } } },
+        saleOrder: { select: { number: true, product: true, client: { select: { name: true } } } },
+        items: true,
+        deliveries: true,
       },
       take: 200,
     }),
@@ -81,6 +84,27 @@ export default async function ErpOProduccionPage({
           <ErpField htmlFor="number" label="Número">
             <Input defaultValue={current?.number} id="number" name="number" required />
           </ErpField>
+          <ErpField htmlFor="product" label="Producto">
+            <Input defaultValue={current?.product ?? ""} id="product" name="product" />
+          </ErpField>
+          <ErpField htmlFor="measures" label="Medidas">
+            <Input defaultValue={current?.measures ?? ""} id="measures" name="measures" />
+          </ErpField>
+          <ErpField htmlFor="printSupport" label="Soporte impresión">
+            <Input defaultValue={current?.printSupport ?? ""} id="printSupport" name="printSupport" />
+          </ErpField>
+          <ErpField htmlFor="quantity" label="Cantidad">
+            <Input defaultValue={erpInputNumber(current?.quantity)} id="quantity" name="quantity" />
+          </ErpField>
+          <ErpField htmlFor="motifs" label="Motivos">
+            <Input defaultValue={current?.motifs ?? ""} id="motifs" name="motifs" />
+          </ErpField>
+          <ErpField htmlFor="unitCost" label="Precio unitario">
+            <Input defaultValue={erpInputNumber(current?.unitCost)} id="unitCost" name="unitCost" />
+          </ErpField>
+          <ErpField htmlFor="invoiceDetail" label="Detalle FC">
+            <Input defaultValue={current?.invoiceDetail ?? ""} id="invoiceDetail" name="invoiceDetail" />
+          </ErpField>
           <ErpField htmlFor="issuedAt" label="Fecha">
             <Input defaultValue={isoDate(current?.issuedAt ?? now)} id="issuedAt" name="issuedAt" type="date" />
           </ErpField>
@@ -99,7 +123,60 @@ export default async function ErpOProduccionPage({
           <ErpField htmlFor="vat" label="IVA">
             <Input defaultValue={erpInputNumber(current?.vat)} id="vat" name="vat" />
           </ErpField>
+          <ErpField htmlFor="colorProof" label="Prueba color">
+            <Input defaultValue={current?.colorProof ?? ""} id="colorProof" name="colorProof" />
+          </ErpField>
+          <ErpField htmlFor="pickup" label="Retiro material" wide>
+            <Input defaultValue={current?.pickup ?? ""} id="pickup" name="pickup" />
+          </ErpField>
           <ErpSettlementField cashPayment={current?.cashPayment} />
+          <ErpField htmlFor="observations" label="Observaciones" wide>
+            <Textarea defaultValue={current?.observations ?? ""} id="observations" name="observations" rows={3} />
+          </ErpField>
+          <ErpLineList
+            addLabel="Agregar dispositivo"
+            fields={[
+              { name: "element", label: "Dispositivo" },
+              { name: "location", label: "Dirección" },
+              { name: "quantity", label: "Cantidad", type: "number" },
+              { name: "measures", label: "Medidas" },
+              { name: "printSupport", label: "Soporte" },
+              { name: "net", label: "Costo", type: "number" },
+            ]}
+            prefix="pr"
+            rows={
+              current?.items.map((item) => ({
+                id: item.id,
+                values: {
+                  element: item.element,
+                  location: item.location ?? "",
+                  quantity: erpInputNumber(item.quantity),
+                  measures: item.measures ?? "",
+                  printSupport: item.printSupport ?? "",
+                  net: erpInputNumber(item.net),
+                },
+              })) ?? []
+            }
+            title="Dispositivos"
+          />
+          <ErpLineList
+            addLabel="Agregar destino"
+            fields={[
+              { name: "destination", label: "Destino" },
+              { name: "quantity", label: "Cantidad", type: "number" },
+            ]}
+            prefix="dl"
+            rows={
+              current?.deliveries.map((d) => ({
+                id: d.id,
+                values: {
+                  destination: d.destination,
+                  quantity: erpInputNumber(d.quantity),
+                },
+              })) ?? []
+            }
+            title="Retiro / destinos"
+          />
         </ErpForm>
 
         {orders.length === 0 ? (
@@ -112,6 +189,7 @@ export default async function ErpOProduccionPage({
               number: o.number,
               saleNumber: o.saleOrder.number,
               client: o.saleOrder.client.name,
+              product: o.product ?? o.saleOrder.product,
               vendor: o.vendor.name,
               issuedAt: o.issuedAt,
               amount: Number(o.amount),

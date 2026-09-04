@@ -109,15 +109,24 @@ export function erpSaleRowBadge(
   return collectStatus === ERP_COLLECT.collected ? "success" : "info";
 }
 
-/** Acepta 1.234,56 / 1234,56 / 1234.56 */
+/** Acepta 1.234,56 / 1234,56 / 1234.56 / $ 1.234,56. Nunca devuelve NaN. */
 export function parseMoney(raw: FormDataEntryValue | string | null | undefined): number {
-  const s = String(raw ?? "").trim().replace(/\s/g, "");
-  if (!s) return 0;
+  if (typeof File !== "undefined" && raw instanceof File) return 0;
+  let s = String(raw ?? "").trim().replace(/\s/g, "");
+  if (!s || s === "—" || s === "-") return 0;
+  s = s.replace(/[^\d,.-]/g, "");
+  if (!s || s === "-" || s === "," || s === ".") return 0;
+  let n: number;
+  const dots = s.match(/\./g)?.length ?? 0;
   if (s.includes(",") && s.includes(".")) {
-    return Number(s.replace(/\./g, "").replace(",", "."));
+    n = Number(s.replace(/\./g, "").replace(",", "."));
+  } else if (s.includes(",")) {
+    n = Number(s.replace(",", "."));
+  } else if (dots > 1) {
+    n = Number(s.replace(/\./g, ""));
+  } else {
+    n = Number(s);
   }
-  if (s.includes(",")) return Number(s.replace(",", "."));
-  const n = Number(s);
   return Number.isFinite(n) ? n : 0;
 }
 
@@ -137,6 +146,24 @@ export function requiredString(raw: FormDataEntryValue | string | null | undefin
   const s = String(raw ?? "").trim();
   if (!s) throw new Error(`Completá ${label}.`);
   return s;
+}
+
+export function optionalString(raw: FormDataEntryValue | string | null | undefined) {
+  const s = String(raw ?? "").trim();
+  return s || null;
+}
+
+export function parseOptionalInt(raw: FormDataEntryValue | string | null | undefined) {
+  const s = String(raw ?? "").trim();
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? Math.trunc(n) : null;
+}
+
+export function parseOptionalMoney(raw: FormDataEntryValue | string | null | undefined) {
+  const s = String(raw ?? "").trim();
+  if (!s) return null;
+  return parseMoney(s);
 }
 
 export function money(n: number | { toString(): string } | null | undefined) {
@@ -181,3 +208,52 @@ export const ERP_ISSUER = {
   email: "paula@nextmedia.com.ar",
   tax: "Resp. Inscrip. | C.U.I.T.: 30-71144767-5",
 } as const;
+
+/** tiposPagoCompra del legado: 0 transferencia, 1 cheque, 2 endoso, 4 saldo de OP. */
+export const ERP_PAY_PURCHASE = [
+  "Transferencia",
+  "Cheque",
+  "Cheque endosado",
+  "Retención IVA",
+  "Saldo orden",
+  "Retención IIBB",
+  "Retención Ganancias",
+  "Retención SUSS",
+] as const;
+
+export function erpPayPurchaseLabel(kind: number) {
+  return ERP_PAY_PURCHASE[kind] ?? `Pago ${kind}`;
+}
+
+/** ADMINISTRACION imprimía el id de la OP, no el campo numero. */
+export function erpPaymentOrderNumber(id: string, number: number) {
+  const legacy = /^adm-opo-(\d+)$/.exec(id);
+  if (legacy) return legacy[1].padStart(8, "0");
+  return String(number).padStart(8, "0");
+}
+
+/** Comprobante como en el PDF viejo: A-0001-0001 */
+export function erpPurchaseDocRefOld(docType: string, pos: number, number: number) {
+  return `${docType}-${String(pos).padStart(4, "0")}-${String(number).padStart(4, "0")}`;
+}
+
+export function erpPurchaseInvoiceTotal(inv: {
+  amount: number | { toString(): string };
+  vat: number | { toString(): string };
+  vatWithholding?: number | { toString(): string } | null;
+  iibbCaba?: number | { toString(): string } | null;
+  iibbBsAs?: number | { toString(): string } | null;
+  internalTax?: number | { toString(): string } | null;
+  nonTaxable?: number | { toString(): string } | null;
+}) {
+  const n = (v: number | { toString(): string } | null | undefined) => Number(v ?? 0);
+  return (
+    n(inv.amount) +
+    n(inv.vat) +
+    n(inv.vatWithholding) +
+    n(inv.iibbCaba) +
+    n(inv.iibbBsAs) +
+    n(inv.internalTax) +
+    n(inv.nonTaxable)
+  );
+}

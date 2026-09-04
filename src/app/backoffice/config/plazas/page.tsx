@@ -39,7 +39,7 @@ export default async function ErpPlazasPage({
         title="Plazas"
       />
       <div className={cn(adminPageBody, "flex flex-col gap-3 pb-8")}>
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <ErpForm
             action={currentProvince ? updateErpProvince : createErpProvince}
             cancelHref={currentProvince ? "/backoffice/config/plazas" : undefined}

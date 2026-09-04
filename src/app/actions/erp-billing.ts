@@ -56,6 +56,8 @@ export async function createErpSaleInvoice(formData: FormData): Promise<Result> 
       where: { id: saleOrderId },
       select: {
         clientId: true,
+        net: true,
+        vat: true,
         client: {
           select: {
             name: true,
@@ -67,17 +69,19 @@ export async function createErpSaleInvoice(formData: FormData): Promise<Result> 
     });
     const issuedAt = parseDateField(formData.get("issuedAt"));
     if (!issuedAt) throw new Error("Indicá la fecha.");
+    const amount = parseMoney(formData.get("amount")) || Number(order.net);
+    const vat = parseMoney(formData.get("vat")) || Number(order.vat);
     await prisma.erpSaleInvoice.create({
       data: {
-        clientId: order.clientId,
-        saleOrderId,
+        client: { connect: { id: order.clientId } },
+        saleOrder: { connect: { id: saleOrderId } },
         issuedAt,
         dueAt: await resolveDueAt(issuedAt, order.client.company.paymentDays, formData.get("dueAt")),
         docType: requiredString(formData.get("docType"), "el tipo").toUpperCase(),
         pos: parseIntField(formData.get("pos")),
         number: parseIntField(formData.get("number")),
-        amount: parseMoney(formData.get("amount")),
-        vat: parseMoney(formData.get("vat")),
+        amount,
+        vat,
         legalName:
           String(formData.get("legalName") ?? "").trim() ||
           order.client.legalName?.trim() ||
@@ -116,6 +120,8 @@ export async function updateErpSaleInvoice(formData: FormData): Promise<Result> 
       where: { id: saleOrderId },
       select: {
         clientId: true,
+        net: true,
+        vat: true,
         client: {
           select: {
             name: true,
@@ -127,18 +133,20 @@ export async function updateErpSaleInvoice(formData: FormData): Promise<Result> 
     });
     const issuedAt = parseDateField(formData.get("issuedAt"));
     if (!issuedAt) throw new Error("Indicá la fecha.");
+    const amount = parseMoney(formData.get("amount")) || Number(order.net);
+    const vat = parseMoney(formData.get("vat")) || Number(order.vat);
     await prisma.erpSaleInvoice.update({
       where: { id },
       data: {
-        clientId: order.clientId,
-        saleOrderId,
+        client: { connect: { id: order.clientId } },
+        saleOrder: { connect: { id: saleOrderId } },
+        amount,
+        vat,
         issuedAt,
         dueAt: await resolveDueAt(issuedAt, order.client.company.paymentDays, formData.get("dueAt")),
         docType: requiredString(formData.get("docType"), "el tipo").toUpperCase(),
         pos: parseIntField(formData.get("pos")),
         number: parseIntField(formData.get("number")),
-        amount: parseMoney(formData.get("amount")),
-        vat: parseMoney(formData.get("vat")),
         legalName:
           String(formData.get("legalName") ?? "").trim() ||
           order.client.legalName?.trim() ||

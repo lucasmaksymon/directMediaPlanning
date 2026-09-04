@@ -498,7 +498,7 @@ async function main() {
   const treasury = [];
   for (const p of pagos) {
     const saleReceiptId = p.idReciboVenta ? id("adm-rv", p.idReciboVenta) : null;
-    const paymentOrderId = p.idPago ? id("adm-opo", p.idPago) : null;
+    const paymentOrderId = p.idReciboCompra ? id("adm-opo", p.idReciboCompra) : null;
     treasury.push({
       id: id("adm-pag", p.id),
       saleReceiptId: saleReceiptId && receiptIds.has(saleReceiptId) ? saleReceiptId : null,

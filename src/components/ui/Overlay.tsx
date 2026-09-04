@@ -10,12 +10,20 @@ import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 import { IconButton } from "@/components/ui/IconButton";
 
+const MODAL_SIZE = {
+  sm: "sm:max-w-lg",
+  lg: "sm:max-w-3xl",
+  xl: "sm:max-w-6xl",
+} as const;
+
 type ModalProps = {
   open: boolean;
   onClose: () => void;
   title?: string;
   children: ReactNode;
+  footer?: ReactNode;
   className?: string;
+  size?: keyof typeof MODAL_SIZE;
   /** Full-screen on small viewports */
   sheetOnMobile?: boolean;
 };
@@ -25,7 +33,9 @@ export function Modal({
   onClose,
   title,
   children,
+  footer,
   className,
+  size = "sm",
   sheetOnMobile = true,
 }: ModalProps) {
   useEffect(() => {
@@ -55,9 +65,10 @@ export function Modal({
       <div
         className={cn(
           "relative z-10 flex max-h-[90dvh] w-full flex-col border border-border bg-card shadow-[var(--shadow-md)]",
+          MODAL_SIZE[size],
           sheetOnMobile
-            ? "rounded-t-[var(--radius-xl)] sm:max-w-lg sm:rounded-[var(--radius-xl)]"
-            : "mx-4 max-w-lg rounded-[var(--radius-xl)]",
+            ? "rounded-t-[var(--radius-xl)] sm:rounded-[var(--radius-xl)]"
+            : "mx-4 rounded-[var(--radius-xl)]",
           className,
         )}
         role="dialog"
@@ -73,6 +84,9 @@ export function Modal({
           </div>
         ) : null}
         <div className="nm-scroll min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
+        {footer ? (
+          <div className="flex flex-wrap items-center gap-3 border-t border-divide px-5 py-3">{footer}</div>
+        ) : null}
       </div>
     </div>,
     document.body,

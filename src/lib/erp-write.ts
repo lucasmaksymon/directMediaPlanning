@@ -12,6 +12,9 @@ export function erpFail(e: unknown): Extract<ErpResult, { ok: false }> {
     }
     if (e.code === "P2025") return { ok: false, error: "El registro ya no existe." };
   }
+  if (e instanceof Prisma.PrismaClientValidationError) {
+    return { ok: false, error: "Revisá importe e IVA. Hay un valor que no se pudo guardar." };
+  }
   return { ok: false, error: e instanceof Error ? e.message : "No se pudo guardar." };
 }
 

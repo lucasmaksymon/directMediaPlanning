@@ -2,12 +2,13 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
-import { CampaignItemsTable, OrdenesVentaTable } from "@/components/erp/erp-standard-tables";
+import { EmptyState, Input, PageHeader, Select, Textarea } from "@/components/ui";
+import { OrdenesVentaTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
+import { ErpLineList } from "@/components/erp/ErpLineList";
 import { ErpSettlementField } from "@/components/erp/ErpSettlementField";
-import { createErpCampaignItem, createErpSaleOrder, updateErpSaleOrder } from "@/app/actions/erp-orders";
+import { createErpSaleOrder, updateErpSaleOrder } from "@/app/actions/erp-orders";
 import { ERP_MONTHS, erpInputNumber, isoDate } from "@/lib/erp";
 import { ERP_ORDER_ESTADOS } from "@/lib/erp-write";
 import { listErpElementsForSelect, listErpPlazasForSelect } from "@/lib/erp-catalog";
@@ -63,6 +64,12 @@ export default async function ErpOpVentaPage({
           <ErpField htmlFor="number" label="Número">
             <Input defaultValue={current?.number} id="number" name="number" required />
           </ErpField>
+          <ErpField htmlFor="product" label="Producto / campaña">
+            <Input defaultValue={current?.product ?? ""} id="product" name="product" />
+          </ErpField>
+          <ErpField htmlFor="plaza" label="Plaza">
+            <Input defaultValue={current?.plaza ?? ""} id="plaza" name="plaza" />
+          </ErpField>
           <ErpField htmlFor="issuedAt" label="Fecha">
             <Input defaultValue={isoDate(current?.issuedAt ?? now)} id="issuedAt" name="issuedAt" type="date" />
           </ErpField>
@@ -78,6 +85,9 @@ export default async function ErpOpVentaPage({
           <ErpField htmlFor="year" label="Año">
             <Input defaultValue={current?.year ?? now.getFullYear()} id="year" name="year" type="number" />
           </ErpField>
+          <ErpField htmlFor="periodLabel" label="Período (texto)">
+            <Input defaultValue={current?.periodLabel ?? ""} id="periodLabel" name="periodLabel" placeholder="08 de septiembre al 08 de octubre" />
+          </ErpField>
           <ErpField htmlFor="estado" label="Estado">
             <Select defaultValue={String(current?.estado ?? 1)} id="estado" name="estado">
               {ERP_ORDER_ESTADOS.map((s) => (
@@ -87,6 +97,9 @@ export default async function ErpOpVentaPage({
               ))}
             </Select>
           </ErpField>
+          <ErpField htmlFor="agencyFee" label="Servicio agencia %">
+            <Input defaultValue={current?.agencyFee != null ? erpInputNumber(current.agencyFee) : ""} id="agencyFee" name="agencyFee" placeholder="Del cliente si vacío" />
+          </ErpField>
           <ErpField htmlFor="net" label="Neto">
             <Input defaultValue={erpInputNumber(current?.net)} id="net" name="net" />
           </ErpField>
@@ -94,74 +107,63 @@ export default async function ErpOpVentaPage({
             <Input defaultValue={erpInputNumber(current?.vat)} id="vat" name="vat" />
           </ErpField>
           <ErpSettlementField cashPayment={current?.cashPayment} />
-        </ErpForm>
-
-        {current ? (
-          <div className="space-y-3">
-            <h2 className="nm-section-title">Ítems de campaña</h2>
-            <ErpForm
-              action={createErpCampaignItem}
-              openLabel="Agregar ítem"
-              submitLabel="Agregar ítem"
-              title="Elemento, plaza y período"
-            >
-              <input name="saleOrderId" type="hidden" value={current.id} />
-              <ErpField htmlFor="element" label="Elemento">
-                {elements.length > 0 ? (
-                  <Select id="element" name="element" required>
-                    <option value="">Seleccioná</option>
-                    {elements.map((e) => (
-                      <option key={e.id} value={e.name}>
-                        {e.name}
-                      </option>
-                    ))}
-                  </Select>
-                ) : (
-                  <Input id="element" name="element" placeholder="CPM, MUPIS, LED…" required />
-                )}
-              </ErpField>
-              <ErpField htmlFor="location" label="Plaza">
-                {plazas.length > 0 ? (
-                  <Select id="location" name="location">
-                    <option value="">Seleccioná</option>
-                    {plazas.map((p) => (
-                      <optgroup key={p.province} label={p.province}>
-                        {p.cities.map((c) => (
-                          <option key={c.id} value={c.name}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </Select>
-                ) : (
-                  <Input id="location" name="location" placeholder="CABA, Vicente López…" />
-                )}
-              </ErpField>
-              <ErpField htmlFor="quantity" label="Cantidad">
-                <Input defaultValue="0" id="quantity" name="quantity" />
-              </ErpField>
-              <ErpField htmlFor="startsAt" label="Desde">
-                <Input id="startsAt" name="startsAt" type="date" />
-              </ErpField>
-              <ErpField htmlFor="endsAt" label="Hasta">
-                <Input id="endsAt" name="endsAt" type="date" />
-              </ErpField>
-            </ErpForm>
-            {current.items.length > 0 ? (
-              <CampaignItemsTable
-                rows={current.items.map((item) => ({
-                  id: item.id,
+          <ErpField htmlFor="observations" label="Observaciones" wide>
+            <Textarea defaultValue={current?.observations ?? ""} id="observations" name="observations" rows={3} />
+          </ErpField>
+          <ErpLineList
+            addLabel="Agregar ítem"
+            fields={[
+              elements.length > 0
+                ? { name: "element", label: "Elemento", options: elements.map((e) => ({ value: e.name, label: e.name })) }
+                : { name: "element", label: "Elemento", placeholder: "CPM, MUPIS, LED…" },
+              plazas.length > 0
+                ? {
+                    name: "location",
+                    label: "Plaza",
+                    options: plazas.flatMap((p) =>
+                      p.cities.map((c) => ({
+                        value: c.name,
+                        label: p.province === c.name ? c.name : `${c.name} (${p.province})`,
+                      })),
+                    ),
+                  }
+                : { name: "location", label: "Plaza", placeholder: "CABA, Vicente López…" },
+              { name: "plaza", label: "Plaza ítem", placeholder: "CABA" },
+              { name: "quantity", label: "Cantidad", type: "number" },
+              { name: "faces", label: "Caras", type: "number" },
+              { name: "days", label: "Días", type: "number" },
+              { name: "measures", label: "Medidas / spots" },
+              { name: "unitCost", label: "Costo unitario", type: "number" },
+              { name: "exhibitionNet", label: "Costo exhibición", type: "number" },
+              { name: "bonusNet", label: "Bonificados", type: "number" },
+              { name: "productionNet", label: "Costo producción", type: "number" },
+              { name: "startsAt", label: "Desde", type: "date" },
+              { name: "endsAt", label: "Hasta", type: "date" },
+            ]}
+            prefix="ci"
+            rows={
+              current?.items.map((item) => ({
+                id: item.id,
+                values: {
                   element: item.element,
-                  location: item.location,
-                  quantity: Number(item.quantity),
-                  startsAt: item.startsAt,
-                  endsAt: item.endsAt,
-                }))}
-              />
-            ) : null}
-          </div>
-        ) : null}
+                  location: item.location ?? "",
+                  plaza: item.plaza ?? "",
+                  quantity: erpInputNumber(item.quantity),
+                  faces: erpInputNumber(item.faces),
+                  days: item.days != null ? String(item.days) : "",
+                  measures: item.measures ?? "",
+                  unitCost: erpInputNumber(item.unitCost),
+                  exhibitionNet: erpInputNumber(item.exhibitionNet),
+                  bonusNet: erpInputNumber(item.bonusNet),
+                  productionNet: erpInputNumber(item.productionNet),
+                  startsAt: item.startsAt ? isoDate(item.startsAt) : "",
+                  endsAt: item.endsAt ? isoDate(item.endsAt) : "",
+                },
+              })) ?? []
+            }
+            title="Ítems de campaña"
+          />
+        </ErpForm>
 
         {orders.length === 0 ? (
           <EmptyState description="No hay órdenes de venta." title="Sin O.P. venta" />
@@ -171,6 +173,7 @@ export default async function ErpOpVentaPage({
               id: o.id,
               number: o.number,
               client: o.client.name,
+              product: o.product,
               month: o.month,
               year: o.year,
               issuedAt: o.issuedAt,
