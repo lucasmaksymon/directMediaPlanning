@@ -628,6 +628,7 @@ model ErpSaleOrder {
   vat           Decimal  @db.Decimal(14, 2)
   amount        Decimal  @db.Decimal(14, 2)
   estado        Int      @default(1)
+  cashPayment   Boolean  @default(false)
   attachmentExt String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -690,6 +691,7 @@ model ErpPurchaseOrder {
   vat           Decimal      @db.Decimal(14, 2)
   amount        Decimal      @db.Decimal(14, 2)
   estado        Int          @default(1)
+  cashPayment   Boolean      @default(false)
   attachmentExt String?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
@@ -711,6 +713,7 @@ model ErpProductionOrder {
   vat           Decimal      @db.Decimal(14, 2)
   amount        Decimal      @db.Decimal(14, 2)
   estado        Int          @default(1)
+  cashPayment   Boolean      @default(false)
   attachmentExt String?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt

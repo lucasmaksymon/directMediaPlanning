@@ -73,6 +73,10 @@ export function erpOrderLabel(estado: number) {
   return `Estado ${estado}`;
 }
 
+export function erpSettlementLabel(cashPayment: boolean) {
+  return cashPayment ? "Pago efectivo" : "Con factura";
+}
+
 export function erpOrderBadge(estado: number): "success" | "warning" | "default" | "info" {
   if (estado === ERP_ORDER.invoiced) return "success";
   if (estado === ERP_ORDER.issued) return "info";

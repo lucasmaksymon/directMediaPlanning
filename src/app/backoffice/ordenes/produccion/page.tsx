@@ -6,6 +6,7 @@ import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
 import { OrdenesCompraTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
+import { ErpSettlementField } from "@/components/erp/ErpSettlementField";
 import { createErpProductionOrder, updateErpProductionOrder } from "@/app/actions/erp-orders";
 import { ERP_VENDOR, erpInputNumber, isoDate } from "@/lib/erp";
 import { ERP_ORDER_ESTADOS } from "@/lib/erp-write";
@@ -98,6 +99,7 @@ export default async function ErpOProduccionPage({
           <ErpField htmlFor="vat" label="IVA">
             <Input defaultValue={erpInputNumber(current?.vat)} id="vat" name="vat" />
           </ErpField>
+          <ErpSettlementField cashPayment={current?.cashPayment} />
         </ErpForm>
 
         {orders.length === 0 ? (
@@ -114,6 +116,7 @@ export default async function ErpOProduccionPage({
               issuedAt: o.issuedAt,
               amount: Number(o.amount),
               estado: o.estado,
+              cashPayment: o.cashPayment,
             }))}
           />
         )}

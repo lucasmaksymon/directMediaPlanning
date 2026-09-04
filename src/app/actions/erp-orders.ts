@@ -34,6 +34,7 @@ function saleOrderData(formData: FormData) {
     vat,
     amount: net + vat,
     estado: parseIntField(formData.get("estado"), ERP_ORDER.issued),
+    cashPayment: String(formData.get("cashPayment") ?? "") === "1",
   };
 }
 
@@ -51,6 +52,7 @@ function linkedOrderData(formData: FormData) {
     vat,
     amount: net + vat,
     estado: parseIntField(formData.get("estado"), ERP_ORDER.issued),
+    cashPayment: String(formData.get("cashPayment") ?? "") === "1",
   };
 }
 

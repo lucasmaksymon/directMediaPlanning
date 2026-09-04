@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
-import { displayDate, ERP_MONTHS, erpOrderLabel, money } from "@/lib/erp";
+import { displayDate, ERP_MONTHS, erpOrderLabel, erpSettlementLabel, money } from "@/lib/erp";
 import { ErpOrderDocument, type ErpOrderPdfKind } from "@/lib/pdf/erp-order-document";
 
 export async function GET(req: Request) {
@@ -36,6 +36,7 @@ export async function GET(req: Request) {
         vat: money(order.vat),
         amount: money(order.amount),
         estado: erpOrderLabel(order.estado),
+        settlement: erpSettlementLabel(order.cashPayment),
       }),
     );
     return pdfResponse(buffer, `OP-${order.number}.pdf`);
@@ -65,6 +66,7 @@ export async function GET(req: Request) {
         vat: money(order.vat),
         amount: money(order.amount),
         estado: erpOrderLabel(order.estado),
+        settlement: erpSettlementLabel(order.cashPayment),
       }),
     );
     return pdfResponse(buffer, `OC-${order.number}.pdf`);
@@ -93,6 +95,7 @@ export async function GET(req: Request) {
       vat: money(order.vat),
       amount: money(order.amount),
       estado: erpOrderLabel(order.estado),
+      settlement: erpSettlementLabel(order.cashPayment),
     }),
   );
   return pdfResponse(buffer, `OR-${order.number}.pdf`);

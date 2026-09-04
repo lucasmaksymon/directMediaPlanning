@@ -6,6 +6,7 @@ import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
 import { CampaignItemsTable, OrdenesVentaTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
+import { ErpSettlementField } from "@/components/erp/ErpSettlementField";
 import { createErpCampaignItem, createErpSaleOrder, updateErpSaleOrder } from "@/app/actions/erp-orders";
 import { ERP_MONTHS, erpInputNumber, isoDate } from "@/lib/erp";
 import { ERP_ORDER_ESTADOS } from "@/lib/erp-write";
@@ -92,6 +93,7 @@ export default async function ErpOpVentaPage({
           <ErpField htmlFor="vat" label="IVA">
             <Input defaultValue={erpInputNumber(current?.vat)} id="vat" name="vat" />
           </ErpField>
+          <ErpSettlementField cashPayment={current?.cashPayment} />
         </ErpForm>
 
         {current ? (
@@ -175,6 +177,7 @@ export default async function ErpOpVentaPage({
               items: o.items.map((i) => i.element).join(", "),
               amount: Number(o.amount),
               estado: o.estado,
+              cashPayment: o.cashPayment,
             }))}
           />
         )}

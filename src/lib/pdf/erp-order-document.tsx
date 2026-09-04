@@ -40,6 +40,7 @@ export function ErpOrderDocument(props: {
   vat: string;
   amount: string;
   estado: string;
+  settlement: string;
 }) {
   return (
     <Document>
@@ -81,6 +82,10 @@ export function ErpOrderDocument(props: {
         <Text style={styles.line}>
           <Text style={styles.label}>ESTADO: </Text>
           {props.estado}
+        </Text>
+        <Text style={styles.line}>
+          <Text style={styles.label}>CONDICIÓN: </Text>
+          {props.settlement}
         </Text>
 
         <View style={styles.box}>

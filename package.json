@@ -16,6 +16,7 @@
     "import:slides": "npx tsx scripts/import-slides-kits.ts",
     "import:dispo": "npx tsx scripts/import-dispo.ts",
     "import:admin-2026": "python scripts/parse-admin-2026.py && npx tsx scripts/import-admin-2026.ts",
+    "import:admin-sql": "npx tsx scripts/import-admin-sql.ts",
     "backfill:impacto": "npx tsx scripts/backfill-impacto.ts",
     "enrich:specs": "npx tsx scripts/enrich-inventory-specs.ts",
     "geocode:inventory": "npx tsx scripts/geocode-inventory.ts",

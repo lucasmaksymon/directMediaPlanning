@@ -36,6 +36,7 @@ import {
   ERP_SETTLE,
   erpOrderBadge,
   erpOrderLabel,
+  erpSettlementLabel,
   erpRecordLabel,
   erpVendorKindLabel,
   money,
@@ -643,11 +644,12 @@ export function OrdenesVentaTable({
     items: string;
     amount: number;
     estado: number;
+    cashPayment: boolean;
   }[];
 }) {
   return (
     <ErpDataTable
-      storageKey="erp.table.ordenes-venta.v1"
+      storageKey="erp.table.ordenes-venta.v2"
       rows={rows}
       rowKey={(r) => r.id}
       columns={[
@@ -662,6 +664,14 @@ export function OrdenesVentaTable({
         { id: "issuedAt", label: "Fecha", value: (r) => String(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
         { id: "items", label: "Ítems", value: (r) => r.items, cell: (r) => r.items || "—" },
         { id: "amount", label: "Importe", align: "right", value: (r) => r.amount, cell: (r) => money(r.amount) },
+        {
+          id: "settlement",
+          label: "Condición",
+          value: (r) => (r.cashPayment ? 1 : 0),
+          cell: (r) => (
+            <Badge variant={r.cashPayment ? "warning" : "info"}>{erpSettlementLabel(r.cashPayment)}</Badge>
+          ),
+        },
         {
           id: "estado",
           label: "Estado",
@@ -731,12 +741,13 @@ export function OrdenesCompraTable({
     issuedAt: string | Date;
     amount: number;
     estado: number;
+    cashPayment: boolean;
   }[];
 }) {
   const isBuy = kind === "compra";
   return (
     <ErpDataTable
-      storageKey={`erp.table.ordenes-${kind}.v1`}
+      storageKey={`erp.table.ordenes-${kind}.v2`}
       rows={rows}
       rowKey={(r) => r.id}
       columns={[
@@ -755,6 +766,14 @@ export function OrdenesCompraTable({
         { id: "vendor", label: isBuy ? "Proveedor" : "Productor", value: (r) => r.vendor, cell: (r) => r.vendor },
         { id: "issuedAt", label: "Fecha", value: (r) => String(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
         { id: "amount", label: "Importe", align: "right", value: (r) => r.amount, cell: (r) => money(r.amount) },
+        {
+          id: "settlement",
+          label: "Condición",
+          value: (r) => (r.cashPayment ? 1 : 0),
+          cell: (r) => (
+            <Badge variant={r.cashPayment ? "warning" : "info"}>{erpSettlementLabel(r.cashPayment)}</Badge>
+          ),
+        },
         {
           id: "estado",
           label: "Estado",
