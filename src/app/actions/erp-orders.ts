@@ -74,6 +74,12 @@ function deliveryLinesFromForm(formData: FormData) {
     }));
 }
 
+function dropLineId<T extends { id: string | null }>(line: T): Omit<T, "id"> {
+  const copy = { ...line };
+  delete (copy as { id?: string | null }).id;
+  return copy;
+}
+
 function campaignLinesFromForm(formData: FormData) {
   return parseFormLines(formData, "ci", [...CAMPAIGN_LINE_FIELDS])
     .filter((line) => line.values.element)
@@ -184,7 +190,7 @@ function productionExtraData(formData: FormData) {
 export async function createErpSaleOrder(formData: FormData): Promise<Result> {
   try {
     await requireOpsSession();
-    const items = campaignLinesFromForm(formData).map(({ id: _id, ...data }) => data);
+    const items = campaignLinesFromForm(formData).map(dropLineId);
     await prisma.erpSaleOrder.create({
       data: { ...saleOrderData(formData), items: items.length ? { create: items } : undefined },
     });
@@ -241,7 +247,7 @@ export async function deleteErpSaleOrder(id: string): Promise<Result> {
 export async function createErpPurchaseOrder(formData: FormData): Promise<Result> {
   try {
     await requireOpsSession();
-    const items = purchaseLinesFromForm(formData).map(({ id: _id, ...data }) => data);
+    const items = purchaseLinesFromForm(formData).map(dropLineId);
     await prisma.erpPurchaseOrder.create({
       data: {
         ...linkedOrderData(formData),
@@ -300,8 +306,8 @@ export async function createErpProductionOrder(formData: FormData): Promise<Resu
   try {
     await requireOpsSession();
     const data = linkedOrderData(formData);
-    const items = productionLinesFromForm(formData).map(({ id: _id, ...row }) => row);
-    const deliveries = deliveryLinesFromForm(formData).map(({ id: _id, ...row }) => row);
+    const items = productionLinesFromForm(formData).map(dropLineId);
+    const deliveries = deliveryLinesFromForm(formData).map(dropLineId);
     await prisma.erpProductionOrder.create({
       data: {
         ...data,

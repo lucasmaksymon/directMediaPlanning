@@ -66,11 +66,11 @@ export default async function ErpFacturasVentaPage({
         >
           {current ? <input name="id" type="hidden" value={current.id} /> : null}
           <ErpSaleInvoiceLinks
-            defaultAmount={current?.amount}
+            defaultAmount={current ? Number(current.amount) : undefined}
             defaultLegalName={current?.legalName}
             defaultOrderId={current?.saleOrderId}
             defaultReceiptRef={current?.receiptRef}
-            defaultVat={current?.vat}
+            defaultVat={current ? Number(current.vat) : undefined}
             orders={orderOptions.map((o) => ({
               id: o.id,
               label: `${o.number} · ${o.client.name} · ${money(o.amount)}`,
