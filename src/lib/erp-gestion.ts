@@ -370,6 +370,80 @@ export async function loadGestionLines(filter: GestionFilter): Promise<GestionLi
   return rows;
 }
 
+/** Arma filas de GESTIÓN desde órdenes + facturas (ADMINISTRACION no trae esa planilla). */
+export async function rebuildGestionLinesFromOrders() {
+  await prisma.erpGestionLine.deleteMany();
+  const orders = await prisma.erpSaleOrder.findMany({
+    orderBy: { issuedAt: "asc" },
+    include: {
+      items: { orderBy: { createdAt: "asc" } },
+      invoices: { orderBy: [{ issuedAt: "asc" }, { number: "asc" }] },
+      purchaseOrders: {
+        include: {
+          invoiceLinks: { include: { invoice: { select: { id: true } } } },
+        },
+      },
+      productionOrders: {
+        include: {
+          invoiceLinks: { include: { invoice: { select: { id: true } } } },
+        },
+      },
+    },
+  });
+
+  const rows: {
+    saleOrderId: string;
+    sort: number;
+    element: string | null;
+    location: string | null;
+    quantity: number;
+    startsAt: Date | null;
+    endsAt: Date | null;
+    purchaseInvoiceId: string | null;
+    productionInvoiceId: string | null;
+    saleInvoiceId: string | null;
+  }[] = [];
+
+  for (const order of orders) {
+    const purchases = uniqueIds(
+      order.purchaseOrders.flatMap((po) => po.invoiceLinks.map((l) => l.invoice.id)),
+    );
+    const productions = uniqueIds(
+      order.productionOrders.flatMap((po) => po.invoiceLinks.map((l) => l.invoice.id)),
+    );
+    const sales = order.invoices.map((inv) => inv.id);
+    const count = Math.max(1, order.items.length, purchases.length, productions.length, sales.length);
+    for (let i = 0; i < count; i += 1) {
+      const item = order.items[i];
+      rows.push({
+        saleOrderId: order.id,
+        sort: i,
+        element: item?.element ?? null,
+        location: item?.location ?? null,
+        quantity: item ? n(item.quantity) : 0,
+        startsAt: item?.startsAt ?? null,
+        endsAt: item?.endsAt ?? null,
+        purchaseInvoiceId: purchases[i] ?? null,
+        productionInvoiceId: productions[i] ?? null,
+        saleInvoiceId: sales[i] ?? null,
+      });
+    }
+  }
+
+  const chunk = 400;
+  let created = 0;
+  for (let i = 0; i < rows.length; i += chunk) {
+    const part = rows.slice(i, i + chunk);
+    const res = await prisma.erpGestionLine.createMany({ data: part });
+    created += res.count;
+  }
+  return created;
+}
+
+function uniqueIds(ids: string[]) {
+  return [...new Set(ids.filter(Boolean))];
+}
+
 export async function loadPendingPayables() {
   const invoices = await prisma.erpPurchaseInvoice.findMany({
     where: { payStatus: ERP_SETTLE.pending },

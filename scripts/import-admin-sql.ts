@@ -516,6 +516,10 @@ async function main() {
   }
   await createMany("pagos", (data) => prisma.erpTreasuryPayment.createMany({ data }), treasury);
 
+  const { rebuildGestionLinesFromOrders } = await import("../src/lib/erp-gestion");
+  const gestion = await rebuildGestionLinesFromOrders();
+  console.log(`  gestion: ${gestion}`);
+
   const counts = {
     companies: await prisma.erpCompany.count(),
     clients: await prisma.erpClient.count(),
