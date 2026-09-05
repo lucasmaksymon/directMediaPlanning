@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Input, Select } from "@/components/ui";
+import { Autocomplete, Input } from "@/components/ui";
 import { ErpField } from "@/components/erp/ErpField";
 import { erpInputNumber } from "@/lib/erp";
 
@@ -56,13 +56,10 @@ export function ErpSaleInvoiceLinks({
   return (
     <>
       <ErpField htmlFor="saleOrderId" label="O.P. venta (emitida)">
-        <Select
+        <Autocomplete
           id="saleOrderId"
           name="saleOrderId"
-          required
-          value={orderId}
-          onChange={(e) => {
-            const id = e.target.value;
+          onChange={(id) => {
             setOrderId(id);
             const next = orders.find((o) => o.id === id);
             if (next) {
@@ -71,14 +68,11 @@ export function ErpSaleInvoiceLinks({
               setVat(erpInputNumber(next.vat));
             }
           }}
-        >
-          <option value="">Seleccioná</option>
-          {orders.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.label}
-            </option>
-          ))}
-        </Select>
+          options={orders.map((o) => ({ value: o.id, label: o.label }))}
+          placeholder="Buscar orden…"
+          required
+          value={orderId}
+        />
       </ErpField>
       <ErpField htmlFor="legalName" label="Factura A (razón social)">
         <Input
@@ -89,20 +83,18 @@ export function ErpSaleInvoiceLinks({
         />
       </ErpField>
       <ErpField htmlFor="receiptRef" label="Recibo">
-        <Select
+        <Autocomplete
           defaultValue={orderId === (defaultOrderId ?? "") ? receiptValue : ""}
+          emptyLabel="Sin recibo"
           id="receiptRef"
           key={orderId}
           name="receiptRef"
-        >
-          <option value="">Sin recibo</option>
-          {clientReceipts.map((r) => (
-            <option key={`${r.clientId}-${r.ref}`} value={r.ref}>
-              {r.label}
-            </option>
-          ))}
-          {receiptValue && !receiptKnown ? <option value={receiptValue}>{receiptValue}</option> : null}
-        </Select>
+          options={[
+            ...clientReceipts.map((r) => ({ value: r.ref, label: r.label })),
+            ...(receiptValue && !receiptKnown ? [{ value: receiptValue, label: receiptValue }] : []),
+          ]}
+          placeholder="Buscar recibo…"
+        />
       </ErpField>
       <ErpField htmlFor="amount" label="Importe">
         <Input

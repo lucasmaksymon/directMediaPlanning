@@ -6,7 +6,6 @@ import Link from "next/link";
 export function PageHeader({
   eyebrow,
   title,
-  description,
   actions,
   className,
 }: {
@@ -19,19 +18,23 @@ export function PageHeader({
   return (
     <header
       className={cn(
-        "flex shrink-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between",
+        "flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between",
         className,
       )}
     >
-      <div className="min-w-0 space-y-1">
+      <h1 className="nm-page-title min-w-0">
         {eyebrow ? (
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-led">
-            {eyebrow}
-          </p>
-        ) : null}
-        <h1 className="nm-page-title">{title}</h1>
-        {description ? <div className="nm-secondary max-w-2xl">{description}</div> : null}
-      </div>
+          <span className="inline-flex flex-wrap items-baseline gap-x-2">
+            <span className="font-medium text-muted-foreground">{eyebrow}</span>
+            <span aria-hidden className="select-none font-normal text-muted-foreground/50">
+              →
+            </span>
+            <span>{title}</span>
+          </span>
+        ) : (
+          title
+        )}
+      </h1>
       {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
     </header>
   );

@@ -221,7 +221,8 @@
 /* Formularios ERP: campos densos para que mande el listado */
 .erp-form-compact input,
 .erp-form-compact select,
-.erp-form-compact textarea {
+.erp-form-compact textarea,
+.erp-form-compact .nm-autocomplete-input {
   min-height: 2rem;
   padding: 0.3rem 0.6rem;
   font-size: 0.8125rem;

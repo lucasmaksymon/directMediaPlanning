@@ -44,7 +44,10 @@ export const panelPage = cn(
   layoutPadding,
 );
 
-export const adminPage = panelPage;
+export const adminPage = cn(
+  "flex min-h-0 min-w-0 flex-1 w-full flex-col gap-4 overflow-hidden py-4",
+  layoutPadding,
+);
 export const adminOpsPage = panelPage;
 export const advertiserPage = panelPage;
 
@@ -55,7 +58,7 @@ export const pageScroll =
   "nm-page-scroll min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain w-full";
 
 export const adminPageBody =
-  "min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain";
+  "flex min-h-0 flex-1 flex-col overflow-hidden";
 
 export const tableScroll = "nm-scroll overflow-x-auto overflow-y-auto [scrollbar-gutter:stable]";
 

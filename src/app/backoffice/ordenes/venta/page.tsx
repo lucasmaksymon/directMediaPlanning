@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { EmptyState, Input, PageHeader, Select, Textarea } from "@/components/ui";
+import { Autocomplete, EmptyState, Input, PageHeader, Select, Textarea } from "@/components/ui";
 import { OrdenesVentaTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
@@ -41,7 +41,7 @@ export default async function ErpOpVentaPage({
         eyebrow="Órdenes"
         title="O.P. Venta"
       />
-      <div className={cn(adminPageBody, "flex flex-col gap-3 pb-8")}>
+      <div className={cn(adminPageBody, "gap-3")}>
         <ErpForm
           action={current ? updateErpSaleOrder : createErpSaleOrder}
           cancelHref={current ? "/backoffice/ordenes/venta" : undefined}
@@ -52,14 +52,14 @@ export default async function ErpOpVentaPage({
         >
           {current ? <input name="id" type="hidden" value={current.id} /> : null}
           <ErpField htmlFor="clientId" label="Cliente">
-            <Select defaultValue={current?.clientId} id="clientId" name="clientId" required>
-              <option value="">Seleccioná</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
+            <Autocomplete
+              defaultValue={current?.clientId}
+              id="clientId"
+              name="clientId"
+              options={clients.map((c) => ({ value: c.id, label: c.name }))}
+              placeholder="Buscar cliente…"
+              required
+            />
           </ErpField>
           <ErpField htmlFor="number" label="Número">
             <Input defaultValue={current?.number} id="number" name="number" required />

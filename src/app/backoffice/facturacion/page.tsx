@@ -11,7 +11,7 @@ export default function ErpFacturacionHubPage() {
   const mod = ERP_HUB_MODULES[1];
   return (
     <div className={cn(adminPage, "gap-4")}>
-      <PageHeader description={mod.description} eyebrow="Admin" title={mod.title} />
+      <PageHeader eyebrow="Administración" title={mod.title} />
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {mod.items.map((item) => (
           <Link

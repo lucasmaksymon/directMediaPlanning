@@ -30,7 +30,7 @@ export default async function ErpEmpresasPage({
         eyebrow="Configuración"
         title="Empresas"
       />
-      <div className={cn(adminPageBody, "flex flex-col gap-3 pb-8")}>
+      <div className={cn(adminPageBody, "gap-3")}>
         <ErpForm
           action={current ? updateErpCompany : createErpCompany}
           cancelHref={current ? "/backoffice/config/empresas" : undefined}

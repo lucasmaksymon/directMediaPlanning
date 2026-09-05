@@ -37,7 +37,7 @@ export default async function ErpElementosPage({
         eyebrow="Configuración"
         title="Elementos"
       />
-      <div className={cn(adminPageBody, "flex flex-col gap-3 pb-8")}>
+      <div className={cn(adminPageBody, "gap-3")}>
         <ErpForm
           action={current ? updateErpElement : createErpElement}
           cancelHref={current ? "/backoffice/config/elementos" : undefined}

@@ -2,11 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { requireOpsSession } from "@/lib/ops-access";
 import {
+  ERP_CHECK_DEFERRED,
   ERP_COLLECT,
   ERP_PAY,
   ERP_PAY_PURCHASE_CHEQUE,
+  ERP_PAY_PURCHASE_KIND,
+  ERP_PAY_STATUS,
   ERP_SETTLE,
   optionalString,
   parseDateField,
@@ -26,6 +30,8 @@ const RECEIPT_PAY_FIELDS = [
   "checkMode",
   "amount",
   "estado",
+  "attachmentUrl",
+  "endorsedFromId",
 ] as const;
 
 function receiptPaymentsFromForm(formData: FormData, chequeKinds: readonly number[] = [ERP_PAY.cheque]) {
@@ -45,9 +51,11 @@ function receiptPaymentsFromForm(formData: FormData, chequeKinds: readonly numbe
         checkMode: isCheque ? parseIntField(line.values.checkMode, 0) : 0,
         amount: parseMoney(line.values.amount),
         estado: parseIntField(line.values.estado, 0),
+        attachmentUrl: optionalString(line.values.attachmentUrl),
+        endorsedFromId: optionalString(line.values.endorsedFromId),
       };
     })
-    .filter((row) => row.amount > 0 || row.number);
+    .filter((row) => row.amount > 0 || row.number || row.endorsedFromId);
 }
 
 function paymentCreateData(line: ReturnType<typeof receiptPaymentsFromForm>[number]) {
@@ -61,6 +69,49 @@ function paymentCreateData(line: ReturnType<typeof receiptPaymentsFromForm>[numb
     checkMode: line.checkMode,
     amount: line.amount,
     estado: line.estado,
+    attachmentUrl: line.attachmentUrl,
+    endorsedFromId: line.endorsedFromId,
+  };
+}
+
+type PayLine = ReturnType<typeof receiptPaymentsFromForm>[number];
+type Db = Prisma.TransactionClient | typeof prisma;
+
+async function releaseEndorsedSources(tx: Db, ids: Array<string | null | undefined>) {
+  const unique = [...new Set(ids.filter((id): id is string => Boolean(id)))];
+  if (!unique.length) return;
+  await tx.erpTreasuryPayment.updateMany({
+    where: { id: { in: unique } },
+    data: { estado: ERP_PAY_STATUS.pending },
+  });
+}
+
+async function hydratePurchasePayLine(tx: Db, line: PayLine, previousSourceId: string | null) {
+  const data = paymentCreateData(line);
+  if (line.paymentKind !== ERP_PAY_PURCHASE_KIND.endorsed) {
+    return { ...data, endorsedFromId: null };
+  }
+  const sourceId = line.endorsedFromId;
+  if (!sourceId) throw new Error("Seleccioná el cheque a endosar.");
+  const source = await tx.erpTreasuryPayment.findUnique({ where: { id: sourceId } });
+  if (!source?.saleReceiptId || source.paymentKind !== ERP_PAY.cheque) {
+    throw new Error("El cheque ya ha sido endosado o no existe");
+  }
+  if (source.checkOrder === ERP_CHECK_DEFERRED) {
+    throw new Error("No se puede endosar un cheque diferido.");
+  }
+  if (source.estado !== ERP_PAY_STATUS.pending && source.id !== previousSourceId) {
+    throw new Error("El cheque ya ha sido endosado o no existe");
+  }
+  return {
+    ...data,
+    number: source.number,
+    issuedAt: source.issuedAt,
+    paidAt: source.paidAt,
+    checkOrder: source.checkOrder,
+    checkType: source.checkType,
+    checkMode: source.checkMode,
+    endorsedFromId: source.id,
   };
 }
 import {
@@ -464,18 +515,36 @@ export async function createErpPaymentOrder(formData: FormData): Promise<Result>
     const issuedAt = parseDateField(formData.get("issuedAt"));
     if (!issuedAt) throw new Error("Indicá la fecha.");
     const invoiceIds = formData.getAll("invoiceId").map(String).filter(Boolean);
-    const payments = receiptPaymentsFromForm(formData, ERP_PAY_PURCHASE_CHEQUE).map(paymentCreateData);
-    await prisma.erpPaymentOrder.create({
-      data: {
-        vendorId,
-        issuedAt,
-        number: parseIntField(formData.get("number")),
-        amount: parseMoney(formData.get("amount")),
-        balance: parseMoney(formData.get("balance")),
-        notes: String(formData.get("notes") ?? "").trim() || null,
-        invoices: { create: invoiceIds.map((invoiceId) => ({ invoiceId })) },
-        treasury: payments.length ? { create: payments } : undefined,
-      },
+    const lines = receiptPaymentsFromForm(formData, ERP_PAY_PURCHASE_CHEQUE);
+    await prisma.$transaction(async (tx) => {
+      const used = new Set<string>();
+      const payments = [];
+      for (const line of lines) {
+        const row = await hydratePurchasePayLine(tx, line, null);
+        if (row.endorsedFromId) {
+          if (used.has(row.endorsedFromId)) throw new Error("El cheque ya ha sido endosado o no existe");
+          used.add(row.endorsedFromId);
+        }
+        payments.push(row);
+      }
+      await tx.erpPaymentOrder.create({
+        data: {
+          vendorId,
+          issuedAt,
+          number: parseIntField(formData.get("number")),
+          amount: parseMoney(formData.get("amount")),
+          balance: parseMoney(formData.get("balance")),
+          notes: String(formData.get("notes") ?? "").trim() || null,
+          invoices: { create: invoiceIds.map((invoiceId) => ({ invoiceId })) },
+          treasury: payments.length ? { create: payments } : undefined,
+        },
+      });
+      if (used.size) {
+        await tx.erpTreasuryPayment.updateMany({
+          where: { id: { in: [...used] } },
+          data: { estado: ERP_PAY_STATUS.done },
+        });
+      }
     });
     refreshBilling();
     return { ok: true };
@@ -494,6 +563,27 @@ export async function updateErpPaymentOrder(formData: FormData): Promise<Result>
     const lines = receiptPaymentsFromForm(formData, ERP_PAY_PURCHASE_CHEQUE);
     const keep = lines.map((l) => l.id).filter((lineId): lineId is string => Boolean(lineId));
     await prisma.$transaction(async (tx) => {
+      const existing = await tx.erpTreasuryPayment.findMany({
+        where: { paymentOrderId: id },
+        select: { id: true, endorsedFromId: true },
+      });
+      const existingById = new Map(existing.map((row) => [row.id, row.endorsedFromId]));
+      const removedSources = existing
+        .filter((row) => !keep.includes(row.id))
+        .map((row) => row.endorsedFromId);
+      const nextSources: string[] = [];
+      const used = new Set<string>();
+      const prepared = [];
+      for (const line of lines) {
+        const previous = line.id ? existingById.get(line.id) ?? null : null;
+        const row = await hydratePurchasePayLine(tx, line, previous);
+        if (row.endorsedFromId) {
+          if (used.has(row.endorsedFromId)) throw new Error("El cheque ya ha sido endosado o no existe");
+          used.add(row.endorsedFromId);
+          nextSources.push(row.endorsedFromId);
+        }
+        prepared.push({ id: line.id, row });
+      }
       await tx.erpPaymentOrder.update({
         where: { id },
         data: {
@@ -514,10 +604,20 @@ export async function updateErpPaymentOrder(formData: FormData): Promise<Result>
       await tx.erpTreasuryPayment.deleteMany({
         where: { paymentOrderId: id, ...(keep.length ? { id: { notIn: keep } } : {}) },
       });
-      for (const line of lines) {
-        const { id: lineId, ...row } = line;
-        if (lineId) await tx.erpTreasuryPayment.update({ where: { id: lineId }, data: row });
-        else await tx.erpTreasuryPayment.create({ data: { paymentOrderId: id, ...row } });
+      for (const item of prepared) {
+        if (item.id) await tx.erpTreasuryPayment.update({ where: { id: item.id }, data: item.row });
+        else await tx.erpTreasuryPayment.create({ data: { paymentOrderId: id, ...item.row } });
+      }
+      const released = [
+        ...removedSources,
+        ...existing.map((row) => row.endorsedFromId).filter((sourceId) => sourceId && !used.has(sourceId)),
+      ];
+      await releaseEndorsedSources(tx, released);
+      if (nextSources.length) {
+        await tx.erpTreasuryPayment.updateMany({
+          where: { id: { in: nextSources } },
+          data: { estado: ERP_PAY_STATUS.done },
+        });
       }
     });
     refreshBilling();
@@ -530,8 +630,18 @@ export async function updateErpPaymentOrder(formData: FormData): Promise<Result>
 export async function deleteErpPaymentOrder(id: string): Promise<Result> {
   try {
     await requireOpsSession();
-    await prisma.erpTreasuryPayment.deleteMany({ where: { paymentOrderId: id } });
-    await prisma.erpPaymentOrder.delete({ where: { id } });
+    const sources = await prisma.erpTreasuryPayment.findMany({
+      where: { paymentOrderId: id, endorsedFromId: { not: null } },
+      select: { endorsedFromId: true },
+    });
+    await prisma.$transaction(async (tx) => {
+      await tx.erpTreasuryPayment.deleteMany({ where: { paymentOrderId: id } });
+      await releaseEndorsedSources(
+        tx,
+        sources.map((row) => row.endorsedFromId),
+      );
+      await tx.erpPaymentOrder.delete({ where: { id } });
+    });
     refreshBilling();
     return { ok: true };
   } catch (e) {
@@ -555,6 +665,7 @@ export async function createErpIssuedCheque(formData: FormData): Promise<Result>
         checkType: parseIntField(formData.get("checkType"), 0),
         checkMode: parseIntField(formData.get("checkMode"), 0),
         estado: parseIntField(formData.get("estado"), 0),
+        attachmentUrl: optionalString(String(formData.get("attachmentUrl") ?? "")),
       },
     });
     refreshBilling();
@@ -567,14 +678,26 @@ export async function createErpIssuedCheque(formData: FormData): Promise<Result>
 export async function updateErpCheque(formData: FormData): Promise<Result> {
   try {
     await requireOpsSession();
+    const id = requiredId(formData.get("id"));
+    const current = await prisma.erpTreasuryPayment.findUnique({ where: { id } });
+    if (!current) throw new Error("El cheque no existe.");
+    const endorsed = await prisma.erpTreasuryPayment.findFirst({
+      where: { endorsedFromId: id },
+      select: { id: true },
+    });
+    let estado = parseIntField(formData.get("estado"), 0);
+    if (endorsed && estado === ERP_PAY_STATUS.pending) {
+      estado = ERP_PAY_STATUS.done;
+    }
     await prisma.erpTreasuryPayment.update({
-      where: { id: requiredId(formData.get("id")) },
+      where: { id },
       data: {
         number: requiredString(formData.get("number"), "el número de cheque"),
         issuedAt: parseDateField(formData.get("issuedAt")),
         paidAt: parseDateField(formData.get("paidAt")),
         amount: parseMoney(formData.get("amount")),
-        estado: parseIntField(formData.get("estado"), 0),
+        estado,
+        attachmentUrl: optionalString(String(formData.get("attachmentUrl") ?? "")),
       },
     });
     refreshBilling();
@@ -626,7 +749,19 @@ export async function setErpPurchasePayStatus(id: string, payStatus: number): Pr
 export async function deleteErpCheque(id: string): Promise<Result> {
   try {
     await requireOpsSession();
-    await prisma.erpTreasuryPayment.delete({ where: { id } });
+    const row = await prisma.erpTreasuryPayment.findUnique({ where: { id } });
+    if (!row) throw new Error("El cheque no existe.");
+    const endorsed = await prisma.erpTreasuryPayment.findFirst({
+      where: { endorsedFromId: id },
+      select: { id: true },
+    });
+    if (endorsed) throw new Error("El cheque está endosado en una orden de pago.");
+    await prisma.$transaction(async (tx) => {
+      if (row.endorsedFromId) {
+        await releaseEndorsedSources(tx, [row.endorsedFromId]);
+      }
+      await tx.erpTreasuryPayment.delete({ where: { id } });
+    });
     refreshBilling();
     return { ok: true };
   } catch (e) {

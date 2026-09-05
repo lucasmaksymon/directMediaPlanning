@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { EmptyState, Input, PageHeader, Select, Textarea } from "@/components/ui";
+import { Autocomplete, EmptyState, Input, PageHeader, Select, Textarea } from "@/components/ui";
 import { OrdenesCompraTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
@@ -50,7 +50,7 @@ export default async function ErpOpCompraPage({
         eyebrow="Órdenes"
         title="O.P. Compra"
       />
-      <div className={cn(adminPageBody, "flex flex-col gap-3 pb-8")}>
+      <div className={cn(adminPageBody, "gap-3")}>
         <ErpForm
           action={current ? updateErpPurchaseOrder : createErpPurchaseOrder}
           cancelHref={current ? "/backoffice/ordenes/compra" : undefined}
@@ -61,24 +61,24 @@ export default async function ErpOpCompraPage({
         >
           {current ? <input name="id" type="hidden" value={current.id} /> : null}
           <ErpField htmlFor="saleOrderId" label="O.P. venta">
-            <Select defaultValue={current?.saleOrderId} id="saleOrderId" name="saleOrderId" required>
-              <option value="">Seleccioná</option>
-              {saleOrders.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.number} · {o.client.name}
-                </option>
-              ))}
-            </Select>
+            <Autocomplete
+              defaultValue={current?.saleOrderId}
+              id="saleOrderId"
+              name="saleOrderId"
+              options={saleOrders.map((o) => ({ value: o.id, label: `${o.number} · ${o.client.name}` }))}
+              placeholder="Buscar orden…"
+              required
+            />
           </ErpField>
           <ErpField htmlFor="vendorId" label="Proveedor">
-            <Select defaultValue={current?.vendorId} id="vendorId" name="vendorId" required>
-              <option value="">Seleccioná</option>
-              {vendors.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.name}
-                </option>
-              ))}
-            </Select>
+            <Autocomplete
+              defaultValue={current?.vendorId}
+              id="vendorId"
+              name="vendorId"
+              options={vendors.map((v) => ({ value: v.id, label: v.name }))}
+              placeholder="Buscar proveedor…"
+              required
+            />
           </ErpField>
           <ErpField htmlFor="number" label="Número">
             <Input defaultValue={current?.number} id="number" name="number" required />

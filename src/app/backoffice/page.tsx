@@ -110,7 +110,7 @@ export default async function BackofficeHomePage() {
   const monthLabel = `${ERP_MONTHS[data.month]} ${data.year}`;
 
   return (
-    <div className={cn(adminPage, "gap-5")}>
+    <div className={cn(adminPage, "gap-5 overflow-y-auto")}>
       <PageHeader
         className="shrink-0"
         actions={

@@ -2,12 +2,13 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
+import { Autocomplete, EmptyState, Input, PageHeader } from "@/components/ui";
 import { ChequesTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
+import { ErpAttach } from "@/components/erp/ErpAttach";
 import { createErpIssuedCheque, updateErpCheque } from "@/app/actions/erp-billing";
-import { ERP_PAY, erpInputNumber, isoDate } from "@/lib/erp";
+import { ERP_PAY, ERP_PAY_SALE_STATUS, erpInputNumber, isoDate, selectOptions } from "@/lib/erp";
 
 export const metadata = { title: productTitle("Cheques") };
 
@@ -24,12 +25,16 @@ export default async function ErpChequesPage({
     include: {
       saleReceipt: { include: { client: { select: { name: true } } } },
       purchaseReceipt: { include: { vendor: { select: { name: true } } } },
+      paymentOrder: { include: { vendor: { select: { name: true } } } },
     },
     take: 500,
   });
   const current = payments.find((p) => p.id === edit);
   const received = payments.filter((p) => p.saleReceiptId);
   const issued = payments.filter((p) => !p.saleReceiptId);
+  const endorsedIds = new Set(
+    payments.map((p) => p.endorsedFromId).filter((id): id is string => Boolean(id)),
+  );
 
   return (
     <div className={cn(adminPage, "gap-4")}>
@@ -38,7 +43,7 @@ export default async function ErpChequesPage({
         eyebrow="Facturación"
         title="Cheques"
       />
-      <div className={cn(adminPageBody, "flex flex-col gap-8 pb-8")}>
+      <div className={cn(adminPageBody, "gap-8 overflow-y-auto")}>
         <ErpForm
           action={current ? updateErpCheque : createErpIssuedCheque}
           cancelHref={current ? "/backoffice/facturacion/cheques" : undefined}
@@ -61,10 +66,16 @@ export default async function ErpChequesPage({
             <Input defaultValue={isoDate(current?.paidAt ?? now)} id="paidAt" name="paidAt" type="date" />
           </ErpField>
           <ErpField htmlFor="estado" label="Estado">
-            <Select defaultValue={String(current?.estado ?? 0)} id="estado" name="estado">
-              <option value="0">Pendiente</option>
-              <option value="1">Cobrado / pagado</option>
-            </Select>
+            <Autocomplete
+              defaultValue={String(current?.estado ?? 0)}
+              id="estado"
+              name="estado"
+              options={selectOptions(ERP_PAY_SALE_STATUS)}
+              placeholder="Estado…"
+            />
+          </ErpField>
+          <ErpField htmlFor="attachmentUrl" label="Recibo de pago" wide>
+            <ErpAttach defaultValue={current?.attachmentUrl} name="attachmentUrl" />
           </ErpField>
         </ErpForm>
 
@@ -74,7 +85,7 @@ export default async function ErpChequesPage({
             <EmptyState description="Se generan al cargar un recibo con cheque." title="Sin cheques recibidos" />
           ) : (
             <ChequesTable
-              storageKey="erp.table.cheques-recibidos.v1"
+              storageKey="erp.table.cheques-recibidos.v2"
               rows={received.map((p) => ({
                 id: p.id,
                 number: p.number,
@@ -83,6 +94,10 @@ export default async function ErpChequesPage({
                 issuedAt: p.issuedAt,
                 paidAt: p.paidAt,
                 amount: Number(p.amount),
+                estado: p.estado,
+                checkOrder: p.checkOrder,
+                endorsed: endorsedIds.has(p.id),
+                kind: "received" as const,
               }))}
             />
           )}
@@ -94,17 +109,18 @@ export default async function ErpChequesPage({
             <EmptyState description="Cargá un cheque emitido arriba." title="Sin cheques emitidos" />
           ) : (
             <ChequesTable
-              showEstado
-              storageKey="erp.table.cheques-emitidos.v1"
+              storageKey="erp.table.cheques-emitidos.v2"
               rows={issued.map((p) => ({
                 id: p.id,
                 number: p.number,
                 paymentKind: p.paymentKind,
-                party: p.purchaseReceipt?.vendor.name ?? "—",
+                party: p.purchaseReceipt?.vendor.name ?? p.paymentOrder?.vendor.name ?? "—",
                 issuedAt: p.issuedAt,
                 paidAt: p.paidAt,
                 amount: Number(p.amount),
                 estado: p.estado,
+                checkOrder: p.checkOrder,
+                kind: "issued" as const,
               }))}
             />
           )}

@@ -55,7 +55,7 @@ export default async function ErpFacturasVentaPage({
         eyebrow="Facturación"
         title="Facturas de venta"
       />
-      <div className={cn(adminPageBody, "flex flex-col gap-3 pb-8")}>
+      <div className={cn(adminPageBody, "gap-3")}>
         <ErpForm
           action={current ? updateErpSaleInvoice : createErpSaleInvoice}
           cancelHref={current ? "/backoffice/facturacion/venta" : undefined}

@@ -1,9 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useId, useState, useTransition, type ReactNode } from "react";
+import { useCallback, useId, useLayoutEffect, useState, useTransition, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Alert, Button, Modal } from "@/components/ui";
 import { cn } from "@/lib/cn";
+
+const TOOLBAR_SLOT = "[data-erp-page-toolbar]";
 
 type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -39,19 +42,37 @@ export function ErpForm({
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
+  const [toolbarSlot, setToolbarSlot] = useState<Element | null>(null);
+
   const close = useCallback(() => {
     setError(null);
     setOpen(false);
     if (cancelHref) router.replace(cancelHref);
   }, [cancelHref, router]);
 
+  useLayoutEffect(() => {
+    function sync() {
+      setToolbarSlot(document.querySelector(TOOLBAR_SLOT));
+    }
+    sync();
+    const mo = new MutationObserver(sync);
+    mo.observe(document.body, { childList: true, subtree: true });
+    return () => mo.disconnect();
+  }, []);
+
+  const trigger = collapsible ? (
+    <Button onClick={() => setOpen(true)} size="sm" type="button">
+      {openLabel ?? (editing ? "Nueva" : title) ?? "Nueva"}
+    </Button>
+  ) : null;
+
   return (
-    <div className={cn("flex items-center justify-end", className)}>
-      {collapsible ? (
-        <Button onClick={() => setOpen(true)} size="sm" type="button">
-          {openLabel ?? (editing ? "Nueva" : title) ?? "Nueva"}
-        </Button>
-      ) : null}
+    <>
+      {trigger && toolbarSlot
+        ? createPortal(trigger, toolbarSlot)
+        : trigger ? (
+            <div className={cn("flex justify-end", className)}>{trigger}</div>
+          ) : null}
       <Modal
         footer={
           <>
@@ -93,6 +114,6 @@ export function ErpForm({
           {error ? <Alert variant="error">{error}</Alert> : null}
         </form>
       </Modal>
-    </div>
+    </>
   );
 }

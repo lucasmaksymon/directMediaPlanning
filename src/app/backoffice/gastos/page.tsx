@@ -28,7 +28,7 @@ export default async function ErpGastosPage({
         eyebrow="Administración"
         title="Gastos"
       />
-      <div className={cn(adminPageBody, "flex flex-col gap-3 pb-8")}>
+      <div className={cn(adminPageBody, "gap-3")}>
         <ErpForm
           action={upsertErpExpense}
           cancelHref={current ? "/backoffice/gastos" : undefined}

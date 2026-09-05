@@ -57,6 +57,19 @@ export const ERP_PAY_PURCHASE_STATUS = ["Pendiente", "Pagado", "Anulado"] as con
 /** tipoPago de compra que lleva datos de cheque. */
 export const ERP_PAY_PURCHASE_CHEQUE = [1, 2] as const;
 
+export const ERP_PAY_PURCHASE_KIND = {
+  transfer: 0,
+  cheque: 1,
+  endorsed: 2,
+  retVat: 3,
+  orderBalance: 4,
+} as const;
+
+export const ERP_PAY_STATUS = { pending: 0, done: 1, voided: 2 } as const;
+
+/** ordenCheque=2 diferido: el legado no deja endosarlo. */
+export const ERP_CHECK_DEFERRED = 2;
+
 export function erpPaySaleLabel(kind: number) {
   return ERP_PAY_SALE[kind] ?? `Pago ${kind}`;
 }
@@ -75,6 +88,19 @@ export function erpCheckModeLabel(v: number) {
 
 export function erpPaySaleStatusLabel(v: number) {
   return ERP_PAY_SALE_STATUS[v] ?? `Estado ${v}`;
+}
+
+export function erpPayPurchaseStatusLabel(v: number) {
+  return ERP_PAY_PURCHASE_STATUS[v] ?? `Estado ${v}`;
+}
+
+export function erpChequeStatusLabel(
+  estado: number,
+  kind: "received" | "issued",
+  endorsed = false,
+) {
+  if (endorsed && estado === ERP_PAY_STATUS.done) return "Endosado";
+  return kind === "issued" ? erpPayPurchaseStatusLabel(estado) : erpPaySaleStatusLabel(estado);
 }
 
 export function selectOptions(labels: readonly string[]) {

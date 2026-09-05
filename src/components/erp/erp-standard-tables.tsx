@@ -37,8 +37,12 @@ import {
   ERP_MONTHS,
   ERP_PAY,
   ERP_SETTLE,
+  erpCheckOrderLabel,
+  erpChequeStatusLabel,
   erpOrderBadge,
   erpOrderLabel,
+  erpPayPurchaseLabel,
+  erpPaySaleLabel,
   erpSettlementLabel,
   erpRecordLabel,
   erpVendorKindLabel,
@@ -47,6 +51,30 @@ import {
 
 function docRef(docType: string, pos: number, number: number) {
   return `${docType} ${String(pos).padStart(4, "0")}-${String(number).padStart(8, "0")}`;
+}
+
+function moneySum<T>(rows: T[], pick: (row: T) => number) {
+  return money(rows.reduce((sum, row) => sum + pick(row), 0));
+}
+
+function invoiceLabels(items: { docType: string; pos: number; number: number }[]) {
+  return items.map((item) => docRef(item.docType, item.pos, item.number));
+}
+
+function InvoiceRefs({ items }: { items: { docType: string; pos: number; number: number }[] }) {
+  if (items.length === 0) return "—";
+  const labels = invoiceLabels(items);
+  return (
+    <span className="block max-w-[18rem] truncate" title={labels.join(" · ")}>
+      {labels.join(" · ")}
+    </span>
+  );
+}
+
+function payLabels(notes: string | null | undefined, kinds: number[], labelOf: (kind: number) => string) {
+  if (notes?.trim()) return notes.trim();
+  const unique = [...new Set(kinds)].map(labelOf);
+  return unique.length ? unique.join(" · ") : "—";
 }
 
 type Named = { id: string; name: string; estado: number };
@@ -248,15 +276,37 @@ export function GastosTable({
             </span>
           ),
         },
-        { id: "fixed", label: "Fijo", align: "right", value: (r) => r.fixed, cell: (r) => money(r.fixed) },
-        { id: "bank", label: "Banco", align: "right", value: (r) => r.bank, cell: (r) => money(r.bank) },
-        { id: "vat", label: "IVA", align: "right", value: (r) => r.vat, cell: (r) => money(r.vat) },
+        {
+          id: "fixed",
+          label: "Fijo",
+          align: "right",
+          value: (r) => r.fixed,
+          cell: (r) => money(r.fixed),
+          foot: (rows) => moneySum(rows, (r) => r.fixed),
+        },
+        {
+          id: "bank",
+          label: "Banco",
+          align: "right",
+          value: (r) => r.bank,
+          cell: (r) => money(r.bank),
+          foot: (rows) => moneySum(rows, (r) => r.bank),
+        },
+        {
+          id: "vat",
+          label: "IVA",
+          align: "right",
+          value: (r) => r.vat,
+          cell: (r) => money(r.vat),
+          foot: (rows) => moneySum(rows, (r) => r.vat),
+        },
         {
           id: "commissions",
           label: "Comisiones",
           align: "right",
           value: (r) => r.commissions,
           cell: (r) => money(r.commissions),
+          foot: (rows) => moneySum(rows, (r) => r.commissions),
         },
         {
           id: "total",
@@ -264,6 +314,7 @@ export function GastosTable({
           align: "right",
           value: (r) => r.fixed + r.bank + r.vat + r.commissions,
           cell: (r) => <span className="font-medium">{money(r.fixed + r.bank + r.vat + r.commissions)}</span>,
+          foot: (rows) => moneySum(rows, (r) => r.fixed + r.bank + r.vat + r.commissions),
         },
       ]}
       actions={(r) => (
@@ -309,12 +360,23 @@ export function FacturasVentaTable({
         { id: "order", label: "Orden", value: (r) => r.order, cell: (r) => r.order },
         { id: "issuedAt", label: "Fecha", value: (r) => String(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
         { id: "dueAt", label: "Vence", value: (r) => String(r.dueAt), cell: (r) => displayDate(r.dueAt) },
-        { id: "total", label: "Total", align: "right", value: (r) => r.total, cell: (r) => money(r.total) },
+        {
+          id: "total",
+          label: "Total",
+          align: "right",
+          value: (r) => r.total,
+          cell: (r) => money(r.total),
+          foot: (rows) => moneySum(rows, (r) => r.total),
+        },
         {
           id: "cobro",
           label: "Cobro",
           value: (r) => r.collectStatus,
-          cell: (r) => (r.collectStatus === 1 ? "Cobrado" : "Pendiente"),
+          cell: (r) => (
+            <Badge variant={r.collectStatus === 1 ? "success" : "warning"}>
+              {r.collectStatus === 1 ? "Cobrado" : "Pendiente"}
+            </Badge>
+          ),
         },
       ]}
       actions={(r) => (
@@ -365,19 +427,34 @@ export function FacturasCompraTable({
         },
         { id: "vendor", label: "Proveedor", value: (r) => r.vendor, cell: (r) => r.vendor },
         { id: "issuedAt", label: "Fecha", value: (r) => String(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
-        { id: "total", label: "Importe", align: "right", value: (r) => r.total, cell: (r) => money(r.total) },
+        {
+          id: "total",
+          label: "Importe",
+          align: "right",
+          value: (r) => r.total,
+          cell: (r) => money(r.total),
+          foot: (rows) => moneySum(rows, (r) => r.total),
+        },
         {
           id: "retenciones",
           label: "Retenciones",
           align: "right",
           value: (r) => r.retenciones,
           cell: (r) => money(r.retenciones),
+          foot: (rows) => moneySum(rows, (r) => r.retenciones),
         },
         {
           id: "pago",
           label: "Pago",
           value: (r) => r.payStatus,
-          cell: (r) => `${r.isCreditNote ? "NC · " : ""}${r.payStatus === 1 ? "Pagado" : "Pendiente"}`,
+          cell: (r) => (
+            <span className="inline-flex items-center gap-1.5">
+              {r.isCreditNote ? <Badge variant="info">NC</Badge> : null}
+              <Badge variant={r.payStatus === 1 ? "success" : "warning"}>
+                {r.payStatus === 1 ? "Pagado" : "Pendiente"}
+              </Badge>
+            </span>
+          ),
         },
       ]}
       actions={(r) => (
@@ -419,13 +496,21 @@ export function FacturasIvaTable({
         },
         { id: "vendor", label: "Proveedor", value: (r) => r.vendor, cell: (r) => r.vendor },
         { id: "issuedAt", label: "Fecha", value: (r) => String(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
-        { id: "total", label: "Total", align: "right", value: (r) => r.total, cell: (r) => money(r.total) },
+        {
+          id: "total",
+          label: "Total",
+          align: "right",
+          value: (r) => r.total,
+          cell: (r) => money(r.total),
+          foot: (rows) => moneySum(rows, (r) => r.total),
+        },
         {
           id: "commission",
           label: "Comisión",
           align: "right",
           value: (r) => r.commission,
           cell: (r) => money(r.commission),
+          foot: (rows) => moneySum(rows, (r) => r.commission),
         },
       ]}
       actions={(r) => (
@@ -488,7 +573,14 @@ export function PendientesTable({
         },
         { id: "vendor", label: "Proveedor", value: (r) => r.vendor, cell: (r) => r.vendor },
         { id: "order", label: "Orden", value: (r) => r.order, cell: (r) => r.order },
-        { id: "amount", label: "Importe", align: "right", value: (r) => r.amount, cell: (r) => money(r.amount) },
+        {
+          id: "amount",
+          label: "Importe",
+          align: "right",
+          value: (r) => r.amount,
+          cell: (r) => money(r.amount),
+          foot: (rows) => moneySum(rows, (r) => r.amount),
+        },
       ]}
       actions={(r) => (
         <ErpRowActions
@@ -512,21 +604,48 @@ export function RecibosTable({
     issuedAt: string | Date;
     amount: number;
     balance: number;
-    invoices: number;
+    notes?: string | null;
+    payKinds?: number[];
+    invoices: { docType: string; pos: number; number: number }[];
   }[];
 }) {
   return (
     <ErpDataTable
-      storageKey="erp.table.recibos.v1"
+      storageKey="erp.table.recibos.v2"
       rows={rows}
       rowKey={(r) => r.id}
       columns={[
         { id: "number", label: "Nº", value: (r) => r.number, cell: (r) => <span className="font-medium">{r.number}</span> },
         { id: "client", label: "Cliente", value: (r) => r.client, cell: (r) => r.client },
         { id: "issuedAt", label: "Fecha", value: (r) => String(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
-        { id: "amount", label: "Importe", align: "right", value: (r) => r.amount, cell: (r) => money(r.amount) },
-        { id: "balance", label: "Saldo", align: "right", value: (r) => r.balance, cell: (r) => money(r.balance) },
-        { id: "invoices", label: "Facturas", align: "right", value: (r) => r.invoices, cell: (r) => r.invoices },
+        {
+          id: "amount",
+          label: "Importe",
+          align: "right",
+          value: (r) => r.amount,
+          cell: (r) => money(r.amount),
+          foot: (rows) => moneySum(rows, (r) => r.amount),
+        },
+        {
+          id: "balance",
+          label: "Saldo",
+          align: "right",
+          value: (r) => r.balance,
+          cell: (r) => money(r.balance),
+          foot: (rows) => moneySum(rows, (r) => r.balance),
+        },
+        {
+          id: "medio",
+          label: "Medio",
+          value: (r) => payLabels(r.notes, r.payKinds ?? [], erpPaySaleLabel),
+          cell: (r) => payLabels(r.notes, r.payKinds ?? [], erpPaySaleLabel),
+        },
+        {
+          id: "invoices",
+          label: "Facturas",
+          value: (r) => invoiceLabels(r.invoices).join(" "),
+          cell: (r) => <InvoiceRefs items={r.invoices} />,
+        },
       ]}
       actions={(r) => (
         <ErpRowActions
@@ -544,26 +663,44 @@ export function PagosTable({
 }: {
   rows: {
     id: string;
-    number: number;
+    number: string | number;
     vendor: string;
     issuedAt: string | Date;
     amount: number;
     notes: string | null;
-    invoices: number;
+    payKinds?: number[];
+    invoices: { docType: string; pos: number; number: number }[];
   }[];
 }) {
   return (
     <ErpDataTable
-      storageKey="erp.table.pagos.v1"
+      storageKey="erp.table.pagos.v2"
       rows={rows}
       rowKey={(r) => r.id}
       columns={[
         { id: "number", label: "Nº", value: (r) => r.number, cell: (r) => <span className="font-medium">{r.number}</span> },
         { id: "vendor", label: "Proveedor", value: (r) => r.vendor, cell: (r) => r.vendor },
         { id: "issuedAt", label: "Fecha", value: (r) => String(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
-        { id: "amount", label: "Importe", align: "right", value: (r) => r.amount, cell: (r) => money(r.amount) },
-        { id: "notes", label: "Medio", value: (r) => r.notes, cell: (r) => r.notes ?? "—" },
-        { id: "invoices", label: "Facturas", align: "right", value: (r) => r.invoices, cell: (r) => r.invoices },
+        {
+          id: "amount",
+          label: "Importe",
+          align: "right",
+          value: (r) => r.amount,
+          cell: (r) => money(r.amount),
+          foot: (rows) => moneySum(rows, (r) => r.amount),
+        },
+        {
+          id: "notes",
+          label: "Medio",
+          value: (r) => payLabels(r.notes, r.payKinds ?? [], erpPayPurchaseLabel),
+          cell: (r) => payLabels(r.notes, r.payKinds ?? [], erpPayPurchaseLabel),
+        },
+        {
+          id: "invoices",
+          label: "Facturas",
+          value: (r) => invoiceLabels(r.invoices).join(" "),
+          cell: (r) => <InvoiceRefs items={r.invoices} />,
+        },
       ]}
       actions={(r) => (
         <ErpRowActions
@@ -585,39 +722,58 @@ type ChequeRow = {
   issuedAt: string | Date | null;
   paidAt: string | Date | null;
   amount: number;
-  estado?: number;
+  estado: number;
+  checkOrder?: number;
+  endorsed?: boolean;
+  kind: "received" | "issued";
 };
 
 export function ChequesTable({
   rows,
   storageKey,
-  showEstado,
 }: {
   rows: ChequeRow[];
   storageKey: string;
   showEstado?: boolean;
 }) {
+  const issued = rows[0]?.kind === "issued";
   const columns: ErpTableColumn<ChequeRow>[] = [
     { id: "number", label: "Nº", value: (r) => r.number, cell: (r) => <span className="font-medium">{r.number ?? "—"}</span> },
     {
       id: "tipo",
       label: "Tipo",
       value: (r) => r.paymentKind,
-      cell: (r) => (r.paymentKind === ERP_PAY.transfer ? "Transfer" : "E-cheq"),
+      cell: (r) => (r.paymentKind === ERP_PAY.transfer ? "Transfer" : "Cheque"),
     },
-    { id: "party", label: showEstado ? "Proveedor" : "Cliente", value: (r) => r.party, cell: (r) => r.party },
+    { id: "party", label: issued ? "Proveedor" : "Cliente", value: (r) => r.party, cell: (r) => r.party },
+    {
+      id: "orden",
+      label: "Orden",
+      value: (r) => erpCheckOrderLabel(r.checkOrder ?? 0),
+      cell: (r) => erpCheckOrderLabel(r.checkOrder ?? 0),
+    },
     { id: "issuedAt", label: "Emisión", value: (r) => (r.issuedAt ? String(r.issuedAt) : null), cell: (r) => displayDate(r.issuedAt) },
     { id: "paidAt", label: "Pago", value: (r) => (r.paidAt ? String(r.paidAt) : null), cell: (r) => displayDate(r.paidAt) },
-    { id: "amount", label: "Importe", align: "right", value: (r) => r.amount, cell: (r) => money(r.amount) },
-  ];
-  if (showEstado) {
-    columns.push({
+    {
+      id: "amount",
+      label: "Importe",
+      align: "right",
+      value: (r) => r.amount,
+      cell: (r) => money(r.amount),
+      foot: (rows) => moneySum(rows, (r) => r.amount),
+    },
+    {
       id: "estado",
       label: "Estado",
-      value: (r) => r.estado ?? 0,
-      cell: (r) => <Badge>{r.estado === 1 ? "Pagado" : "Pendiente"}</Badge>,
-    });
-  }
+      value: (r) => erpChequeStatusLabel(r.estado, r.kind, r.endorsed),
+      cell: (r) => {
+        const label = erpChequeStatusLabel(r.estado, r.kind, r.endorsed);
+        const variant =
+          label === "Endosado" ? "info" : r.estado === 1 ? "success" : r.estado === 2 ? "default" : "warning";
+        return <Badge variant={variant}>{label}</Badge>;
+      },
+    },
+  ];
   return (
     <ErpDataTable
       storageKey={storageKey}
@@ -669,7 +825,14 @@ export function OrdenesVentaTable({
         },
         { id: "issuedAt", label: "Fecha", value: (r) => String(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
         { id: "items", label: "Ítems", value: (r) => r.items, cell: (r) => r.items || "—" },
-        { id: "amount", label: "Importe", align: "right", value: (r) => r.amount, cell: (r) => money(r.amount) },
+        {
+          id: "amount",
+          label: "Importe",
+          align: "right",
+          value: (r) => r.amount,
+          cell: (r) => money(r.amount),
+          foot: (rows) => moneySum(rows, (r) => r.amount),
+        },
         {
           id: "settlement",
           label: "Condición",
@@ -718,6 +881,7 @@ export function CampaignItemsTable({
   return (
     <ErpDataTable
       storageKey="erp.table.campaign-items.v2"
+      fill
       rows={rows}
       rowKey={(r) => r.id}
       columns={[
@@ -796,7 +960,14 @@ export function OrdenesCompraTable({
         { id: "product", label: "Producto", value: (r) => r.product, cell: (r) => r.product || "—" },
         { id: "vendor", label: isBuy ? "Proveedor" : "Productor", value: (r) => r.vendor, cell: (r) => r.vendor },
         { id: "issuedAt", label: "Fecha", value: (r) => String(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
-        { id: "amount", label: "Importe", align: "right", value: (r) => r.amount, cell: (r) => money(r.amount) },
+        {
+          id: "amount",
+          label: "Importe",
+          align: "right",
+          value: (r) => r.amount,
+          cell: (r) => money(r.amount),
+          foot: (rows) => moneySum(rows, (r) => r.amount),
+        },
         {
           id: "settlement",
           label: "Condición",
@@ -843,6 +1014,7 @@ export function PurchaseOrderItemsTable({
   return (
     <ErpDataTable
       storageKey="erp.table.purchase-order-items.v1"
+      fill
       rows={rows}
       rowKey={(r) => r.id}
       columns={[
@@ -877,6 +1049,7 @@ export function ProductionOrderItemsTable({
   return (
     <ErpDataTable
       storageKey="erp.table.production-order-items.v1"
+      fill
       rows={rows}
       rowKey={(r) => r.id}
       columns={[
@@ -902,6 +1075,7 @@ export function ProductionDeliveriesTable({
   return (
     <ErpDataTable
       storageKey="erp.table.production-deliveries.v1"
+      fill
       rows={rows}
       rowKey={(r) => r.id}
       columns={[

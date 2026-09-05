@@ -22,7 +22,7 @@ export default async function ErpPagosPendientesPage() {
         eyebrow="Facturación"
         title="Pagos pendientes"
       />
-      <div className={cn(adminPageBody, "flex flex-col gap-4 pb-8")}>
+      <div className={cn(adminPageBody, "gap-4")}>
         <p className="text-sm text-muted-foreground">
           {rows.length} comprobantes · {money(total)} a pagar
           {overdue.length > 0 ? ` · ${overdue.length} vencidos (${money(overdueTotal)})` : ""}

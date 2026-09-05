@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
+import { Autocomplete, EmptyState, Input, PageHeader } from "@/components/ui";
 import { PlazasTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
@@ -38,7 +38,7 @@ export default async function ErpPlazasPage({
         eyebrow="Configuración"
         title="Plazas"
       />
-      <div className={cn(adminPageBody, "flex flex-col gap-3 pb-8")}>
+      <div className={cn(adminPageBody, "gap-3")}>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <ErpForm
             action={currentProvince ? updateErpProvince : createErpProvince}
@@ -63,14 +63,14 @@ export default async function ErpPlazasPage({
           >
             {currentCity ? <input name="id" type="hidden" value={currentCity.id} /> : null}
             <ErpField htmlFor="provinceId" label="Plaza">
-              <Select defaultValue={currentCity?.provinceId} id="provinceId" name="provinceId" required>
-                <option value="">Seleccioná</option>
-                {provinces.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </Select>
+              <Autocomplete
+                defaultValue={currentCity?.provinceId}
+                id="provinceId"
+                name="provinceId"
+                options={provinces.map((p) => ({ value: p.id, label: p.name }))}
+                placeholder="Buscar plaza…"
+                required
+              />
             </ErpField>
             <ErpField htmlFor="cityName" label="Localidad">
               <Input defaultValue={currentCity?.name} id="cityName" name="name" required />

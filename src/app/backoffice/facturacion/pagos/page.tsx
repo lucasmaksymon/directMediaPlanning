@@ -2,24 +2,22 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
+import { Autocomplete, EmptyState, Input, PageHeader } from "@/components/ui";
 import { PagosTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
-import { ErpLineList } from "@/components/erp/ErpLineList";
+import { ErpPurchasePayLines } from "@/components/erp/ErpPurchasePayLines";
 import { createErpPaymentOrder, updateErpPaymentOrder } from "@/app/actions/erp-billing";
 import { ErpPayMethodSelect } from "@/components/erp/ErpPayMethodSelect";
 import {
-  ERP_CHECK_MODE,
-  ERP_CHECK_ORDER,
-  ERP_CHECK_TYPE,
-  ERP_PAY_PURCHASE,
-  ERP_PAY_PURCHASE_STATUS,
+  ERP_CHECK_DEFERRED,
+  ERP_PAY,
+  ERP_PAY_STATUS,
   erpInputNumber,
+  erpPaymentOrderNumber,
   isoDate,
   isoDateOrEmpty,
   money,
-  selectOptions,
 } from "@/lib/erp";
 
 export const metadata = { title: productTitle("Órdenes de pago") };
@@ -31,12 +29,13 @@ export default async function ErpOrdenesPagoPage({
 }) {
   const { edit } = await searchParams;
   const now = new Date();
-  const [orders, vendors, invoices] = await Promise.all([
+  const chequeInclude = { saleReceipt: { select: { client: { select: { name: true } } } } } as const;
+  const [orders, vendors, invoices, pendingCheques] = await Promise.all([
     prisma.erpPaymentOrder.findMany({
       orderBy: { issuedAt: "desc" },
       include: {
         vendor: { select: { name: true } },
-        invoices: true,
+        invoices: { include: { invoice: { select: { docType: true, pos: true, number: true } } } },
         treasury: { orderBy: { createdAt: "asc" } },
       },
       take: 200,
@@ -47,8 +46,32 @@ export default async function ErpOrdenesPagoPage({
       include: { vendor: { select: { name: true } } },
       take: 100,
     }),
+    prisma.erpTreasuryPayment.findMany({
+      where: {
+        paymentKind: ERP_PAY.cheque,
+        saleReceiptId: { not: null },
+        checkOrder: { not: ERP_CHECK_DEFERRED },
+        estado: ERP_PAY_STATUS.pending,
+      },
+      include: chequeInclude,
+      orderBy: { number: "asc" },
+    }),
   ]);
   const current = orders.find((o) => o.id === edit);
+  const extraChequeIds = [
+    ...new Set(
+      (current?.treasury ?? [])
+        .map((p) => p.endorsedFromId)
+        .filter((id): id is string => Boolean(id) && !pendingCheques.some((c) => c.id === id)),
+    ),
+  ];
+  const extraCheques = extraChequeIds.length
+    ? await prisma.erpTreasuryPayment.findMany({
+        where: { id: { in: extraChequeIds } },
+        include: chequeInclude,
+      })
+    : [];
+  const cheques = [...extraCheques, ...pendingCheques];
   const selectedInvoices = new Set(current?.invoices.map((i) => i.invoiceId) ?? []);
 
   return (
@@ -58,7 +81,7 @@ export default async function ErpOrdenesPagoPage({
         eyebrow="Facturación"
         title="Órdenes de pago"
       />
-      <div className={cn(adminPageBody, "flex flex-col gap-3 pb-8")}>
+      <div className={cn(adminPageBody, "gap-3")}>
         <ErpForm
           action={current ? updateErpPaymentOrder : createErpPaymentOrder}
           cancelHref={current ? "/backoffice/facturacion/pagos" : undefined}
@@ -69,17 +92,23 @@ export default async function ErpOrdenesPagoPage({
         >
           {current ? <input name="id" type="hidden" value={current.id} /> : null}
           <ErpField htmlFor="vendorId" label="Proveedor">
-            <Select defaultValue={current?.vendorId} id="vendorId" name="vendorId" required>
-              <option value="">Seleccioná</option>
-              {vendors.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.name}
-                </option>
-              ))}
-            </Select>
+            <Autocomplete
+              defaultValue={current?.vendorId}
+              id="vendorId"
+              name="vendorId"
+              options={vendors.map((v) => ({ value: v.id, label: v.name }))}
+              placeholder="Buscar proveedor…"
+              required
+            />
           </ErpField>
           <ErpField htmlFor="number" label="Número">
-            <Input defaultValue={current?.number} id="number" name="number" required type="number" />
+            <Input
+              defaultValue={current ? Number(erpPaymentOrderNumber(current.id, current.number)) : undefined}
+              id="number"
+              name="number"
+              required
+              type="number"
+            />
           </ErpField>
           <ErpField htmlFor="issuedAt" label="Fecha">
             <Input defaultValue={isoDate(current?.issuedAt ?? now)} id="issuedAt" name="issuedAt" type="date" />
@@ -94,40 +123,38 @@ export default async function ErpOrdenesPagoPage({
             <ErpPayMethodSelect defaultValue={current?.notes} />
           </ErpField>
           <ErpField htmlFor="invoiceId" label="Facturas de compra" wide>
-            <select
-              className="nm-select min-h-24 w-full rounded-[var(--radius-md)] border border-border bg-background px-3 py-2 text-sm"
+            <Autocomplete
               defaultValue={[...selectedInvoices]}
+              emptyLabel="Sin facturas"
               id="invoiceId"
               multiple
               name="invoiceId"
-            >
-              {invoices.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.vendor.name} · {f.docType} {f.pos}-{f.number} · {money(Number(f.amount) + Number(f.vat))}
-                </option>
-              ))}
-            </select>
+              options={invoices.map((f) => ({
+                value: f.id,
+                label: `${f.vendor.name} · ${f.docType} ${f.pos}-${f.number} · ${money(Number(f.amount) + Number(f.vat))}`,
+              }))}
+              placeholder="Buscar factura…"
+            />
           </ErpField>
-          <ErpLineList
-            addLabel="Agregar pago"
-            fields={[
-              { name: "paymentKind", label: "Tipo pago", options: selectOptions(ERP_PAY_PURCHASE) },
-              { name: "number", label: "Número" },
-              { name: "issuedAt", label: "Fecha emisión", type: "date" },
-              { name: "paidAt", label: "Fecha de pago", type: "date" },
-              { name: "checkOrder", label: "Orden cheque", options: selectOptions(ERP_CHECK_ORDER) },
-              { name: "checkType", label: "Tipo cheque", options: selectOptions(ERP_CHECK_TYPE) },
-              { name: "checkMode", label: "Modo cheque", options: selectOptions(ERP_CHECK_MODE) },
-              { name: "amount", label: "Importe", type: "number" },
-              { name: "estado", label: "Estado", options: selectOptions(ERP_PAY_PURCHASE_STATUS) },
-            ]}
-            prefix="py"
+          <ErpPurchasePayLines
+            cheques={cheques.map((c) => ({
+              id: c.id,
+              number: c.number ?? "",
+              label: `${c.number ?? "s/n"} · ${money(c.amount)} · ${c.saleReceipt?.client.name ?? "Cliente"}`,
+              issuedAt: isoDateOrEmpty(c.issuedAt),
+              paidAt: isoDateOrEmpty(c.paidAt),
+              checkOrder: String(c.checkOrder),
+              checkType: String(c.checkType),
+              checkMode: String(c.checkMode),
+              amount: erpInputNumber(c.amount),
+            }))}
             rows={
               current?.treasury.map((p) => ({
                 id: p.id,
                 values: {
                   paymentKind: String(p.paymentKind),
                   number: p.number ?? "",
+                  endorsedFromId: p.endorsedFromId ?? "",
                   issuedAt: isoDateOrEmpty(p.issuedAt),
                   paidAt: isoDateOrEmpty(p.paidAt),
                   checkOrder: String(p.checkOrder),
@@ -135,10 +162,10 @@ export default async function ErpOrdenesPagoPage({
                   checkMode: String(p.checkMode),
                   amount: erpInputNumber(p.amount),
                   estado: String(p.estado),
+                  attachmentUrl: p.attachmentUrl ?? "",
                 },
               })) ?? []
             }
-            title="Pagos efectuados"
           />
         </ErpForm>
 
@@ -148,12 +175,13 @@ export default async function ErpOrdenesPagoPage({
           <PagosTable
             rows={orders.map((o) => ({
               id: o.id,
-              number: o.number,
+              number: erpPaymentOrderNumber(o.id, o.number),
               vendor: o.vendor.name,
               issuedAt: o.issuedAt,
               amount: Number(o.amount),
               notes: o.notes,
-              invoices: o.invoices.length,
+              payKinds: o.treasury.map((p) => p.paymentKind),
+              invoices: o.invoices.map((link) => link.invoice),
             }))}
           />
         )}

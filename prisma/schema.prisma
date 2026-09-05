@@ -979,11 +979,16 @@ model ErpTreasuryPayment {
   checkMode          Int                 @default(0)
   amount             Decimal             @db.Decimal(14, 2)
   estado             Int                 @default(0)
+  attachmentUrl      String?
+  endorsedFromId     String?
+  endorsedFrom       ErpTreasuryPayment?  @relation("TreasuryEndorsement", fields: [endorsedFromId], references: [id], onDelete: SetNull)
+  endorsements       ErpTreasuryPayment[] @relation("TreasuryEndorsement")
   createdAt          DateTime            @default(now())
 
   @@index([saleReceiptId])
   @@index([purchaseReceiptId])
   @@index([paymentOrderId])
+  @@index([endorsedFromId])
   @@index([paymentKind, estado])
 }
 

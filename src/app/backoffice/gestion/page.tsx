@@ -36,14 +36,14 @@ export default async function ErpGestionPage({
   const gananciaTotal = rows.reduce((sum, r) => sum + (r.ganancia ?? 0), 0);
 
   return (
-    <div className={cn(adminPage, "gap-4 overflow-hidden")}>
+    <div className={cn(adminPage)}>
       <PageHeader
         className="shrink-0"
         description="Misma planilla que el Excel GESTIÓN 2026: campaña, compra (IVA, IIBB, perc. IVA), producción, venta (retenciones) y ganancia bruta."
         eyebrow="Administración"
         title="Gestión"
       />
-      <div className={cn(adminPageBody, "flex min-h-0 flex-1 flex-col gap-3 overflow-hidden pb-2")}>
+      <div className={cn(adminPageBody, "gap-3")}>
         <form className="flex shrink-0 flex-wrap items-end gap-3" method="get">
           <label className="space-y-1 text-sm">
             <span className="text-muted-foreground">Mes</span>

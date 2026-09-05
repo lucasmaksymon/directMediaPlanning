@@ -1,4 +1,4 @@
-import { Select } from "@/components/ui";
+import { Autocomplete } from "@/components/ui";
 import { ERP_DOC_TYPES } from "@/lib/erp";
 
 const LABELS: Record<string, string> = {
@@ -13,13 +13,16 @@ export function ErpDocTypeSelect({ defaultValue }: { defaultValue?: string | nul
   const value = (defaultValue ?? "A").toUpperCase();
   const extra = value && !ERP_DOC_TYPES.includes(value as (typeof ERP_DOC_TYPES)[number]);
   return (
-    <Select defaultValue={value || "A"} id="docType" name="docType" required>
-      {ERP_DOC_TYPES.map((t) => (
-        <option key={t} value={t}>
-          {LABELS[t] ?? t}
-        </option>
-      ))}
-      {extra ? <option value={value}>{value}</option> : null}
-    </Select>
+    <Autocomplete
+      defaultValue={value || "A"}
+      id="docType"
+      name="docType"
+      options={[
+        ...ERP_DOC_TYPES.map((t) => ({ value: t, label: LABELS[t] ?? t })),
+        ...(extra ? [{ value, label: value }] : []),
+      ]}
+      placeholder="Buscar tipo…"
+      required
+    />
   );
 }

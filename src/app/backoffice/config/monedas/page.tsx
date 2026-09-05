@@ -33,7 +33,7 @@ export default async function ErpMonedasPage({
         eyebrow="Configuración"
         title="Monedas"
       />
-      <div className={cn(adminPageBody, "flex flex-col gap-3 pb-8")}>
+      <div className={cn(adminPageBody, "gap-3")}>
         <ErpForm
           action={current ? updateErpCurrency : createErpCurrency}
           cancelHref={current ? "/backoffice/config/monedas" : undefined}

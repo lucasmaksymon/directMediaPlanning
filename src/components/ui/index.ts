@@ -6,6 +6,7 @@ export { Input } from "@/components/ui/Input";
 export { Textarea } from "@/components/ui/Textarea";
 export { Label } from "@/components/ui/Label";
 export { Select } from "@/components/ui/Select";
+export { Autocomplete } from "@/components/ui/Autocomplete";
 export { Checkbox } from "@/components/ui/Checkbox";
 export { Radio } from "@/components/ui/Radio";
 export { Switch } from "@/components/ui/Switch";
@@ -19,7 +20,7 @@ export {
   CardContent,
   CardFooter,
 } from "@/components/ui/Card";
-export { Table, THead, TBody, TR, TH, TD } from "@/components/ui/Table";
+export { Table, THead, TBody, TFoot, TR, TH, TD } from "@/components/ui/Table";
 export { Modal, Drawer, Alert } from "@/components/ui/Overlay";
 export { ToastProvider, useToast } from "@/components/ui/Toast";
 export { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";

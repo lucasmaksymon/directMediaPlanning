@@ -512,7 +512,12 @@ async function main() {
       checkMode: int(p.modoCheque),
       amount: num(p.importe),
       estado: int(p.estado),
+      endorsedFromId: int(p.idPago) ? id("adm-pag", p.idPago) : null,
     });
+  }
+  const treasuryIds = new Set(treasury.map((row) => row.id));
+  for (const row of treasury) {
+    if (row.endorsedFromId && !treasuryIds.has(row.endorsedFromId)) row.endorsedFromId = null;
   }
   await createMany("pagos", (data) => prisma.erpTreasuryPayment.createMany({ data }), treasury);
 

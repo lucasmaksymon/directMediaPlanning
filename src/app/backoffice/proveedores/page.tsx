@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
+import { Autocomplete, EmptyState, Input, PageHeader, Select } from "@/components/ui";
 import { ProveedoresTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
@@ -33,7 +33,7 @@ export default async function ErpProveedoresPage({
         eyebrow="Administración"
         title="Proveedores"
       />
-      <div className={cn(adminPageBody, "flex flex-col gap-3 pb-8")}>
+      <div className={cn(adminPageBody, "gap-3")}>
         <ErpForm
           action={current ? updateErpVendor : createErpVendor}
           cancelHref={current ? "/backoffice/proveedores" : undefined}
@@ -80,14 +80,14 @@ export default async function ErpProveedoresPage({
             <Input defaultValue={current?.phone ?? ""} id="phone" name="phone" />
           </ErpField>
           <ErpField htmlFor="nextmediaProviderId" label="Medio en la plataforma">
-            <Select defaultValue={current?.nextmediaProviderId ?? ""} id="nextmediaProviderId" name="nextmediaProviderId">
-              <option value="">Sin vínculo</option>
-              {platform.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.companyName}
-                </option>
-              ))}
-            </Select>
+            <Autocomplete
+              defaultValue={current?.nextmediaProviderId ?? ""}
+              emptyLabel="Sin vínculo"
+              id="nextmediaProviderId"
+              name="nextmediaProviderId"
+              options={platform.map((p) => ({ value: p.id, label: p.companyName }))}
+              placeholder="Buscar medio…"
+            />
           </ErpField>
           <ErpField htmlFor="address" label="Dirección" wide>
             <Input defaultValue={current?.address ?? ""} id="address" name="address" />

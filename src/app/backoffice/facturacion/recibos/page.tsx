@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
+import { Autocomplete, EmptyState, Input, PageHeader } from "@/components/ui";
 import { RecibosTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
@@ -35,7 +35,7 @@ export default async function ErpRecibosPage({
       orderBy: { issuedAt: "desc" },
       include: {
         client: { select: { name: true } },
-        invoices: true,
+        invoices: { include: { invoice: { select: { docType: true, pos: true, number: true } } } },
         payments: { orderBy: { createdAt: "asc" } },
       },
       take: 200,
@@ -57,7 +57,7 @@ export default async function ErpRecibosPage({
         eyebrow="Facturación"
         title="Recibos de venta"
       />
-      <div className={cn(adminPageBody, "flex flex-col gap-3 pb-8")}>
+      <div className={cn(adminPageBody, "gap-3")}>
         <ErpForm
           action={current ? updateErpSaleReceipt : createErpSaleReceipt}
           cancelHref={current ? "/backoffice/facturacion/recibos" : undefined}
@@ -68,14 +68,14 @@ export default async function ErpRecibosPage({
         >
           {current ? <input name="id" type="hidden" value={current.id} /> : null}
           <ErpField htmlFor="clientId" label="Cliente">
-            <Select defaultValue={current?.clientId} id="clientId" name="clientId" required>
-              <option value="">Seleccioná</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
+            <Autocomplete
+              defaultValue={current?.clientId}
+              id="clientId"
+              name="clientId"
+              options={clients.map((c) => ({ value: c.id, label: c.name }))}
+              placeholder="Buscar cliente…"
+              required
+            />
           </ErpField>
           <ErpField htmlFor="number" label="Número">
             <Input defaultValue={current?.number} id="number" name="number" required type="number" />
@@ -90,19 +90,18 @@ export default async function ErpRecibosPage({
             <Input defaultValue={erpInputNumber(current?.balance)} id="balance" name="balance" />
           </ErpField>
           <ErpField htmlFor="invoiceId" label="Facturas" wide>
-            <select
-              className="nm-select min-h-24 w-full rounded-[var(--radius-md)] border border-border bg-background px-3 py-2 text-sm"
+            <Autocomplete
               defaultValue={[...selectedInvoices]}
+              emptyLabel="Sin facturas"
               id="invoiceId"
               multiple
               name="invoiceId"
-            >
-              {invoices.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.client.name} · {f.docType} {f.pos}-{f.number} · {money(Number(f.amount) + Number(f.vat))}
-                </option>
-              ))}
-            </select>
+              options={invoices.map((f) => ({
+                value: f.id,
+                label: `${f.client.name} · ${f.docType} ${f.pos}-${f.number} · ${money(Number(f.amount) + Number(f.vat))}`,
+              }))}
+              placeholder="Buscar factura…"
+            />
           </ErpField>
           <ErpLineList
             addLabel="Agregar pago"
@@ -116,6 +115,7 @@ export default async function ErpRecibosPage({
               { name: "checkMode", label: "Modo cheque", options: selectOptions(ERP_CHECK_MODE) },
               { name: "amount", label: "Importe", type: "number" },
               { name: "estado", label: "Estado", options: selectOptions(ERP_PAY_SALE_STATUS) },
+              { name: "attachmentUrl", label: "Recibo de pago", type: "file", wide: true },
             ]}
             prefix="py"
             rows={
@@ -131,6 +131,7 @@ export default async function ErpRecibosPage({
                   checkMode: String(p.checkMode),
                   amount: erpInputNumber(p.amount),
                   estado: String(p.estado),
+                  attachmentUrl: p.attachmentUrl ?? "",
                 },
               })) ?? []
             }
@@ -149,7 +150,8 @@ export default async function ErpRecibosPage({
               issuedAt: r.issuedAt,
               amount: Number(r.amount),
               balance: Number(r.balance),
-              invoices: r.invoices.length,
+              payKinds: r.payments.map((p) => p.paymentKind),
+              invoices: r.invoices.map((link) => link.invoice),
             }))}
           />
         )}

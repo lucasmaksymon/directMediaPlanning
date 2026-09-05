@@ -28,7 +28,7 @@ export default async function ErpInformePage({
         eyebrow="Administración"
         title="Informe mensual"
       />
-      <div className={cn(adminPageBody, "flex flex-col gap-4 pb-8")}>
+      <div className={cn(adminPageBody, "gap-4")}>
         <form className="flex flex-wrap items-end gap-3" method="get">
           <label className="space-y-1.5 text-sm">
             <span className="text-muted-foreground">Mes</span>

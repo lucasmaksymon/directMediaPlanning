@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
+import { Autocomplete, EmptyState, Input, PageHeader, Select } from "@/components/ui";
 import { ClientesTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
@@ -38,7 +38,7 @@ export default async function ErpClientesPage({
         eyebrow="Administración"
         title="Clientes"
       />
-      <div className={cn(adminPageBody, "flex flex-col gap-3 pb-8")}>
+      <div className={cn(adminPageBody, "gap-3")}>
         <ErpForm
           action={current ? updateErpClient : createErpClient}
           cancelHref={current ? "/backoffice/clientes" : undefined}
@@ -52,24 +52,24 @@ export default async function ErpClientesPage({
             <Input defaultValue={current?.name} id="name" name="name" required />
           </ErpField>
           <ErpField htmlFor="companyId" label="Empresa">
-            <Select defaultValue={current?.companyId} id="companyId" name="companyId" required>
-              <option value="">Seleccioná</option>
-              {companies.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
+            <Autocomplete
+              defaultValue={current?.companyId}
+              id="companyId"
+              name="companyId"
+              options={companies.map((c) => ({ value: c.id, label: c.name }))}
+              placeholder="Buscar empresa…"
+              required
+            />
           </ErpField>
           <ErpField htmlFor="executiveUserId" label="Ejecutivo">
-            <Select defaultValue={current?.executiveUserId ?? ""} id="executiveUserId" name="executiveUserId">
-              <option value="">Sin asignar</option>
-              {executives.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.email}
-                </option>
-              ))}
-            </Select>
+            <Autocomplete
+              defaultValue={current?.executiveUserId ?? ""}
+              emptyLabel="Sin asignar"
+              id="executiveUserId"
+              name="executiveUserId"
+              options={executives.map((u) => ({ value: u.id, label: u.email }))}
+              placeholder="Buscar ejecutivo…"
+            />
           </ErpField>
           <ErpField htmlFor="taxId" label="CUIT">
             <Input defaultValue={current?.taxId ?? ""} id="taxId" name="taxId" />
