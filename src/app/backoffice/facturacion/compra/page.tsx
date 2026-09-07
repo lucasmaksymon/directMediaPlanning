@@ -2,14 +2,13 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { Autocomplete, EmptyState, Input, PageHeader, Select } from "@/components/ui";
+import { EmptyState, PageHeader } from "@/components/ui";
 import { FacturasCompraTable } from "@/components/erp/erp-standard-tables";
-import { ErpAttach } from "@/components/erp/ErpAttach";
 import { ErpForm } from "@/components/erp/ErpForm";
-import { ErpField } from "@/components/erp/ErpField";
 import { createErpPurchaseInvoice, updateErpPurchaseInvoice } from "@/app/actions/erp-billing";
-import { ErpDocTypeSelect } from "@/components/erp/ErpDocTypeSelect";
-import { ERP_ORDER, ERP_SETTLE, erpInputNumber, erpPurchaseInvoiceTotal, isoDate } from "@/lib/erp";
+import { ErpPurchaseInvoiceFormFields } from "@/components/erp/ocr/ErpPurchaseInvoiceFormFields";
+import { ErpOcrImportClient } from "@/components/erp/ocr/ErpOcrImportClient";
+import { ERP_ORDER, erpInputNumber, erpPurchaseInvoiceTotal, isoDate, money } from "@/lib/erp";
 
 export const metadata = { title: productTitle("Facturas de compra") };
 
@@ -32,36 +31,33 @@ export default async function ErpFacturasCompraPage({
     }),
     prisma.erpVendor.findMany({ where: { estado: 1 }, orderBy: { name: "asc" } }),
     prisma.erpPurchaseOrder.findMany({
-      where: { estado: ERP_ORDER.issued },
+      where: { estado: { in: [ERP_ORDER.issued, ERP_ORDER.invoiced] } },
       include: { vendor: { select: { name: true } } },
     }),
     prisma.erpProductionOrder.findMany({
-      where: { estado: ERP_ORDER.issued },
+      where: { estado: { in: [ERP_ORDER.issued, ERP_ORDER.invoiced] } },
       include: { vendor: { select: { name: true } } },
     }),
   ]);
   const current = invoices.find((f) => f.id === edit);
   const currentOrderId = current?.orderLinks[0]?.purchaseOrderId ?? current?.orderLinks[0]?.productionOrderId ?? "";
-  const openOrders = [
-    ...purchaseOrders.map((o) => ({ id: o.id, label: `Compra ${o.number} · ${o.vendor.name}` })),
-    ...productionOrders.map((o) => ({ id: o.id, label: `Producción ${o.number} · ${o.vendor.name}` })),
+  const allOrders = [
+    ...purchaseOrders.map((o) => ({
+      id: o.id,
+      estado: o.estado,
+      label: `Compra ${o.number} · ${o.vendor.name}`,
+      batchLabel: `Compra ${o.number} · ${o.vendor.name} · ${money(o.amount)}`,
+    })),
+    ...productionOrders.map((o) => ({
+      id: o.id,
+      estado: o.estado,
+      label: `Producción ${o.number} · ${o.vendor.name}`,
+      batchLabel: `Producción ${o.number} · ${o.vendor.name} · ${money(o.amount)}`,
+    })),
   ];
-  if (current && currentOrderId && !openOrders.some((o) => o.id === currentOrderId)) {
-    const link = current.orderLinks[0];
-    if (link?.purchaseOrderId) {
-      const extra = await prisma.erpPurchaseOrder.findUnique({
-        where: { id: link.purchaseOrderId },
-        include: { vendor: { select: { name: true } } },
-      });
-      if (extra) openOrders.unshift({ id: extra.id, label: `Compra ${extra.number} · ${extra.vendor.name}` });
-    } else if (link?.productionOrderId) {
-      const extra = await prisma.erpProductionOrder.findUnique({
-        where: { id: link.productionOrderId },
-        include: { vendor: { select: { name: true } } },
-      });
-      if (extra) openOrders.unshift({ id: extra.id, label: `Producción ${extra.number} · ${extra.vendor.name}` });
-    }
-  }
+  const openOrders = allOrders.filter(
+    (o) => o.estado === ERP_ORDER.issued || o.id === currentOrderId,
+  );
 
   return (
     <div className={cn(adminPage, "gap-4")}>
@@ -79,83 +75,48 @@ export default async function ErpFacturasCompraPage({
           submitLabel={current ? "Guardar cambios" : "Guardar"}
           title={current ? "Editar factura de compra" : "Nueva factura de compra"}
         >
-          {current ? <input name="id" type="hidden" value={current.id} /> : null}
-          <input name="isVatPurchase" type="hidden" value="0" />
-          <ErpField htmlFor="vendorId" label="Proveedor">
-            <Autocomplete
-              defaultValue={current?.vendorId}
-              id="vendorId"
-              name="vendorId"
-              options={vendors.map((v) => ({ value: v.id, label: v.name }))}
-              placeholder="Buscar proveedor…"
-              required
-            />
-          </ErpField>
-          <ErpField htmlFor="orderId" label="Orden emitida">
-            <Autocomplete
-              defaultValue={currentOrderId}
-              id="orderId"
-              name="orderId"
-              options={openOrders.map((o) => ({ value: o.id, label: o.label }))}
-              placeholder="Buscar orden…"
-              required
-            />
-          </ErpField>
-          <ErpField htmlFor="issuedAt" label="Fecha">
-            <Input defaultValue={isoDate(current?.issuedAt ?? now)} id="issuedAt" name="issuedAt" type="date" />
-          </ErpField>
-          <ErpField htmlFor="docType" label="Tipo">
-            <ErpDocTypeSelect defaultValue={current?.docType} />
-          </ErpField>
-          <ErpField htmlFor="pos" label="Punto">
-            <Input defaultValue={current?.pos ?? 1} id="pos" name="pos" type="number" />
-          </ErpField>
-          <ErpField htmlFor="number" label="Número">
-            <Input defaultValue={current?.number} id="number" name="number" required type="number" />
-          </ErpField>
-          <ErpField htmlFor="amount" label="Importe">
-            <Input defaultValue={erpInputNumber(current?.amount)} id="amount" name="amount" />
-          </ErpField>
-          <ErpField htmlFor="vat" label="IVA">
-            <Input defaultValue={erpInputNumber(current?.vat)} id="vat" name="vat" />
-          </ErpField>
-          <ErpField htmlFor="vatWithholding" label="Ret. IVA">
-            <Input defaultValue={erpInputNumber(current?.vatWithholding)} id="vatWithholding" name="vatWithholding" />
-          </ErpField>
-          <ErpField htmlFor="iibbCaba" label="Ret. IIBB CABA">
-            <Input defaultValue={erpInputNumber(current?.iibbCaba)} id="iibbCaba" name="iibbCaba" />
-          </ErpField>
-          <ErpField htmlFor="iibbBsAs" label="Ret. IIBB Bs.As.">
-            <Input defaultValue={erpInputNumber(current?.iibbBsAs)} id="iibbBsAs" name="iibbBsAs" />
-          </ErpField>
-          <ErpField htmlFor="internalTax" label="Imp. interno">
-            <Input defaultValue={erpInputNumber(current?.internalTax)} id="internalTax" name="internalTax" />
-          </ErpField>
-          <ErpField htmlFor="nonTaxable" label="No gravado">
-            <Input defaultValue={erpInputNumber(current?.nonTaxable)} id="nonTaxable" name="nonTaxable" />
-          </ErpField>
-          <ErpField htmlFor="diegoFee" label="Com. Diego">
-            <Input defaultValue={erpInputNumber(current?.diegoFee)} id="diegoFee" name="diegoFee" />
-          </ErpField>
-          <ErpField htmlFor="isCreditNote" label="Tipo de comprobante">
-            <Select defaultValue={current?.isCreditNote ? "1" : "0"} id="isCreditNote" name="isCreditNote">
-              <option value="0">Factura</option>
-              <option value="1">Nota de crédito</option>
-            </Select>
-          </ErpField>
-          <ErpField htmlFor="payStatus" label="Pago">
-            <Select defaultValue={String(current?.payStatus ?? 0)} id="payStatus" name="payStatus">
-              <option value={ERP_SETTLE.pending}>Pendiente</option>
-              <option value={ERP_SETTLE.paid}>Pagado</option>
-            </Select>
-          </ErpField>
-          <ErpField htmlFor="attachmentUrl" label="Adjunto (scan o URL)" wide>
-            <ErpAttach defaultValue={current?.attachmentUrl} name="attachmentUrl" />
-          </ErpField>
+          <ErpPurchaseInvoiceFormFields
+            allowOcr={!current}
+            current={
+              current
+                ? {
+                    id: current.id,
+                    vendorId: current.vendorId,
+                    orderId: currentOrderId,
+                    issuedAt: isoDate(current.issuedAt),
+                    docType: current.docType,
+                    pos: current.pos,
+                    number: current.number,
+                    amount: erpInputNumber(current.amount),
+                    vat: erpInputNumber(current.vat),
+                    vatWithholding: erpInputNumber(current.vatWithholding),
+                    iibbCaba: erpInputNumber(current.iibbCaba),
+                    iibbBsAs: erpInputNumber(current.iibbBsAs),
+                    internalTax: erpInputNumber(current.internalTax),
+                    nonTaxable: erpInputNumber(current.nonTaxable),
+                    diegoFee: erpInputNumber(current.diegoFee),
+                    isCreditNote: current.isCreditNote,
+                    payStatus: current.payStatus,
+                    attachmentUrl: current.attachmentUrl,
+                  }
+                : null
+            }
+            now={isoDate(now)}
+            orders={openOrders.map((o) => ({ value: o.id, label: o.label }))}
+            vendors={vendors.map((v) => ({ value: v.id, label: v.name }))}
+          />
         </ErpForm>
+        <ErpOcrImportClient
+          kind="purchase_invoice"
+          purchaseOrders={allOrders.map((o) => ({ value: o.id, label: o.batchLabel }))}
+          vendors={vendors.map((v) => ({ value: v.id, label: v.name }))}
+        />
 
         {invoices.length === 0 ? (
-          <EmptyState description="No hay facturas de compra." title="Sin facturas" />
+          <div className="contents">
+            <div className="flex justify-end gap-2" data-erp-page-toolbar />
+            <EmptyState description="No hay facturas de compra." title="Sin facturas" />
+          </div>
         ) : (
           <FacturasCompraTable
             rows={invoices.map((f) => ({

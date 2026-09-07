@@ -40,6 +40,9 @@ prisma/migrations/**/migration_lock.toml
 /data/admin-2026.json
 /data/admin-sql/
 
+# adjuntos OCR / ERP locales
+/uploads/
+
 # IDE
 .idea
 .vscode

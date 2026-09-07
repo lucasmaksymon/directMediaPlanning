@@ -8,7 +8,7 @@ import { ERP_HUB_MODULES } from "@/lib/erp-modules";
 export const metadata = { title: productTitle("Facturación") };
 
 export default function ErpFacturacionHubPage() {
-  const mod = ERP_HUB_MODULES[1];
+  const mod = ERP_HUB_MODULES[2];
   return (
     <div className={cn(adminPage, "gap-4")}>
       <PageHeader eyebrow="Administración" title={mod.title} />

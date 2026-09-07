@@ -2,15 +2,13 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
+import { EmptyState, PageHeader } from "@/components/ui";
 import { FacturasVentaTable } from "@/components/erp/erp-standard-tables";
-import { ErpAttach } from "@/components/erp/ErpAttach";
 import { ErpForm } from "@/components/erp/ErpForm";
-import { ErpField } from "@/components/erp/ErpField";
 import { createErpSaleInvoice, updateErpSaleInvoice } from "@/app/actions/erp-billing";
-import { ErpDocTypeSelect } from "@/components/erp/ErpDocTypeSelect";
-import { ErpSaleInvoiceLinks } from "@/components/erp/ErpSaleInvoiceLinks";
-import { ERP_COLLECT, ERP_ORDER, erpInputNumber, erpReceiptRef, isoDate, money } from "@/lib/erp";
+import { ErpSaleInvoiceFormFields } from "@/components/erp/ocr/ErpSaleInvoiceFormFields";
+import { ErpOcrImportClient } from "@/components/erp/ocr/ErpOcrImportClient";
+import { ERP_ORDER, erpInputNumber, erpReceiptRef, isoDate, money } from "@/lib/erp";
 
 export const metadata = { title: productTitle("Facturas de venta") };
 
@@ -21,14 +19,14 @@ export default async function ErpFacturasVentaPage({
 }) {
   const { edit } = await searchParams;
   const now = new Date();
-  const [invoices, openOrders, receipts] = await Promise.all([
+  const [invoices, allOrders, receipts] = await Promise.all([
     prisma.erpSaleInvoice.findMany({
       orderBy: { issuedAt: "desc" },
       include: { client: { select: { name: true } }, saleOrder: { select: { number: true, client: { select: { name: true } } } } },
       take: 200,
     }),
     prisma.erpSaleOrder.findMany({
-      where: { estado: ERP_ORDER.issued },
+      where: { estado: { in: [ERP_ORDER.issued, ERP_ORDER.invoiced] } },
       orderBy: { issuedAt: "desc" },
       include: { client: { select: { name: true, legalName: true } } },
     }),
@@ -39,14 +37,9 @@ export default async function ErpFacturasVentaPage({
     }),
   ]);
   const current = invoices.find((f) => f.id === edit);
-  const orderOptions = [...openOrders];
-  if (current && !orderOptions.some((o) => o.id === current.saleOrderId)) {
-    const extra = await prisma.erpSaleOrder.findUnique({
-      where: { id: current.saleOrderId },
-      include: { client: { select: { name: true, legalName: true } } },
-    });
-    if (extra) orderOptions.unshift(extra);
-  }
+  const orderOptions = allOrders.filter(
+    (o) => o.estado === ERP_ORDER.issued || o.id === current?.saleOrderId,
+  );
 
   return (
     <div className={cn(adminPage, "gap-4")}>
@@ -64,13 +57,35 @@ export default async function ErpFacturasVentaPage({
           submitLabel={current ? "Guardar cambios" : "Guardar"}
           title={current ? "Editar factura de venta" : "Nueva factura de venta"}
         >
-          {current ? <input name="id" type="hidden" value={current.id} /> : null}
-          <ErpSaleInvoiceLinks
-            defaultAmount={current ? Number(current.amount) : undefined}
-            defaultLegalName={current?.legalName}
-            defaultOrderId={current?.saleOrderId}
-            defaultReceiptRef={current?.receiptRef}
-            defaultVat={current ? Number(current.vat) : undefined}
+          <ErpSaleInvoiceFormFields
+            allowOcr={!current}
+            current={
+              current
+                ? {
+                    id: current.id,
+                    saleOrderId: current.saleOrderId,
+                    legalName: current.legalName,
+                    receiptRef: current.receiptRef,
+                    amount: erpInputNumber(current.amount),
+                    vat: erpInputNumber(current.vat),
+                    issuedAt: isoDate(current.issuedAt),
+                    docType: current.docType,
+                    pos: current.pos,
+                    number: current.number,
+                    detail: current.detail,
+                    collectStatus: current.collectStatus,
+                    collected: erpInputNumber(current.collected),
+                    echeq: erpInputNumber(current.echeq),
+                    bank: erpInputNumber(current.bank),
+                    attachmentUrl: current.attachmentUrl,
+                    retGan: erpInputNumber(current.retGan),
+                    retVat: erpInputNumber(current.retVat),
+                    retSuss: erpInputNumber(current.retSuss),
+                    retIibb: erpInputNumber(current.retIibb),
+                  }
+                : null
+            }
+            now={isoDate(now)}
             orders={orderOptions.map((o) => ({
               id: o.id,
               label: `${o.number} · ${o.client.name} · ${money(o.amount)}`,
@@ -85,55 +100,20 @@ export default async function ErpFacturasVentaPage({
               label: `${erpReceiptRef(r.number)} · ${r.client.name} · ${money(r.amount)}`,
             }))}
           />
-          <ErpField htmlFor="issuedAt" label="Fecha">
-            <Input defaultValue={isoDate(current?.issuedAt ?? now)} id="issuedAt" name="issuedAt" type="date" />
-          </ErpField>
-          <ErpField htmlFor="docType" label="Tipo">
-            <ErpDocTypeSelect defaultValue={current?.docType} />
-          </ErpField>
-          <ErpField htmlFor="pos" label="Punto">
-            <Input defaultValue={current?.pos ?? 1} id="pos" name="pos" type="number" />
-          </ErpField>
-          <ErpField htmlFor="number" label="Número">
-            <Input defaultValue={current?.number} id="number" name="number" required type="number" />
-          </ErpField>
-          <ErpField htmlFor="detail" label="Detalle">
-            <Input defaultValue={current?.detail ?? ""} id="detail" name="detail" />
-          </ErpField>
-          <ErpField htmlFor="collectStatus" label="Cobro">
-            <Select defaultValue={String(current?.collectStatus ?? 0)} id="collectStatus" name="collectStatus">
-              <option value={ERP_COLLECT.pending}>Pendiente</option>
-              <option value={ERP_COLLECT.collected}>Cobrado</option>
-            </Select>
-          </ErpField>
-          <ErpField htmlFor="collected" label="Cobrado">
-            <Input defaultValue={erpInputNumber(current?.collected)} id="collected" name="collected" />
-          </ErpField>
-          <ErpField htmlFor="echeq" label="E-cheq">
-            <Input defaultValue={erpInputNumber(current?.echeq)} id="echeq" name="echeq" />
-          </ErpField>
-          <ErpField htmlFor="bank" label="Banco / transfer">
-            <Input defaultValue={erpInputNumber(current?.bank)} id="bank" name="bank" />
-          </ErpField>
-          <ErpField htmlFor="attachmentUrl" label="Adjunto (scan o URL)" wide>
-            <ErpAttach defaultValue={current?.attachmentUrl} name="attachmentUrl" />
-          </ErpField>
-          <ErpField htmlFor="retGan" label="Ret. gan.">
-            <Input defaultValue={erpInputNumber(current?.retGan)} id="retGan" name="retGan" />
-          </ErpField>
-          <ErpField htmlFor="retVat" label="Ret. IVA">
-            <Input defaultValue={erpInputNumber(current?.retVat)} id="retVat" name="retVat" />
-          </ErpField>
-          <ErpField htmlFor="retSuss" label="Ret. SUSS">
-            <Input defaultValue={erpInputNumber(current?.retSuss)} id="retSuss" name="retSuss" />
-          </ErpField>
-          <ErpField htmlFor="retIibb" label="Ret. IIBB">
-            <Input defaultValue={erpInputNumber(current?.retIibb)} id="retIibb" name="retIibb" />
-          </ErpField>
         </ErpForm>
+        <ErpOcrImportClient
+          kind="sale_invoice"
+          saleOrders={allOrders.map((o) => ({
+            value: o.id,
+            label: `${o.number} · ${o.client.name} · ${money(o.amount)}`,
+          }))}
+        />
 
         {invoices.length === 0 ? (
-          <EmptyState description="No hay facturas de venta." title="Sin facturas" />
+          <div className="contents">
+            <div className="flex justify-end gap-2" data-erp-page-toolbar />
+            <EmptyState description="No hay facturas de venta." title="Sin facturas" />
+          </div>
         ) : (
           <FacturasVentaTable
             rows={invoices.map((f) => ({

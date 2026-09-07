@@ -446,6 +446,7 @@ export async function createErpSaleReceipt(formData: FormData): Promise<Result> 
         number: parseIntField(formData.get("number")),
         amount: parseMoney(formData.get("amount")),
         balance: parseMoney(formData.get("balance")),
+        attachmentUrl: String(formData.get("attachmentUrl") ?? "").trim() || null,
         invoices: { create: invoiceIds.map((invoiceId) => ({ invoiceId })) },
         payments: payments.length ? { create: payments } : undefined,
       },
@@ -475,6 +476,7 @@ export async function updateErpSaleReceipt(formData: FormData): Promise<Result> 
           number: parseIntField(formData.get("number")),
           amount: parseMoney(formData.get("amount")),
           balance: parseMoney(formData.get("balance")),
+          attachmentUrl: String(formData.get("attachmentUrl") ?? "").trim() || null,
         },
       });
       await tx.erpSaleReceiptInvoice.deleteMany({ where: { receiptId: id } });

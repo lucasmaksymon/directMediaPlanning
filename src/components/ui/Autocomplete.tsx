@@ -251,7 +251,7 @@ export function Autocomplete(props: AutocompleteProps) {
           autoComplete="off"
           className={cn(
             fieldBase,
-            "nm-autocomplete-input pr-16",
+            "nm-autocomplete-input !px-3.5 !pr-16 truncate",
             compact && "min-h-8 py-1.5 text-xs",
             invalid && "border-error focus:border-error focus:ring-[var(--error-subtle)]",
           )}
@@ -289,7 +289,7 @@ export function Autocomplete(props: AutocompleteProps) {
           type="text"
           value={display}
         />
-        <div className="pointer-events-none absolute inset-y-0 right-1.5 flex items-center gap-0.5">
+        <div className="pointer-events-none absolute inset-y-px right-px flex items-center gap-0.5 rounded-r-[var(--radius-input)] bg-[var(--input-bg)] pl-1 pr-1.5">
           {hasValue && !disabled ? (
             <button
               className="pointer-events-auto rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"

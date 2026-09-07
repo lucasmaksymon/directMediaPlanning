@@ -891,6 +891,7 @@ model ErpSaleReceipt {
   amount        Decimal  @db.Decimal(14, 2)
   balance       Decimal  @db.Decimal(14, 2)
   attachmentExt String?
+  attachmentUrl String?
   createdAt     DateTime @default(now())
   invoices      ErpSaleReceiptInvoice[]
   payments      ErpTreasuryPayment[]

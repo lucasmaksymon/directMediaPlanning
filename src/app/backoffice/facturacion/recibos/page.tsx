@@ -2,24 +2,13 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { Autocomplete, EmptyState, Input, PageHeader } from "@/components/ui";
+import { EmptyState, PageHeader } from "@/components/ui";
 import { RecibosTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
-import { ErpField } from "@/components/erp/ErpField";
-import { ErpLineList } from "@/components/erp/ErpLineList";
 import { createErpSaleReceipt, updateErpSaleReceipt } from "@/app/actions/erp-billing";
-import {
-  ERP_CHECK_MODE,
-  ERP_CHECK_ORDER,
-  ERP_CHECK_TYPE,
-  ERP_PAY_SALE,
-  ERP_PAY_SALE_STATUS,
-  erpInputNumber,
-  isoDate,
-  isoDateOrEmpty,
-  money,
-  selectOptions,
-} from "@/lib/erp";
+import { ErpSaleReceiptFormFields } from "@/components/erp/ocr/ErpSaleReceiptFormFields";
+import { ErpOcrImportClient } from "@/components/erp/ocr/ErpOcrImportClient";
+import { erpInputNumber, isoDate, isoDateOrEmpty, money } from "@/lib/erp";
 
 export const metadata = { title: productTitle("Recibos de venta") };
 
@@ -66,81 +55,59 @@ export default async function ErpRecibosPage({
           submitLabel={current ? "Guardar cambios" : "Guardar"}
           title={current ? "Editar recibo" : "Nuevo recibo"}
         >
-          {current ? <input name="id" type="hidden" value={current.id} /> : null}
-          <ErpField htmlFor="clientId" label="Cliente">
-            <Autocomplete
-              defaultValue={current?.clientId}
-              id="clientId"
-              name="clientId"
-              options={clients.map((c) => ({ value: c.id, label: c.name }))}
-              placeholder="Buscar cliente…"
-              required
-            />
-          </ErpField>
-          <ErpField htmlFor="number" label="Número">
-            <Input defaultValue={current?.number} id="number" name="number" required type="number" />
-          </ErpField>
-          <ErpField htmlFor="issuedAt" label="Fecha">
-            <Input defaultValue={isoDate(current?.issuedAt ?? now)} id="issuedAt" name="issuedAt" type="date" />
-          </ErpField>
-          <ErpField htmlFor="amount" label="Importe">
-            <Input defaultValue={erpInputNumber(current?.amount)} id="amount" name="amount" />
-          </ErpField>
-          <ErpField htmlFor="balance" label="Saldo">
-            <Input defaultValue={erpInputNumber(current?.balance)} id="balance" name="balance" />
-          </ErpField>
-          <ErpField htmlFor="invoiceId" label="Facturas" wide>
-            <Autocomplete
-              defaultValue={[...selectedInvoices]}
-              emptyLabel="Sin facturas"
-              id="invoiceId"
-              multiple
-              name="invoiceId"
-              options={invoices.map((f) => ({
-                value: f.id,
-                label: `${f.client.name} · ${f.docType} ${f.pos}-${f.number} · ${money(Number(f.amount) + Number(f.vat))}`,
-              }))}
-              placeholder="Buscar factura…"
-            />
-          </ErpField>
-          <ErpLineList
-            addLabel="Agregar pago"
-            fields={[
-              { name: "paymentKind", label: "Tipo pago", options: selectOptions(ERP_PAY_SALE) },
-              { name: "number", label: "Número" },
-              { name: "issuedAt", label: "Fecha emisión", type: "date" },
-              { name: "paidAt", label: "Fecha de pago", type: "date" },
-              { name: "checkOrder", label: "Orden cheque", options: selectOptions(ERP_CHECK_ORDER) },
-              { name: "checkType", label: "Tipo cheque", options: selectOptions(ERP_CHECK_TYPE) },
-              { name: "checkMode", label: "Modo cheque", options: selectOptions(ERP_CHECK_MODE) },
-              { name: "amount", label: "Importe", type: "number" },
-              { name: "estado", label: "Estado", options: selectOptions(ERP_PAY_SALE_STATUS) },
-              { name: "attachmentUrl", label: "Recibo de pago", type: "file", wide: true },
-            ]}
-            prefix="py"
-            rows={
-              current?.payments.map((p) => ({
-                id: p.id,
-                values: {
-                  paymentKind: String(p.paymentKind),
-                  number: p.number ?? "",
-                  issuedAt: isoDateOrEmpty(p.issuedAt),
-                  paidAt: isoDateOrEmpty(p.paidAt),
-                  checkOrder: String(p.checkOrder),
-                  checkType: String(p.checkType),
-                  checkMode: String(p.checkMode),
-                  amount: erpInputNumber(p.amount),
-                  estado: String(p.estado),
-                  attachmentUrl: p.attachmentUrl ?? "",
-                },
-              })) ?? []
+          <ErpSaleReceiptFormFields
+            allowOcr={!current}
+            clients={clients.map((c) => ({ value: c.id, label: c.name }))}
+            current={
+              current
+                ? {
+                    id: current.id,
+                    clientId: current.clientId,
+                    number: current.number,
+                    issuedAt: isoDate(current.issuedAt),
+                    amount: erpInputNumber(current.amount),
+                    balance: erpInputNumber(current.balance),
+                    attachmentUrl: current.attachmentUrl,
+                    invoiceIds: [...selectedInvoices],
+                    payments: current.payments.map((p) => ({
+                      id: p.id,
+                      values: {
+                        paymentKind: String(p.paymentKind),
+                        number: p.number ?? "",
+                        issuedAt: isoDateOrEmpty(p.issuedAt),
+                        paidAt: isoDateOrEmpty(p.paidAt),
+                        checkOrder: String(p.checkOrder),
+                        checkType: String(p.checkType),
+                        checkMode: String(p.checkMode),
+                        amount: erpInputNumber(p.amount),
+                        estado: String(p.estado),
+                        attachmentUrl: p.attachmentUrl ?? "",
+                      },
+                    })),
+                  }
+                : null
             }
-            title="Pagos recibidos"
+            invoices={invoices.map((f) => ({
+              value: f.id,
+              label: `${f.client.name} · ${f.docType} ${f.pos}-${f.number} · ${money(Number(f.amount) + Number(f.vat))}`,
+            }))}
+            now={isoDate(now)}
           />
         </ErpForm>
+        <ErpOcrImportClient
+          clients={clients.map((c) => ({ value: c.id, label: c.name }))}
+          invoices={invoices.map((f) => ({
+            value: f.id,
+            label: `${f.client.name} · ${f.docType} ${f.pos}-${f.number} · ${money(Number(f.amount) + Number(f.vat))}`,
+          }))}
+          kind="sale_receipt"
+        />
 
         {receipts.length === 0 ? (
-          <EmptyState description="No hay recibos." title="Sin recibos" />
+          <div className="contents">
+            <div className="flex justify-end gap-2" data-erp-page-toolbar />
+            <EmptyState description="No hay recibos." title="Sin recibos" />
+          </div>
         ) : (
           <RecibosTable
             rows={receipts.map((r) => ({
