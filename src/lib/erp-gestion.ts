@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { ERP_COLLECT, ERP_SETTLE, ERP_VENDOR } from "@/lib/erp";
+import { ERP_COLLECT, ERP_SETTLE, ERP_VENDOR, erpPurchaseInvoiceTotal } from "@/lib/erp";
 
 export type GestionFilter = {
   month?: number;
@@ -460,7 +460,7 @@ export async function loadPendingPayables() {
   });
   const now = new Date();
   return invoices.map((inv) => {
-    const total = n(inv.amount) + n(inv.vat);
+    const total = erpPurchaseInvoiceTotal(inv);
     const link = inv.orderLinks[0];
     const order =
       link?.purchaseOrder?.saleOrder.number ?? link?.productionOrder?.saleOrder.number ?? "—";

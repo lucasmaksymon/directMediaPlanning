@@ -15,6 +15,7 @@ import {
   ERP_PAY_STATUS,
   erpInputNumber,
   erpPaymentOrderNumber,
+  erpPurchaseInvoiceTotal,
   isoDate,
   isoDateOrEmpty,
   money,
@@ -35,7 +36,24 @@ export default async function ErpOrdenesPagoPage({
       orderBy: { issuedAt: "desc" },
       include: {
         vendor: { select: { name: true } },
-        invoices: { include: { invoice: { select: { docType: true, pos: true, number: true } } } },
+        invoices: {
+          include: {
+            invoice: {
+              select: {
+                docType: true,
+                pos: true,
+                number: true,
+                amount: true,
+                vat: true,
+                vatWithholding: true,
+                iibbCaba: true,
+                iibbBsAs: true,
+                internalTax: true,
+                nonTaxable: true,
+              },
+            },
+          },
+        },
         treasury: { orderBy: { createdAt: "asc" } },
       },
       take: 200,
@@ -114,7 +132,15 @@ export default async function ErpOrdenesPagoPage({
             <Input defaultValue={isoDate(current?.issuedAt ?? now)} id="issuedAt" name="issuedAt" type="date" />
           </ErpField>
           <ErpField htmlFor="amount" label="Importe">
-            <Input defaultValue={erpInputNumber(current?.amount)} id="amount" name="amount" />
+            <Input
+              defaultValue={erpInputNumber(
+                current?.invoices.length
+                  ? current.invoices.reduce((sum, link) => sum + erpPurchaseInvoiceTotal(link.invoice), 0)
+                  : current?.amount,
+              )}
+              id="amount"
+              name="amount"
+            />
           </ErpField>
           <ErpField htmlFor="balance" label="Saldo">
             <Input defaultValue={erpInputNumber(current?.balance)} id="balance" name="balance" />
@@ -131,7 +157,7 @@ export default async function ErpOrdenesPagoPage({
               name="invoiceId"
               options={invoices.map((f) => ({
                 value: f.id,
-                label: `${f.vendor.name} · ${f.docType} ${f.pos}-${f.number} · ${money(Number(f.amount) + Number(f.vat))}`,
+                label: `${f.vendor.name} · ${f.docType} ${f.pos}-${f.number} · ${money(erpPurchaseInvoiceTotal(f))}`,
               }))}
               placeholder="Buscar factura…"
             />
@@ -178,7 +204,9 @@ export default async function ErpOrdenesPagoPage({
               number: erpPaymentOrderNumber(o.id, o.number),
               vendor: o.vendor.name,
               issuedAt: o.issuedAt,
-              amount: Number(o.amount),
+              amount: o.invoices.length
+                ? o.invoices.reduce((sum, link) => sum + erpPurchaseInvoiceTotal(link.invoice), 0)
+                : Number(o.amount),
               notes: o.notes,
               payKinds: o.treasury.map((p) => p.paymentKind),
               invoices: o.invoices.map((link) => link.invoice),

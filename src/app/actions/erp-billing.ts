@@ -12,6 +12,7 @@ import {
   ERP_PAY_PURCHASE_KIND,
   ERP_PAY_STATUS,
   ERP_SETTLE,
+  erpPurchaseInvoiceTotal,
   optionalString,
   parseDateField,
   parseIntField,
@@ -336,6 +337,8 @@ async function purchaseInvoicePayload(formData: FormData) {
       vatWithholding: parseMoney(formData.get("vatWithholding")),
       iibbCaba: parseMoney(formData.get("iibbCaba")),
       iibbBsAs: parseMoney(formData.get("iibbBsAs")),
+      internalTax: parseMoney(formData.get("internalTax")),
+      nonTaxable: parseMoney(formData.get("nonTaxable")),
       isVatPurchase,
       isCreditNote: String(formData.get("isCreditNote") ?? "") === "1" || docType.startsWith("NC"),
       commission: parseMoney(formData.get("commission")),
@@ -508,6 +511,27 @@ export async function deleteErpSaleReceipt(id: string): Promise<Result> {
   }
 }
 
+async function paymentOrderAmount(
+  tx: Prisma.TransactionClient,
+  invoiceIds: string[],
+  fallback: number,
+) {
+  if (!invoiceIds.length) return fallback;
+  const invoices = await tx.erpPurchaseInvoice.findMany({
+    where: { id: { in: invoiceIds } },
+    select: {
+      amount: true,
+      vat: true,
+      vatWithholding: true,
+      iibbCaba: true,
+      iibbBsAs: true,
+      internalTax: true,
+      nonTaxable: true,
+    },
+  });
+  return invoices.reduce((sum, inv) => sum + erpPurchaseInvoiceTotal(inv), 0);
+}
+
 export async function createErpPaymentOrder(formData: FormData): Promise<Result> {
   try {
     await requireOpsSession();
@@ -527,12 +551,13 @@ export async function createErpPaymentOrder(formData: FormData): Promise<Result>
         }
         payments.push(row);
       }
+      const amount = await paymentOrderAmount(tx, invoiceIds, parseMoney(formData.get("amount")));
       await tx.erpPaymentOrder.create({
         data: {
           vendorId,
           issuedAt,
           number: parseIntField(formData.get("number")),
-          amount: parseMoney(formData.get("amount")),
+          amount,
           balance: parseMoney(formData.get("balance")),
           notes: String(formData.get("notes") ?? "").trim() || null,
           invoices: { create: invoiceIds.map((invoiceId) => ({ invoiceId })) },
@@ -584,13 +609,14 @@ export async function updateErpPaymentOrder(formData: FormData): Promise<Result>
         }
         prepared.push({ id: line.id, row });
       }
+      const amount = await paymentOrderAmount(tx, invoiceIds, parseMoney(formData.get("amount")));
       await tx.erpPaymentOrder.update({
         where: { id },
         data: {
           vendorId: requiredString(formData.get("vendorId"), "el proveedor"),
           issuedAt,
           number: parseIntField(formData.get("number")),
-          amount: parseMoney(formData.get("amount")),
+          amount,
           balance: parseMoney(formData.get("balance")),
           notes: String(formData.get("notes") ?? "").trim() || null,
         },

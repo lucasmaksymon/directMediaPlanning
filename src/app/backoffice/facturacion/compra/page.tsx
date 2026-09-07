@@ -9,7 +9,7 @@ import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
 import { createErpPurchaseInvoice, updateErpPurchaseInvoice } from "@/app/actions/erp-billing";
 import { ErpDocTypeSelect } from "@/components/erp/ErpDocTypeSelect";
-import { ERP_ORDER, ERP_SETTLE, erpInputNumber, isoDate } from "@/lib/erp";
+import { ERP_ORDER, ERP_SETTLE, erpInputNumber, erpPurchaseInvoiceTotal, isoDate } from "@/lib/erp";
 
 export const metadata = { title: productTitle("Facturas de compra") };
 
@@ -128,6 +128,12 @@ export default async function ErpFacturasCompraPage({
           <ErpField htmlFor="iibbBsAs" label="Ret. IIBB Bs.As.">
             <Input defaultValue={erpInputNumber(current?.iibbBsAs)} id="iibbBsAs" name="iibbBsAs" />
           </ErpField>
+          <ErpField htmlFor="internalTax" label="Imp. interno">
+            <Input defaultValue={erpInputNumber(current?.internalTax)} id="internalTax" name="internalTax" />
+          </ErpField>
+          <ErpField htmlFor="nonTaxable" label="No gravado">
+            <Input defaultValue={erpInputNumber(current?.nonTaxable)} id="nonTaxable" name="nonTaxable" />
+          </ErpField>
           <ErpField htmlFor="diegoFee" label="Com. Diego">
             <Input defaultValue={erpInputNumber(current?.diegoFee)} id="diegoFee" name="diegoFee" />
           </ErpField>
@@ -159,7 +165,7 @@ export default async function ErpFacturasCompraPage({
               number: f.number,
               vendor: f.vendor.name,
               issuedAt: f.issuedAt,
-              total: Number(f.amount) + Number(f.vat),
+              total: erpPurchaseInvoiceTotal(f),
               retenciones: Number(f.vatWithholding) + Number(f.iibbCaba) + Number(f.iibbBsAs),
               payStatus: f.payStatus,
               isCreditNote: f.isCreditNote,
