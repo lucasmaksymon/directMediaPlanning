@@ -43,6 +43,9 @@ prisma/migrations/**/migration_lock.toml
 # adjuntos OCR / ERP locales
 /uploads/
 
+# mockups / arte de presentaciones (locales)
+/public/tmp/
+
 # IDE
 .idea
 .vscode

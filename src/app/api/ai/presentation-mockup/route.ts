@@ -1,9 +1,17 @@
 import { z } from "zod";
 import { auth } from "@/auth";
 import { openai } from "@/lib/openai";
-import { fetchImageAsFile, persistGeneratedImage, supportsInputFidelity } from "@/lib/ai/image-edit";
+import { fetchImageBuffer } from "@/lib/ai/image-edit";
+import {
+  compositeCreativeOnQuad,
+  normalizeCorners,
+  parseDetectedSurfaces,
+} from "@/lib/ai/composite-billboard";
+import { savePresentationImage } from "@/lib/presentations/local-upload";
 import { clientKey, rateLimit, rateLimitError } from "@/lib/rate-limit";
+import { isPresentationMockupEnabled } from "@/lib/features";
 import { NextResponse } from "next/server";
+import sharp from "sharp";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -17,36 +25,84 @@ const bodySchema = z.object({
   medida: z.string().max(200).optional(),
 });
 
-const FORMAT_LABEL: Record<string, string> = {
-  digital_ooh: "digital LED screen / DOOH panel",
-  static_ooh: "static billboard / printed OOH face",
-  digital_package: "digital OOH screen pack",
-};
-
 function isAllowedSceneUrl(url: string) {
   return url.startsWith("/") || /^https?:\/\//i.test(url);
 }
 
 function isAllowedCreativeUrl(url: string) {
-  return /^https?:\/\//i.test(url);
+  return /^https?:\/\//i.test(url) || url.startsWith("/tmp/presentations/");
 }
 
-function buildCompositePrompt(input: z.infer<typeof bodySchema>) {
-  const formatLabel = FORMAT_LABEL[input.unitFormat ?? ""] ?? "OOH advertising surface";
-  const location = input.locationLabel?.trim() || "Argentina";
-  const unitName = input.unitName?.trim();
-  const medida = input.medida?.trim();
+async function detectAdSurface(
+  sceneBuf: Buffer,
+  context: { locationLabel?: string; unitName?: string; unitFormat?: string; medida?: string },
+) {
+  const preview = await sharp(sceneBuf, { failOn: "none", limitInputPixels: 40_000_000 })
+    .rotate()
+    .resize({ width: 1280, height: 1280, fit: "inside", withoutEnlargement: true })
+    .jpeg({ quality: 80 })
+    .toBuffer();
+  const previewMeta = await sharp(preview).metadata();
+  const previewW = previewMeta.width ?? 1280;
+  const previewH = previewMeta.height ?? 1280;
 
-  return `This is a real photograph of an existing out-of-home advertising unit in ${location}${unitName ? ` ("${unitName}")` : ""}.
-The advertising face is a ${formatLabel}${medida ? ` measuring ${medida}` : ""}.
+  const formatHint =
+    context.unitFormat === "digital_ooh" || context.unitFormat === "digital_package"
+      ? "pantalla LED / DOOH"
+      : "valla o cartel impreso de gran formato";
+  const extras = [
+    context.unitName ? `Unidad: ${context.unitName}` : "",
+    context.locationLabel ? `Ubicación: ${context.locationLabel}` : "",
+    context.medida ? `Medida: ${context.medida}` : "",
+  ]
+    .filter(Boolean)
+    .join(". ");
 
-The second image is the client's advertisement artwork.
+  const ask = async (extra: string) => {
+    const res = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+            content:
+            "Detectás la cara completa del aviso OOH ya impreso o en pantalla. Las 4 esquinas deben coincidir con las 4 puntas del poster actual, sin recortar ni salirse al cielo. Respondés solo JSON.",
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `En esta foto hay un ${formatHint}. ${extras}
+Marcá el poster/pantalla ENTERO que ya tiene una campaña (marca, foto de producto, tipografía grande).
+Las esquinas son las 4 puntas de ESA lona/pantalla, alineadas al marco del aviso. No un recorte. No el cielo. No el poste. No un logo suelto.
 
-Replace ONLY the content currently displayed on the billboard / LED screen / advertising face with the client's artwork.
-Keep the EXACT same photograph: camera angle, perspective, crop, lighting, weather, surroundings, people, vehicles, structure, poles, frames and reflections.
-Do not invent a new scene. Do not move or reshape the unit. Do not add extra boards.
-The artwork must sit on the advertising surface with correct perspective, undistorted branding, readable typography, and original brand colors.
-Do not add placeholder text.`;
+Coordenadas normalizadas 0-1 respecto de TODA la foto.
+JSON:
+{"surfaces":[{"kind":"billboard","label":"valla autopista poster completo","corners":[{"x":0.16,"y":0.20},{"x":0.78,"y":0.18},{"x":0.80,"y":0.62},{"x":0.15,"y":0.64}]}]}
+${extra}`,
+            },
+            {
+              type: "image_url",
+              image_url: { url: `data:image/jpeg;base64,${preview.toString("base64")}`, detail: "high" },
+            },
+          ],
+        },
+      ],
+      temperature: 0.1,
+      response_format: { type: "json_object" },
+    });
+    const parsed = parseDetectedSurfaces(JSON.parse(res.choices[0]?.message?.content ?? "{}"));
+    if (!parsed) return null;
+    return normalizeCorners(parsed, previewW, previewH);
+  };
+
+  const first = await ask("");
+  if (first) return first;
+  const retry = await ask(
+    "Reintentá. El poster grande ya visible (campaña actual) es el objetivo. Devolvé sus 4 esquinas exactas, de esquina a esquina del aviso.",
+  );
+  if (!retry) throw new Error("No se detectó la cara del cartel.");
+  return retry;
 }
 
 export async function POST(req: Request) {
@@ -57,6 +113,9 @@ export async function POST(req: Request) {
   if (session.user.role !== "admin") {
     return NextResponse.json({ error: "No autorizado." }, { status: 403 });
   }
+  if (!isPresentationMockupEnabled()) {
+    return NextResponse.json({ error: "El mockup con IA está deshabilitado." }, { status: 503 });
+  }
 
   const limited = rateLimit(clientKey(req, `presentation-mockup:${session.user.id}`), 30, 10 * 60_000);
   if (!limited.ok) {
@@ -65,12 +124,6 @@ export async function POST(req: Request) {
 
   if (!process.env.OPENAI_API_KEY) {
     return NextResponse.json({ error: "IA no configurada." }, { status: 503 });
-  }
-  if (process.env.OPENAI_IMAGE_ENABLED !== "true") {
-    return NextResponse.json(
-      { error: "La generación de imágenes está desactivada (OPENAI_IMAGE_ENABLED)." },
-      { status: 503 },
-    );
   }
 
   let json: unknown;
@@ -93,30 +146,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "El arte del cliente no es una URL válida." }, { status: 400 });
   }
 
-  const imageModel = process.env.OPENAI_IMAGE_MODEL ?? "gpt-image-1";
-  const imageSize = input.unitFormat === "digital_ooh" ? "1536x1024" : "1024x1024";
-
   try {
-    const [sceneFile, creativeFile] = await Promise.all([
-      fetchImageAsFile(input.sceneImageUrl, "scene"),
-      fetchImageAsFile(input.creativeImageUrl, "creative"),
+    const [scene, creative] = await Promise.all([
+      fetchImageBuffer(input.sceneImageUrl),
+      fetchImageBuffer(input.creativeImageUrl),
     ]);
-
-    const res = await openai.images.edit({
-      model: imageModel,
-      image: [sceneFile, creativeFile],
-      prompt: buildCompositePrompt(input),
-      ...(supportsInputFidelity(imageModel) ? { input_fidelity: "high" as const } : {}),
-      size: imageSize as "1536x1024" | "1024x1024",
-      quality: imageModel.startsWith("dall-e") ? "standard" : "medium",
-    });
-
-    const item = res.data?.[0];
-    if (!item) {
-      return NextResponse.json({ error: "La IA no devolvió una imagen." }, { status: 500 });
-    }
-
-    const imageUrl = await persistGeneratedImage(item);
+    const corners = await detectAdSurface(scene.buffer, input);
+    const composed = await compositeCreativeOnQuad(scene.buffer, creative.buffer, corners);
+    const imageUrl = await savePresentationImage(composed, "image/jpeg");
     return NextResponse.json({ imageUrl });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

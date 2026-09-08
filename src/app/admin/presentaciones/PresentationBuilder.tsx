@@ -52,6 +52,7 @@ import { PRESENTATION_FIELD_KEYS } from "@/lib/presentations/types";
 import { normalizeImageFit } from "@/lib/presentations/image-layout";
 import { cleanLocationLabel } from "@/lib/inventory/unit-specs";
 import { btnPrimary, btnSecondary, fieldClass, selectClassCompact, surfaceCard } from "@/lib/ui-classes";
+import { isPresentationMockupEnabled } from "@/lib/features";
 import {
   PresentationCreativeBar,
   type PresentationMockupStatus,
@@ -272,11 +273,11 @@ function SortableOrderItem({
           <div className="min-w-0 flex-1">
             <p className="truncate text-[11px] font-medium">{slide.slideTitle}</p>
             <p className="truncate text-[10px] text-muted-foreground">{slide.location}</p>
-            {slide.mockupStatus === "ready" ? (
+            {isPresentationMockupEnabled() && slide.mockupStatus === "ready" ? (
               <p className="mt-0.5 text-[10px] font-semibold text-led">Con creativo</p>
-            ) : slide.mockupStatus === "loading" ? (
+            ) : isPresentationMockupEnabled() && slide.mockupStatus === "loading" ? (
               <p className="mt-0.5 text-[10px] text-muted-foreground">Colocando…</p>
-            ) : slide.mockupStatus === "error" ? (
+            ) : isPresentationMockupEnabled() && slide.mockupStatus === "error" ? (
               <p className="mt-0.5 text-[10px] font-semibold text-signal">Error de mockup</p>
             ) : null}
           </div>
@@ -667,12 +668,12 @@ function SlidePreview({
             Sin imagen
           </div>
         )}
-        {slide.mockupStatus === "loading" ? (
+        {isPresentationMockupEnabled() && slide.mockupStatus === "loading" ? (
           <div className="absolute inset-0 flex items-center justify-center bg-black/45 text-[15px] font-semibold text-white">
             Colocando arte…
           </div>
         ) : null}
-        {slide.mockupStatus === "ready" ? (
+        {isPresentationMockupEnabled() && slide.mockupStatus === "ready" ? (
           <span className="absolute top-3 right-3 rounded-full bg-led px-2.5 py-0.5 text-[11px] font-semibold text-black">
             Con creativo
           </span>
@@ -900,6 +901,7 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
   }
 
   async function applyMockupToSlides(targets: EditableSlide[]) {
+    if (!isPresentationMockupEnabled()) return;
     if (!creativeUrl) {
       setError("Subí el arte del cliente.");
       return;
@@ -1057,7 +1059,9 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
             mapsUrl: s.mapsUrl || undefined,
             imageFit: normalizeImageFit(s.imageFit),
             mockupImageUrl:
-              s.mockupStatus === "ready" && s.imageUrl && /^https?:\/\//i.test(s.imageUrl)
+              s.mockupStatus === "ready" &&
+              s.imageUrl &&
+              (/^https?:\/\//i.test(s.imageUrl) || s.imageUrl.startsWith("/tmp/presentations/"))
                 ? s.imageUrl
                 : undefined,
           })),
@@ -1476,6 +1480,7 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
                       ) : null}
                     </div>
                   </div>
+                  {isPresentationMockupEnabled() ? (
                   <PresentationCreativeBar
                     creativeUrl={creativeUrl}
                     onCreativeUrl={setCreativeUrl}
@@ -1488,6 +1493,7 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
                     onRegenerate={() => void applyMockupToSlides([activeSlide])}
                     onRevert={revertActiveMockup}
                   />
+                  ) : null}
                   <SlideField
                     id="slide-slideTitle"
                     label="Título"

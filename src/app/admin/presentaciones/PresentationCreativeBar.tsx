@@ -1,12 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { generateReactHelpers } from "@uploadthing/react";
-import type { OurFileRouter } from "@/app/api/uploadthing/core";
 import { cn } from "@/lib/cn";
 import { btnSecondary } from "@/lib/ui-classes";
-
-const { useUploadThing } = generateReactHelpers<OurFileRouter>();
 
 export type PresentationMockupStatus = "idle" | "loading" | "ready" | "error";
 
@@ -37,20 +33,7 @@ export function PresentationCreativeBar({
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const { startUpload, isUploading } = useUploadThing("presentationCreative", {
-    onClientUploadComplete: (res) => {
-      const url = res[0]?.ufsUrl;
-      if (url) {
-        onCreativeUrl(url);
-        setUploadError(null);
-      } else {
-        setUploadError("No se pudo obtener la URL del arte.");
-      }
-    },
-    onUploadError: (err) => {
-      setUploadError(err.message);
-    },
-  });
+  const [isUploading, setIsUploading] = useState(false);
   const canApply = Boolean(creativeUrl) && hasPhoto && !generating && !isUploading;
 
   async function handleFileChange(files: FileList | null) {
@@ -61,8 +44,25 @@ export function PresentationCreativeBar({
       return;
     }
     setUploadError(null);
-    await startUpload([file]);
-    if (inputRef.current) inputRef.current.value = "";
+    setIsUploading(true);
+    try {
+      const body = new FormData();
+      body.set("file", file);
+      const res = await fetch("/api/presentations/upload-image", {
+        method: "POST",
+        body,
+      });
+      const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || "No se pudo subir la imagen.");
+      }
+      onCreativeUrl(data.url);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "No se pudo subir la imagen.");
+    } finally {
+      setIsUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
   }
 
   return (

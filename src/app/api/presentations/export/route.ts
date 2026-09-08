@@ -79,7 +79,10 @@ const bodySchema = z.object({
         mockupImageUrl: z
           .string()
           .max(2000)
-          .refine((s) => /^https?:\/\//i.test(s), "URL inválida")
+          .refine(
+            (s) => /^https?:\/\//i.test(s) || s.startsWith("/tmp/presentations/"),
+            "URL inválida",
+          )
           .optional(),
       }),
     )

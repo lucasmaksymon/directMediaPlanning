@@ -4,8 +4,12 @@ import path from "path";
 import type OpenAI from "openai";
 import { toFile } from "openai";
 import { UTApi, UTFile } from "uploadthing/server";
+import { savePresentationImage } from "@/lib/presentations/local-upload";
 
-const utapi = new UTApi();
+function hasUploadThingToken() {
+  const token = process.env.UPLOADTHING_TOKEN?.trim();
+  return Boolean(token && token !== "..." && token.length > 20);
+}
 
 export function imageResultToUrl(item: OpenAI.Images.Image | undefined): string | null {
   if (!item) return null;
@@ -38,7 +42,7 @@ function resolveSafePublicImage(url: string): string | null {
   return existsSync(candidate) ? candidate : null;
 }
 
-export async function fetchImageAsFile(url: string, filename: string) {
+export async function fetchImageBuffer(url: string): Promise<{ buffer: Buffer; mime: string; ext: string }> {
   const trimmed = url.trim();
   if (trimmed.startsWith("/")) {
     const local = resolveSafePublicImage(trimmed);
@@ -47,7 +51,7 @@ export async function fetchImageAsFile(url: string, filename: string) {
     }
     const buffer = await readFile(local);
     const ext = path.extname(local).replace(".", "") || "jpg";
-    return toFile(buffer, `${filename}.${ext}`, { type: mimeFromExt(ext) });
+    return { buffer, mime: mimeFromExt(ext), ext };
   }
 
   if (!/^https?:\/\//i.test(trimmed)) {
@@ -70,7 +74,12 @@ export async function fetchImageAsFile(url: string, filename: string) {
   }
   const buffer = Buffer.from(await res.arrayBuffer());
   const ext = extFromContentType(contentType);
-  return toFile(buffer, `${filename}.${ext}`, { type: contentType });
+  return { buffer, mime: contentType, ext };
+}
+
+export async function fetchImageAsFile(url: string, filename: string) {
+  const { buffer, mime, ext } = await fetchImageBuffer(url);
+  return toFile(buffer, `${filename}.${ext}`, { type: mime });
 }
 
 /** Solo gpt-image-1 / gpt-image-1.5 aceptan input_fidelity; gpt-image-2+ lo procesan en alta fidelidad sin el parámetro. */
@@ -82,20 +91,31 @@ export function supportsInputFidelity(model: string): boolean {
 export async function persistGeneratedImage(item: OpenAI.Images.Image): Promise<string> {
   if (item.b64_json) {
     const buffer = Buffer.from(item.b64_json, "base64");
-    const file = new UTFile([buffer], `presentation-mockup-${Date.now()}.png`, { type: "image/png" });
-    const result = await utapi.uploadFiles(file);
-    if (result.error || !result.data) {
-      throw new Error(result.error?.message ?? "No se pudo guardar el mockup.");
+    if (hasUploadThingToken()) {
+      const utapi = new UTApi();
+      const file = new UTFile([buffer], `presentation-mockup-${Date.now()}.png`, { type: "image/png" });
+      const result = await utapi.uploadFiles(file);
+      if (result.error || !result.data) {
+        throw new Error(result.error?.message ?? "No se pudo guardar el mockup.");
+      }
+      return result.data.ufsUrl ?? result.data.url;
     }
-    return result.data.ufsUrl ?? result.data.url;
+    return savePresentationImage(buffer, "image/png");
   }
 
   if (item.url) {
-    const result = await utapi.uploadFilesFromUrl(item.url);
-    if (result.error || !result.data) {
-      throw new Error(result.error?.message ?? "No se pudo guardar el mockup.");
+    if (hasUploadThingToken()) {
+      const utapi = new UTApi();
+      const result = await utapi.uploadFilesFromUrl(item.url);
+      if (result.error || !result.data) {
+        throw new Error(result.error?.message ?? "No se pudo guardar el mockup.");
+      }
+      return result.data.ufsUrl ?? result.data.url;
     }
-    return result.data.ufsUrl ?? result.data.url;
+    const res = await fetch(item.url, { signal: AbortSignal.timeout(15_000) });
+    if (!res.ok) throw new Error("No se pudo descargar el mockup generado.");
+    const buffer = Buffer.from(await res.arrayBuffer());
+    return savePresentationImage(buffer, res.headers.get("content-type") ?? "image/png");
   }
 
   throw new Error("La IA no devolvió una imagen.");
