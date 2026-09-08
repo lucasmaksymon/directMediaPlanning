@@ -1,41 +1,7 @@
 import { auth } from "@/auth";
 import { openai } from "@/lib/openai";
-import type OpenAI from "openai";
-import { toFile } from "openai";
+import { fetchImageAsFile, imageResultToUrl, supportsInputFidelity } from "@/lib/ai/image-edit";
 import { NextResponse } from "next/server";
-
-function imageResultToUrl(item: OpenAI.Images.Image | undefined): string | null {
-  if (!item) return null;
-  if (item.url) return item.url;
-  if (item.b64_json) return `data:image/png;base64,${item.b64_json}`;
-  return null;
-}
-
-async function fetchCreativeFile(url: string) {
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; DirectMediaPlanning/1.0)",
-      Accept: "image/*",
-    },
-    signal: AbortSignal.timeout(15_000),
-  });
-  if (!res.ok) {
-    throw new Error(`No se pudo descargar el creativo (${res.status}). Usá una URL directa a la imagen.`);
-  }
-  const contentType = res.headers.get("content-type") ?? "image/jpeg";
-  if (!contentType.startsWith("image/")) {
-    throw new Error("La URL no apunta a una imagen válida.");
-  }
-  const buffer = Buffer.from(await res.arrayBuffer());
-  const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
-  return toFile(buffer, `creative.${ext}`, { type: contentType });
-}
-
-/** Solo gpt-image-1 / gpt-image-1.5 aceptan input_fidelity; gpt-image-2+ lo procesan en alta fidelidad sin el parámetro. */
-function supportsInputFidelity(model: string): boolean {
-  if (model.startsWith("gpt-image-2") || model.includes("gpt-image-1-mini")) return false;
-  return model === "gpt-image-1" || model.startsWith("gpt-image-1.5");
-}
 
 function buildScenePrompt(
   formatLabel: string,
@@ -88,7 +54,7 @@ export async function POST(req: Request) {
     try {
       // Con creativo: composición fiel usando la imagen de referencia
       if (creativeImageUrl) {
-        const creativeFile = await fetchCreativeFile(creativeImageUrl);
+        const creativeFile = await fetchImageAsFile(creativeImageUrl, "creative");
         const res = await openai.images.edit({
           model: imageModel,
           image: creativeFile,

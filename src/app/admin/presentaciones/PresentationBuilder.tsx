@@ -52,6 +52,10 @@ import { PRESENTATION_FIELD_KEYS } from "@/lib/presentations/types";
 import { normalizeImageFit } from "@/lib/presentations/image-layout";
 import { cleanLocationLabel } from "@/lib/inventory/unit-specs";
 import { btnPrimary, btnSecondary, fieldClass, selectClassCompact, surfaceCard } from "@/lib/ui-classes";
+import {
+  PresentationCreativeBar,
+  type PresentationMockupStatus,
+} from "./PresentationCreativeBar";
 
 const compactField = cn(fieldClass, "h-8 px-2.5 py-1 text-xs");
 const compactLabel = "block text-[10px] font-medium tracking-wide text-muted-foreground";
@@ -156,9 +160,15 @@ type UnitCard = InventoryUnitForPresentation & {
 
 type EditableSlide = PresentationSlideInput & {
   imageUrl: string | null;
+  originalImageUrl: string | null;
+  mockupStatus: PresentationMockupStatus;
   unitName: string;
   providerName: string;
+  unitFormat: string;
 };
+
+const MOCKUP_CONCURRENCY = 2;
+const MOCKUP_BATCH_WARN = 12;
 
 const DEFAULT_HIGHLIGHTS: PresentationHighlight[] = [
   { value: "14", label: "Paquetes LED", enabled: true },
@@ -188,8 +198,11 @@ function buildSlide(unit: UnitCard, imageFit: PresentationImageFit): EditableSli
     ...defaults,
     imageFit: isKitPageImage(imageUrl) ? "contain" : imageFit,
     imageUrl,
+    originalImageUrl: imageUrl,
+    mockupStatus: "idle",
     unitName: catalogUnitLabel(unit),
     providerName: unit.provider.companyName,
+    unitFormat: unit.format,
   };
 }
 
@@ -259,6 +272,13 @@ function SortableOrderItem({
           <div className="min-w-0 flex-1">
             <p className="truncate text-[11px] font-medium">{slide.slideTitle}</p>
             <p className="truncate text-[10px] text-muted-foreground">{slide.location}</p>
+            {slide.mockupStatus === "ready" ? (
+              <p className="mt-0.5 text-[10px] font-semibold text-led">Con creativo</p>
+            ) : slide.mockupStatus === "loading" ? (
+              <p className="mt-0.5 text-[10px] text-muted-foreground">Colocando…</p>
+            ) : slide.mockupStatus === "error" ? (
+              <p className="mt-0.5 text-[10px] font-semibold text-signal">Error de mockup</p>
+            ) : null}
           </div>
         </div>
       </button>
@@ -647,6 +667,16 @@ function SlidePreview({
             Sin imagen
           </div>
         )}
+        {slide.mockupStatus === "loading" ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/45 text-[15px] font-semibold text-white">
+            Colocando arte…
+          </div>
+        ) : null}
+        {slide.mockupStatus === "ready" ? (
+          <span className="absolute top-3 right-3 rounded-full bg-led px-2.5 py-0.5 text-[11px] font-semibold text-black">
+            Con creativo
+          </span>
+        ) : null}
       </div>
       <div className="pointer-events-none absolute inset-x-8 bottom-4 flex items-center justify-between">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -686,9 +716,15 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
   const [previewKind, setPreviewKind] = useState<"cover" | "unit" | "closing">("cover");
   const [exporting, setExporting] = useState<"pdf" | "pptx" | null>(null);
   const exportAbort = useRef<AbortController | null>(null);
+  const mockupAbort = useRef<AbortController | null>(null);
+  const [creativeUrl, setCreativeUrl] = useState<string | null>(null);
+  const [mockupProgress, setMockupProgress] = useState<{ done: number; total: number } | null>(null);
 
   useEffect(() => {
-    return () => exportAbort.current?.abort();
+    return () => {
+      exportAbort.current?.abort();
+      mockupAbort.current?.abort();
+    };
   }, []);
   const [error, setError] = useState<string | null>(null);
   const [defaultImageFit, setDefaultImageFit] = useState<PresentationImageFit>("cover");
@@ -851,6 +887,115 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
   }
 
   const activeSlide = slides[activeIndex] ?? null;
+  const slidesWithPhoto = slides.filter((s) => Boolean(s.originalImageUrl)).length;
+  const generatingMockup = mockupProgress !== null;
+
+  function cancelMockup() {
+    mockupAbort.current?.abort();
+    mockupAbort.current = null;
+    setMockupProgress(null);
+    setSlides((prev) =>
+      prev.map((s) => (s.mockupStatus === "loading" ? { ...s, mockupStatus: "idle" } : s)),
+    );
+  }
+
+  async function applyMockupToSlides(targets: EditableSlide[]) {
+    if (!creativeUrl) {
+      setError("Subí el arte del cliente.");
+      return;
+    }
+    const withPhoto = targets.filter((s) => Boolean(s.originalImageUrl));
+    if (withPhoto.length === 0) {
+      setError("Esos carteles no tienen foto de inventario.");
+      return;
+    }
+    if (withPhoto.length >= MOCKUP_BATCH_WARN) {
+      const ok = window.confirm(
+        `Se va a colocar el arte en ${withPhoto.length} carteles. Puede tardar varios minutos y consume IA. ¿Continuar?`,
+      );
+      if (!ok) return;
+    }
+
+    mockupAbort.current?.abort();
+    const ac = new AbortController();
+    mockupAbort.current = ac;
+    setError(null);
+    setMockupProgress({ done: 0, total: withPhoto.length });
+    const targetIds = new Set(withPhoto.map((s) => s.unitId));
+    setSlides((prev) =>
+      prev.map((s) => (targetIds.has(s.unitId) ? { ...s, mockupStatus: "loading" } : s)),
+    );
+
+    let failed = 0;
+    let lastError = "";
+    for (let i = 0; i < withPhoto.length; i += MOCKUP_CONCURRENCY) {
+      if (ac.signal.aborted) break;
+      const batch = withPhoto.slice(i, i + MOCKUP_CONCURRENCY);
+      await Promise.all(
+        batch.map(async (slide) => {
+          try {
+            const res = await fetch("/api/ai/presentation-mockup", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              signal: ac.signal,
+              body: JSON.stringify({
+                sceneImageUrl: slide.originalImageUrl,
+                creativeImageUrl: creativeUrl,
+                locationLabel: slide.location,
+                unitName: slide.unitName,
+                unitFormat: slide.unitFormat,
+                medida: slide.medida,
+              }),
+            });
+            const data = (await res.json().catch(() => ({}))) as { imageUrl?: string; error?: string };
+            if (!res.ok || !data.imageUrl) {
+              throw new Error(data.error || "No se pudo generar el mockup.");
+            }
+            if (ac.signal.aborted) return;
+            setSlides((prev) =>
+              prev.map((s) =>
+                s.unitId === slide.unitId
+                  ? { ...s, imageUrl: data.imageUrl!, mockupStatus: "ready" }
+                  : s,
+              ),
+            );
+          } catch (e) {
+            if (ac.signal.aborted || (e instanceof Error && e.name === "AbortError")) return;
+            failed += 1;
+            lastError = e instanceof Error ? e.message : "No se pudo generar el mockup.";
+            setSlides((prev) =>
+              prev.map((s) => (s.unitId === slide.unitId ? { ...s, mockupStatus: "error" } : s)),
+            );
+          } finally {
+            if (!ac.signal.aborted) {
+              setMockupProgress((prev) =>
+                prev ? { ...prev, done: Math.min(prev.total, prev.done + 1) } : prev,
+              );
+            }
+          }
+        }),
+      );
+    }
+
+    if (mockupAbort.current === ac) mockupAbort.current = null;
+    setMockupProgress(null);
+    if (ac.signal.aborted) return;
+    if (failed > 0) {
+      setError(
+        failed === withPhoto.length
+          ? lastError || "No se pudo colocar el arte."
+          : `No se pudo colocar el arte en ${failed} cartel${failed === 1 ? "" : "es"}. ${lastError}`,
+      );
+    }
+  }
+
+  function revertActiveMockup() {
+    if (!activeSlide) return;
+    updateActiveSlide({
+      imageUrl: activeSlide.originalImageUrl,
+      mockupStatus: "idle",
+    });
+  }
 
   async function exportDeck(format: "pdf" | "pptx") {
     if (slides.length === 0) {
@@ -911,6 +1056,10 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
             costoMensual: s.costoMensual || undefined,
             mapsUrl: s.mapsUrl || undefined,
             imageFit: normalizeImageFit(s.imageFit),
+            mockupImageUrl:
+              s.mockupStatus === "ready" && s.imageUrl && /^https?:\/\//i.test(s.imageUrl)
+                ? s.imageUrl
+                : undefined,
           })),
         }),
       });
@@ -1130,6 +1279,7 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
                   <button
                     className="text-[11px] text-muted-foreground hover:text-foreground"
                     onClick={() => {
+                      cancelMockup();
                       setSlides([]);
                       setActiveIndex(0);
                       setPreviewKind("cover");
@@ -1326,6 +1476,18 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
                       ) : null}
                     </div>
                   </div>
+                  <PresentationCreativeBar
+                    creativeUrl={creativeUrl}
+                    onCreativeUrl={setCreativeUrl}
+                    hasPhoto={Boolean(activeSlide.originalImageUrl)}
+                    mockupStatus={activeSlide.mockupStatus}
+                    slidesWithPhoto={slidesWithPhoto}
+                    generating={generatingMockup}
+                    onApplyOne={() => void applyMockupToSlides([activeSlide])}
+                    onApplyAll={() => void applyMockupToSlides(slides)}
+                    onRegenerate={() => void applyMockupToSlides([activeSlide])}
+                    onRevert={revertActiveMockup}
+                  />
                   <SlideField
                     id="slide-slideTitle"
                     label="Título"
@@ -1496,6 +1658,10 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
           <p className="text-xs text-signal" role="alert">
             {error}
           </p>
+        ) : mockupProgress ? (
+          <p className="text-[11px] text-muted-foreground">
+            Colocando arte {mockupProgress.done}/{mockupProgress.total}…
+          </p>
         ) : (
           <p className="text-[11px] text-muted-foreground">
             Portada + {slides.length} carteles + cierre
@@ -1515,6 +1681,14 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
                 Cancelar
               </button>
             </>
+          ) : mockupProgress ? (
+            <button
+              type="button"
+              className={cn(btnSecondary, "h-8 min-w-0 flex-1 px-3 text-xs sm:min-w-[7rem] sm:flex-none")}
+              onClick={cancelMockup}
+            >
+              Cancelar mockup
+            </button>
           ) : (
             <>
               <button

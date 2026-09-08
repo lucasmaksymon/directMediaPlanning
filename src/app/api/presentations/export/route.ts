@@ -76,6 +76,11 @@ const bodySchema = z.object({
         costoMensual: clipped(120).optional(),
         mapsUrl: clipped(2000).optional(),
         imageFit: z.enum(["cover", "contain"]).optional(),
+        mockupImageUrl: z
+          .string()
+          .max(2000)
+          .refine((s) => /^https?:\/\//i.test(s), "URL inválida")
+          .optional(),
       }),
     )
     .min(1)
@@ -158,7 +163,7 @@ async function runExport(
     const unit = byId.get(s.unitId)!;
     return {
       ...s,
-      imageUrl: unit.imageUrls[0] ?? null,
+      imageUrl: s.mockupImageUrl || unit.imageUrls[0] || null,
       providerName: unit.provider.companyName,
       unitName: unit.name,
     };

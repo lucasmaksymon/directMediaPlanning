@@ -47,6 +47,8 @@ export type PresentationSlideInput = {
   costoMensual?: string;
   mapsUrl?: string;
   imageFit?: PresentationImageFit;
+  /** URL remota del mockup con arte del cliente. Si falta, el export usa la foto de inventario. */
+  mockupImageUrl?: string;
 };
 
 export type PresentationExportRequest = {
