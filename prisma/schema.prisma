@@ -48,6 +48,7 @@ enum SlotState {
 
 enum ReservationStatus {
   draft
+  hold
   pending_provider
   rejected
   accepted
@@ -141,11 +142,13 @@ model User {
   advertiserProfile AdvertiserProfile?
   providerProfile   ProviderProfile?
   agencyProfile     AgencyProfile?
-  reservations      Reservation[]      @relation("AdvertiserReservations")
-  agencyMemberships AgencyClient[]     @relation("AgencyClients")
-  campaigns         Campaign[]
-  creativeAssets    CreativeAsset[]
-  erpClients        ErpClient[]
+  reservations         Reservation[]         @relation("AdvertiserReservations")
+  agencyMemberships    AgencyClient[]        @relation("AgencyClients")
+  campaigns            Campaign[]
+  creativeAssets       CreativeAsset[]
+  erpClients           ErpClient[]
+  passwordResetTokens  PasswordResetToken[]
+  reservationEvents    ReservationEvent[]    @relation("EventActor")
 }
 
 model AdvertiserProfile {
@@ -221,6 +224,10 @@ model InventoryUnit {
   audienceReports    AudienceReport[]
   programmaticDeals  ProgrammaticDeal[]
   slotAvailabilities SlotAvailability[]
+
+  @@index([status])
+  @@index([providerId, status])
+  @@index([latitude, longitude])
 }
 
 model AvailabilityBlock {
@@ -294,17 +301,50 @@ model Reservation {
   agency           AgencyProfile?      @relation(fields: [agencyId], references: [id], onDelete: SetNull)
   commissionAmount Decimal?            @db.Decimal(14, 2)
   providerNote     String?
+  shortCode        String?             @unique
+  holdExpiresAt    DateTime?
+  erpSaleOrderId   String?             @unique
+  erpSaleOrder     ErpSaleOrder?       @relation(fields: [erpSaleOrderId], references: [id], onDelete: SetNull)
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 
   payment           Payment?
   proofOfPlay       ProofOfPlay?
   publicationOrder  PublicationOrder?
+  events            ReservationEvent[]
 
   @@index([advertiserId])
   @@index([inventoryUnitId, status])
+  @@index([inventoryUnitId, status, startsAt, endsAt])
   @@index([campaignId])
   @@index([circuitId])
+  @@index([holdExpiresAt])
+}
+
+model ReservationEvent {
+  id            String             @id @default(cuid())
+  reservationId String
+  reservation   Reservation        @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  actorUserId   String?
+  actor         User?              @relation("EventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  action        String
+  fromStatus    ReservationStatus?
+  toStatus      ReservationStatus?
+  note          String?
+  createdAt     DateTime           @default(now())
+
+  @@index([reservationId, createdAt])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Payment {
@@ -641,7 +681,8 @@ model ErpSaleOrder {
   gestionLines     ErpGestionLine[]
   purchaseOrders   ErpPurchaseOrder[]
   productionOrders ErpProductionOrder[]
-  invoices         ErpSaleInvoice[]
+  invoices               ErpSaleInvoice[]
+  marketplaceReservation Reservation?
 
   @@index([clientId, year, month])
   @@index([number])

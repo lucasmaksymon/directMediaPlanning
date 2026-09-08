@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isProgrammaticEnabled } from "@/lib/features";
 
 /** SSP: inventario DOOH en formato simplificado OpenRTB 2.x */
 export async function GET() {
+  if (!isProgrammaticEnabled()) return NextResponse.json({ error: "disabled" }, { status: 404 });
   const deals = await prisma.programmaticDeal.findMany({
     where: { isActive: true },
     include: {

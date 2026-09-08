@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isCmsEnabled } from "@/lib/features";
 
 export async function POST(req: Request) {
+  if (!isCmsEnabled()) return NextResponse.json({ error: "disabled" }, { status: 404 });
   const body = await req.json();
   const { deviceKey, creativeUrl, playlistItemId, durationSec } = body;
 

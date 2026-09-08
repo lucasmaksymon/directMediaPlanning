@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { openai } from "@/lib/openai";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { slotOccupiedWhere } from "@/lib/availability";
 
 /* ---- Tipos públicos ---- */
 
@@ -68,15 +69,7 @@ export async function getPlannerRecommendations(brief: PlannerBrief): Promise<Pl
             ],
           }
         : {}),
-      NOT: {
-        reservations: {
-          some: {
-            status: { in: ["pending_provider", "accepted", "payment_pending", "confirmed"] },
-            startsAt: { lt: fechaFin },
-            endsAt: { gt: fechaInicio },
-          },
-        },
-      },
+      NOT: slotOccupiedWhere(fechaInicio, fechaFin),
     },
     take: 40,
     orderBy: { basePriceAmount: "asc" },

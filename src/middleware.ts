@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
+import { clientKey, rateLimit } from "@/lib/rate-limit";
 
 function redirectToLogin(req: { url: string; nextUrl: URL }) {
   const login = new URL("/login", req.url);
@@ -10,24 +11,19 @@ function redirectToLogin(req: { url: string; nextUrl: URL }) {
   return NextResponse.redirect(login);
 }
 
-function isCatalogPath(pathname: string) {
-  return (
-    pathname.startsWith("/explorar") ||
-    pathname.startsWith("/api/explore") ||
-    pathname === "/api/ai/audience"
-  );
-}
-
 export default auth((req) => {
   const { pathname } = req.nextUrl;
   const session = req.auth;
   const role = session?.user?.role;
 
-  if (isCatalogPath(pathname) && !session) {
-    if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "No autenticado." }, { status: 401 });
+  if (pathname.startsWith("/login") || pathname.startsWith("/register") || pathname.startsWith("/api/ai")) {
+    const limited = rateLimit(clientKey(req, pathname.split("/")[1] ?? "auth"), 30, 60_000);
+    if (!limited.ok) {
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "Demasiados intentos." }, { status: 429 });
+      }
+      return new NextResponse("Demasiados intentos. Probá de nuevo en un minuto.", { status: 429 });
     }
-    return redirectToLogin(req);
   }
 
   if (pathname.startsWith("/inicio") && !session) {
@@ -66,11 +62,12 @@ export const config = {
     "/backoffice",
     "/backoffice/:path*",
     "/agency/:path*",
-    "/explorar",
-    "/explorar/:path*",
     "/inicio",
     "/inicio/:path*",
-    "/api/explore/:path*",
-    "/api/ai/audience",
+    "/login",
+    "/login/:path*",
+    "/register",
+    "/register/:path*",
+    "/api/ai/:path*",
   ],
 };

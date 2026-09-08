@@ -49,7 +49,7 @@ El anunciante accede a precio preferencial vinculándose a una agencia. La agenc
 - Notificaciones por email al recibir nuevas solicitudes
 
 ### Para el Anunciante
-- Catálogo con mapa, filtros, circuitos y last minute
+- Catálogo público (`/explorar`) con mapa, filtros, circuitos y last minute (reservar requiere cuenta)
 - Precio diferencial según si está vinculado a una agencia
 - AI Planner: genera plan de medios optimizado por presupuesto, zona y audiencia
 - Barra de progreso de presupuesto al seleccionar espacios

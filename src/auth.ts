@@ -1,8 +1,9 @@
 import type { UserRole } from "@prisma/client";
-import { compare } from "bcryptjs";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
+import { verifyPassword } from "@/lib/password";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
@@ -14,15 +15,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Contraseña", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const email = typeof credentials?.email === "string" ? credentials.email.trim().toLowerCase() : "";
         const password = typeof credentials?.password === "string" ? credentials.password : "";
         if (!email || !password) return null;
 
+        const ip = request?.headers?.get?.("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+        const limited = rateLimit(`login:${ip}:${email}`, 8, 15 * 60_000);
+        if (!limited.ok) return null;
+
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user?.passwordHash) return null;
 
-        const valid = await compare(password, user.passwordHash);
+        const valid = await verifyPassword(password, user.passwordHash);
         if (!valid) return null;
 
         return {

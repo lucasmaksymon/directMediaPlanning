@@ -26,6 +26,7 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
       { source: "/admin/metricas", destination: "/admin", permanent: false },
+      { source: "/admin/operaciones/reservations", destination: "/admin/reservas", permanent: false },
     ];
   },
   transpilePackages: ["leaflet", "react-leaflet"],

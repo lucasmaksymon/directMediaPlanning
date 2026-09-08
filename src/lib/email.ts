@@ -13,7 +13,8 @@ function getResend(): Resend | null {
 
 export type EmailPayload =
   | { type: "welcome"; to: string; role: "advertiser" | "provider" | "agency"; name?: string }
-  | { type: "new_reservation"; to: string; providerName: string; unitName: string; advertiserEmail: string; startsAt: Date; endsAt: Date; reservationId: string }
+  | { type: "new_reservation"; to: string; bcc?: string[]; providerName: string; unitName: string; advertiserEmail: string; startsAt: Date; endsAt: Date; reservationId: string }
+  | { type: "password_reset"; to: string; resetUrl: string }
   | { type: "new_reservation_provider"; to: string; unitName: string; advertiserName: string; agencyName?: string; startsAt: Date; endsAt: Date; providerPanelUrl: string }
   | { type: "reservation_accepted"; to: string; unitName: string; providerName: string; startsAt: Date; endsAt: Date; note?: string | null }
   | { type: "reservation_rejected"; to: string; unitName: string; providerName: string; note?: string | null }
@@ -37,8 +38,17 @@ export async function sendEmail(payload: EmailPayload): Promise<void> {
         await resend.emails.send({
           from: EMAIL_FROM,
           to: payload.to,
+          bcc: payload.bcc?.length ? payload.bcc : undefined,
           subject: `Nueva solicitud de reserva — ${payload.unitName}`,
           html: newReservationHtml(payload),
+        });
+        break;
+      case "password_reset":
+        await resend.emails.send({
+          from: EMAIL_FROM,
+          to: payload.to,
+          subject: `Restablecer contraseña — ${PRODUCT_NAME}`,
+          html: passwordResetHtml(payload),
         });
         break;
       case "reservation_accepted":
@@ -215,6 +225,15 @@ function newReservationProviderHtml(p: Extract<EmailPayload, { type: "new_reserv
     </div>
     <p>Ingresá a tu panel para revisar y responder la solicitud.</p>
     <a class="btn" href="${p.providerPanelUrl}">Ver solicitudes →</a>
+  `);
+}
+
+function passwordResetHtml(p: Extract<EmailPayload, { type: "password_reset" }>) {
+  return baseHtml("Restablecer contraseña", `
+    <h2>Restablecer contraseña</h2>
+    <p>Recibimos un pedido para cambiar la contraseña de tu cuenta.</p>
+    <a class="btn" href="${p.resetUrl}">Elegir nueva contraseña →</a>
+    <p style="margin-top: 20px; font-size: 13px; color: #888;">El enlace vence en 60 minutos. Si no lo pediste, ignorá este mensaje.</p>
   `);
 }
 

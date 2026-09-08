@@ -6,6 +6,10 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { computePlatformFee, getPlatformFeeRate } from "@/lib/platform-fee";
 import { createMercadoPagoPreference, isMercadoPagoConfigured } from "@/lib/mercadopago";
+import { holdExpiresAt } from "@/lib/availability";
+import { logReservationEvent } from "@/lib/audit";
+import { syncReservationToErp } from "@/lib/erp-from-reservation";
+import { logger } from "@/lib/logger";
 
 export async function initiatePayment(reservationId: string): Promise<{
   ok: boolean;
@@ -20,7 +24,7 @@ export async function initiatePayment(reservationId: string): Promise<{
     where: {
       id: reservationId,
       advertiserId: session.user.id,
-      status: { in: [ReservationStatus.accepted, ReservationStatus.payment_pending] },
+      status: { in: [ReservationStatus.accepted, ReservationStatus.payment_pending, ReservationStatus.hold] },
     },
     include: {
       inventoryUnit: { select: { name: true } },
@@ -50,7 +54,14 @@ export async function initiatePayment(reservationId: string): Promise<{
   if (!isMercadoPagoConfigured()) {
     await prisma.reservation.update({
       where: { id: resv.id },
-      data: { status: ReservationStatus.payment_pending },
+      data: { status: ReservationStatus.payment_pending, holdExpiresAt: holdExpiresAt() },
+    });
+    await logReservationEvent({
+      reservationId: resv.id,
+      action: "payment_manual",
+      actorUserId: session.user.id,
+      fromStatus: resv.status,
+      toStatus: ReservationStatus.payment_pending,
     });
     revalidatePath("/advertiser");
     return { ok: true, manualMode: true };
@@ -76,7 +87,14 @@ export async function initiatePayment(reservationId: string): Promise<{
   });
   await prisma.reservation.update({
     where: { id: resv.id },
-    data: { status: ReservationStatus.payment_pending },
+    data: { status: ReservationStatus.payment_pending, holdExpiresAt: holdExpiresAt() },
+  });
+  await logReservationEvent({
+    reservationId: resv.id,
+    action: "payment_initiated",
+    actorUserId: session.user.id,
+    fromStatus: resv.status,
+    toStatus: ReservationStatus.payment_pending,
   });
 
   revalidatePath("/advertiser");
@@ -95,51 +113,76 @@ export async function confirmPaymentManual(reservationId: string): Promise<{ ok:
   });
   if (!payment) return { ok: false, error: "Pago no encontrado." };
 
-  await prisma.$transaction([
-    prisma.payment.update({
+  await prisma.$transaction(async (tx) => {
+    await tx.payment.update({
       where: { id: payment.id },
       data: { status: PaymentStatus.approved, paidAt: new Date() },
-    }),
-    prisma.reservation.update({
+    });
+    await tx.reservation.update({
       where: { id: reservationId },
-      data: { status: ReservationStatus.confirmed },
-    }),
-  ]);
+      data: { status: ReservationStatus.confirmed, holdExpiresAt: null },
+    });
+    await syncReservationToErp(tx, reservationId);
+  });
+  await logReservationEvent({
+    reservationId,
+    action: "payment_confirmed_manual",
+    actorUserId: session.user.id,
+    fromStatus: payment.reservation.status,
+    toStatus: ReservationStatus.confirmed,
+  });
 
   revalidatePath("/admin/reservas");
   revalidatePath("/advertiser");
+  revalidatePath("/backoffice/ordenes/venta");
   return { ok: true };
 }
 
 export async function markPaymentApproved(reservationId: string, mercadoPagoPaymentId?: string) {
-  const payment = await prisma.payment.findUnique({ where: { reservationId } });
-  if (!payment) return;
+  const payment = await prisma.payment.findUnique({
+    where: { reservationId },
+    include: { reservation: { select: { status: true } } },
+  });
+  if (!payment) {
+    logger.warn("payment_not_found", { reservationId });
+    return;
+  }
 
-  await prisma.$transaction([
-    prisma.payment.update({
+  await prisma.$transaction(async (tx) => {
+    await tx.payment.update({
       where: { id: payment.id },
       data: {
         status: PaymentStatus.approved,
         paidAt: new Date(),
         ...(mercadoPagoPaymentId ? { mercadoPagoPaymentId } : {}),
       },
-    }),
-    prisma.reservation.update({
+    });
+    await tx.reservation.update({
       where: { id: reservationId },
-      data: { status: ReservationStatus.confirmed },
-    }),
-    prisma.proofOfPlay.upsert({
+      data: { status: ReservationStatus.confirmed, holdExpiresAt: null },
+    });
+    await tx.proofOfPlay.upsert({
       where: { reservationId },
       create: { reservationId, status: PoPStatus.pending },
       update: {},
-    }),
-    prisma.publicationOrder.upsert({
+    });
+    await tx.publicationOrder.upsert({
       where: { reservationId },
       create: { reservationId, status: PublicationOrderStatus.draft },
       update: {},
-    }),
-  ]);
+    });
+    await syncReservationToErp(tx, reservationId);
+  });
+
+  await logReservationEvent({
+    reservationId,
+    action: "payment_approved",
+    fromStatus: payment.reservation.status,
+    toStatus: ReservationStatus.confirmed,
+    note: mercadoPagoPaymentId ?? undefined,
+  });
 
   revalidatePath("/advertiser");
   revalidatePath("/admin/reservas");
+  revalidatePath("/backoffice/ordenes/venta");
 }

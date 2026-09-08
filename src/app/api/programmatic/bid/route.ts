@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isProgrammaticEnabled } from "@/lib/features";
 
 /** Endpoint RTB simplificado: recibe bid request y responde con oferta si hay deal activo */
 export async function POST(req: Request) {
+  if (!isProgrammaticEnabled()) return NextResponse.json({ error: "disabled" }, { status: 404 });
   const body = await req.json();
   const impId = body?.imp?.[0]?.id ?? body?.imp?.[0]?.ext?.dooh?.unitid;
   if (!impId) return NextResponse.json({ nbr: 2 }); // invalid request

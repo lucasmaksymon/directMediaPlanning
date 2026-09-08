@@ -206,3 +206,60 @@ export async function updateInventoryUnit(
     throw e;
   }
 }
+
+export async function importInventoryCsv(
+  _prev: { error?: string; imported?: number; errors?: string[] } | undefined,
+  formData: FormData,
+): Promise<{ error?: string; imported?: number; errors?: string[] }> {
+  try {
+    await requireOpsSession();
+    const file = formData.get("file");
+    if (!(file instanceof File) || file.size === 0) {
+      return { error: "Subí un CSV con la plantilla de unidades." };
+    }
+    const { parseInventoryCsv } = await import("@/lib/inventory-csv");
+    const parsed = parseInventoryCsv(await file.text());
+    if (parsed.rows.length === 0) {
+      return {
+        error: parsed.errors[0]?.message ?? "No hay filas válidas.",
+        errors: parsed.errors.map((e) => `Línea ${e.line}: ${e.message}`),
+      };
+    }
+
+    let imported = 0;
+    const rowErrors: string[] = parsed.errors.map((e) => `Línea ${e.line}: ${e.message}`);
+    for (const row of parsed.rows) {
+      const provider = await prisma.providerProfile.findFirst({
+        where: { companyName: { equals: row.provider, mode: "insensitive" } },
+        select: { id: true },
+      });
+      if (!provider) {
+        rowErrors.push(`Sin proveedor "${row.provider}" para ${row.name}.`);
+        continue;
+      }
+      await prisma.inventoryUnit.create({
+        data: {
+          providerId: provider.id,
+          name: row.name,
+          locationLabel: row.locationLabel,
+          format: row.format,
+          priceModel: row.priceModel,
+          basePriceAmount: row.basePriceAmount,
+          status: row.status,
+          agencyPriceAmount: row.agencyPriceAmount,
+          latitude: row.latitude,
+          longitude: row.longitude,
+          minimalBookingGranularity: "week",
+        },
+      });
+      imported++;
+    }
+
+    revalidatePath("/admin/operaciones/inventory");
+    revalidatePath("/explorar");
+    return { imported, errors: rowErrors.length ? rowErrors : undefined };
+  } catch (e) {
+    if (e instanceof OpsAccessError) return { error: e.message };
+    return { error: "No se pudo importar el CSV." };
+  }
+}

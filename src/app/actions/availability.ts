@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { OpsAccessError, requireOpsSession } from "@/lib/ops-access";
 import { prisma } from "@/lib/prisma";
+import { BLOCKING_SLOT_STATES, reservationOverlapWhere } from "@/lib/availability";
 
 export type AvailabilityActionResult = { ok: boolean; error?: string };
 
@@ -42,6 +43,15 @@ export async function createAvailabilityBlock(
   try {
     await assertUnitAccess(unitId);
     if (endsAt <= startsAt) return { ok: false, error: "La fecha de fin debe ser posterior a la de inicio." };
+
+    if (BLOCKING_SLOT_STATES.includes(state)) {
+      const overlap = await prisma.reservation.findFirst({
+        where: reservationOverlapWhere(unitId, startsAt, endsAt),
+      });
+      if (overlap) {
+        return { ok: false, error: "Ese rango ya tiene una reserva activa." };
+      }
+    }
 
     await prisma.availabilityBlock.create({
       data: { unitId, startsAt, endsAt, state },

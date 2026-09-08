@@ -1,11 +1,11 @@
-import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import { fetchExplorePage, flattenSearchParams } from "@/lib/explore-query";
+import { clientKey, rateLimit } from "@/lib/rate-limit";
 
 export async function GET(req: Request) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "No autenticado." }, { status: 401 });
+  const limited = rateLimit(clientKey(req, "explore"), 60, 60_000);
+  if (!limited.ok) {
+    return NextResponse.json({ error: "Demasiados intentos." }, { status: 429 });
   }
 
   const url = new URL(req.url);
@@ -15,6 +15,6 @@ export async function GET(req: Request) {
   });
   const data = await fetchExplorePage(flattenSearchParams(flat));
   return NextResponse.json(data, {
-    headers: { "Cache-Control": "private, max-age=15" },
+    headers: { "Cache-Control": "public, max-age=15" },
   });
 }

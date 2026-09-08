@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isCmsEnabled } from "@/lib/features";
 
 export async function POST(req: Request) {
+  if (!isCmsEnabled()) return NextResponse.json({ error: "disabled" }, { status: 404 });
   const { deviceKey } = await req.json();
   if (!deviceKey || typeof deviceKey !== "string") {
     return NextResponse.json({ error: "deviceKey requerido" }, { status: 400 });

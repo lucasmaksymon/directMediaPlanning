@@ -3,8 +3,10 @@
 import { UserRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { headers } from "next/headers";
 import { hashPassword } from "@/lib/password";
 import { sendEmail } from "@/lib/email";
+import { clientKey, rateLimit, rateLimitError } from "@/lib/rate-limit";
 
 export type RegisterState = { error?: string } | undefined;
 
@@ -18,6 +20,10 @@ export async function registerUser(
   _prev: RegisterState,
   formData: FormData,
 ): Promise<RegisterState> {
+  const h = await headers();
+  const limited = rateLimit(clientKey({ headers: h }, "register"), 8, 15 * 60_000);
+  if (!limited.ok) return { error: rateLimitError(limited.retryAfterSec) };
+
   const emailRaw = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   const confirm = String(formData.get("confirm") ?? "");

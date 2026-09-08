@@ -2,6 +2,8 @@ import { auth } from "@/auth";
 import { openai } from "@/lib/openai";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { parsePlannerBrief, type ParsedPlannerBrief } from "@/lib/planner-brief";
+import { isProgrammaticEnabled } from "@/lib/features";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -25,62 +27,12 @@ type UnitRow = {
 /* ─────────────────────────────────────────────────────────────
    Extrae señales del brief desde los mensajes de la conversación
    ───────────────────────────────────────────────────────────── */
-function parseBrief(messages: Message[]) {
-  const text = messages.map((m) => m.content).join(" ").toLowerCase();
-
-  // Presupuesto: detecta "5 millones", "500k", "2.000.000", "$800000", etc.
-  let presupuesto: number | null = null;
-  const budgetRe = /(?:\$\s*)?([\d.,]+)\s*(millon(?:es)?|k\b|mil\b)?/gi;
-  let bm: RegExpExecArray | null;
-  while ((bm = budgetRe.exec(text)) !== null) {
-    const raw = parseFloat(bm[1].replace(/\./g, "").replace(",", "."));
-    if (isNaN(raw) || raw <= 0) continue;
-    const suffix = (bm[2] ?? "").toLowerCase();
-    const n = suffix.startsWith("millon") ? raw * 1_000_000
-            : suffix === "k" || suffix.startsWith("mil") ? raw * 1_000
-            : raw;
-    if (n >= 10_000) { presupuesto = n; break; }
-  }
-
-  // Zona: keywords geográficos
-  const ZONE_KEYWORDS = [
-    "palermo", "belgrano", "recoleta", "microcentro", "san telmo",
-    "retiro", "puerto madero", "caballito", "almagro", "villa crespo",
-    "flores", "boedo", "núñez", "nuñez", "saavedra", "chacarita",
-    "once", "congreso", "liniers", "mataderos", "barracas", "la boca",
-    "subte", "línea a", "linea a", "línea b", "linea b",
-    "caba", "capital federal", "capital", "ciudad de buenos aires",
-    "gba", "zona norte", "zona sur", "zona oeste", "conurbano",
-    "san isidro", "vicente lópez", "vicente lopez", "tigre", "pilar",
-    "nordelta", "martínez", "martinez", "acassuso",
-    "quilmes", "lomas de zamora", "avellaneda", "la plata", "banfield",
-    "morón", "moron", "haedo", "san martín gba", "hurlingham",
-    "córdoba", "cordoba", "rosario", "mendoza", "mar del plata",
-    "tucumán", "tucuman", "salta", "jujuy", "bariloche", "neuquén", "neuquen",
-    "santa fe", "paraná", "parana", "corrientes", "posadas",
-    "bahía blanca", "bahia blanca", "tandil",
-    "nacional", "federal", "interior", "todo el país", "todo el pais",
-  ];
-  const zonas = ZONE_KEYWORDS.filter((z) => text.includes(z));
-
-  // Audiencia: clasifica en segmentos
-  const esABC1 = /abc1|premium|lujo|ejecutiv|alta gama|vip|corporativ/.test(text);
-  const esJoven = /jov[e]|millennial|centennial|18.?35|18.?30|25.?35|estudiante/.test(text);
-  const esFamiliar = /famil|niño|hijo|hogar/.test(text);
-  const esMasivo = /masiv|popular|class[e ]? media|trabaj/.test(text);
-
-  // Objetivo: clasifica la intención
-  const esLanzamiento = /lanzamiento|launch|nuevo producto|nueva línea|awareness|reconocimiento/.test(text);
-  const esTrafico = /tráfico|trafico|visita|local|restaurant|comercio|tienda/.test(text);
-  const esNacional = /nacional|federal|todo el país|todas las ciudades|interior/.test(text);
-
-  return { presupuesto, zonas, esABC1, esJoven, esFamiliar, esMasivo, esLanzamiento, esTrafico, esNacional };
-}
+const parseBrief = parsePlannerBrief;
 
 /* ─────────────────────────────────────────────────────────────
    Pre-filtra y rankea unidades según el brief
    ───────────────────────────────────────────────────────────── */
-function filterUnits(units: UnitRow[], brief: ReturnType<typeof parseBrief>): UnitRow[] {
+function filterUnits(units: UnitRow[], brief: ParsedPlannerBrief): UnitRow[] {
   const { presupuesto, zonas, esABC1, esJoven, esNacional } = brief;
 
   // Máximo precio por unidad: si hay presupuesto, descartamos lo que solo
@@ -219,10 +171,10 @@ ${presupuestoHint}
 ═══ CATÁLOGO DISPONIBLE (pre-filtrado por zona/presupuesto) ═══
 ${catalogContext}
 
-═══ COMPRA PROGRAMÁTICA (DSP) ═══
+${isProgrammaticEnabled() ? `═══ COMPRA PROGRAMÁTICA (DSP) ═══
 - Si el usuario pide compra programática, RTB o inventario vía SSP, explicá que NextPlanning también ofrece inventario en /api/programmatic/openrtb/v2/inventory con deals open/PMP/PG, pero la reserva directa del catálogo sigue siendo la vía principal para cerrar campañas en Argentina.
 
-═══ INSTRUCCIONES GENERALES ═══
+` : ""}═══ INSTRUCCIONES GENERALES ═══
 - Hacé preguntas solo si te falta información clave (objetivo, zona, presupuesto o fechas)
 - Si ya tenés todo, pasá directo a la recomendación
 - Sé conciso y profesional, con lenguaje argentino informal-profesional

@@ -8,6 +8,7 @@ export const inventoryStatusLabel: Record<string, string> = {
 
 export const reservationStatusLabel: Record<string, string> = {
   pending_provider: "Pendiente de aprobación",
+  hold: "Retenida (checkout)",
   rejected: "Rechazada",
   accepted: "Aceptada",
   payment_pending: "Pago en coordinación",

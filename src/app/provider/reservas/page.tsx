@@ -9,6 +9,8 @@ import { reservationStatusLabel } from "@/lib/labels";
 import { ProviderReservationActions } from "./ProviderReservationActions";
 import { EmptyState, PageHeader, SectionHeader } from "@/components/ui/Patterns";
 import { Badge } from "@/components/ui/Badge";
+import { PagePager } from "@/components/ui/PagePager";
+import { firstSearchParam, parsePage, pageToSkip, totalPages, withPageParam } from "@/lib/pagination";
 
 export const metadata = { title: productTitle("Solicitudes") };
 
@@ -16,7 +18,11 @@ function formatDate(d: Date) {
   return d.toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-export default async function ProviderReservasPage() {
+export default async function ProviderReservasPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const session = await auth();
   if (!session?.user || (session.user.role !== "provider" && session.user.role !== "admin")) {
     redirect("/");
@@ -37,20 +43,41 @@ export default async function ProviderReservasPage() {
     );
   }
 
-  const reservations = await prisma.reservation.findMany({
-    where: { inventoryUnit: { providerId: profile.id } },
-    include: {
-      inventoryUnit: { select: { name: true, locationLabel: true } },
-      advertiser: {
-        select: {
-          email: true,
-          advertiserProfile: { select: { legalName: true, phone: true } },
+  const sp = await searchParams;
+  const q = firstSearchParam(sp, "q");
+  const page = parsePage(sp.page);
+  const limit = 30;
+  const where = {
+    inventoryUnit: { providerId: profile.id },
+    ...(q
+      ? {
+          OR: [
+            { inventoryUnit: { name: { contains: q, mode: "insensitive" as const } } },
+            { advertiser: { email: { contains: q, mode: "insensitive" as const } } },
+          ],
+        }
+      : {}),
+  };
+  const [total, reservations] = await Promise.all([
+    prisma.reservation.count({ where }),
+    prisma.reservation.findMany({
+      where,
+      include: {
+        inventoryUnit: { select: { name: true, locationLabel: true } },
+        advertiser: {
+          select: {
+            email: true,
+            advertiserProfile: { select: { legalName: true, phone: true } },
+          },
         },
+        agency: { select: { companyName: true } },
       },
-      agency: { select: { companyName: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+      orderBy: { createdAt: "desc" },
+      skip: pageToSkip(page, limit),
+      take: limit,
+    }),
+  ]);
+  const pages = totalPages(total, limit);
 
   const pending = reservations.filter((r) => r.status === "pending_provider");
   const others = reservations.filter((r) => r.status !== "pending_provider");
@@ -61,6 +88,12 @@ export default async function ProviderReservasPage() {
         description="Revisá y gestioná las solicitudes de reserva para tus espacios."
         eyebrow="Medio"
         title="Solicitudes"
+      />
+      <PagePager
+        hrefForPage={(p) => withPageParam("/provider/reservas", { q: q || undefined }, p)}
+        page={page}
+        pageCount={pages}
+        total={total}
       />
 
       {pending.length > 0 && (

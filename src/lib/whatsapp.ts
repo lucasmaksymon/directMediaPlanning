@@ -26,10 +26,11 @@ export function buildNewReservationWhatsApp(
   advertiserEmail: string,
   startsAt: Date,
   endsAt: Date,
-  reservationId: string,
+  shortCode: string,
 ): string {
   const start = startsAt.toLocaleDateString("es-AR");
   const end = endsAt.toLocaleDateString("es-AR");
   const base = process.env.NEXT_PUBLIC_APP_URL ?? process.env.AUTH_URL ?? "http://localhost:3000";
-  return `*${PRODUCT_NAME}* — Nueva solicitud (${CLIENT_BRAND})\n\n*Espacio:* ${unitName}\n*Cliente:* ${advertiserEmail}\n*Período:* ${start} al ${end}\n\nGestionar: ${base}/admin/reservas\n\n_Respondé ACEPTAR ${reservationId.slice(-6)} o RECHAZAR ${reservationId.slice(-6)} a este mensaje._`;
+  const code = shortCode.toUpperCase();
+  return `*${PRODUCT_NAME}* — Nueva solicitud (${CLIENT_BRAND})\n\n*Espacio:* ${unitName}\n*Cliente:* ${advertiserEmail}\n*Período:* ${start} al ${end}\n\nGestionar: ${base}/admin/reservas\n\n_Respondé ACEPTAR ${code} o RECHAZAR ${code} a este mensaje._`;
 }

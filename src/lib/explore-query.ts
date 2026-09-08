@@ -1,7 +1,8 @@
-import { Prisma, ReservationStatus, type InventoryFormat } from "@prisma/client";
+import { Prisma, type InventoryFormat } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { normalizeText } from "@/lib/normalize-text";
 import { DEFAULT_PAGE_SIZE, pageToSkip, parseLimit, parsePage } from "@/lib/pagination";
+import { slotOccupiedWhere } from "@/lib/availability";
 
 export type ExploreUnitDTO = {
   id: string;
@@ -40,13 +41,6 @@ function buildTextSearch(q: string): Prisma.InventoryUnitWhereInput[] {
     { provider: { companyName: { contains: v, mode: "insensitive" as const } } },
   ]);
 }
-
-const BLOCKING: ReservationStatus[] = [
-  ReservationStatus.pending_provider,
-  ReservationStatus.accepted,
-  ReservationStatus.payment_pending,
-  ReservationStatus.confirmed,
-];
 
 function parseDateStartUTC(s: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
@@ -105,19 +99,7 @@ export function buildExploreWhere(flat: Record<string, string>): {
     ...(Number.isFinite(precioMaxNum) && precioMaxNum > 0
       ? { basePriceAmount: { lte: precioMaxNum } }
       : {}),
-    ...(useDateFilter
-      ? {
-          NOT: {
-            reservations: {
-              some: {
-                status: { in: BLOCKING },
-                startsAt: { lt: dateTo! },
-                endsAt: { gt: dateFrom! },
-              },
-            },
-          },
-        }
-      : {}),
+    ...(useDateFilter ? { NOT: slotOccupiedWhere(dateFrom!, dateTo!) } : {}),
   };
 
   return {

@@ -39,6 +39,7 @@ import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/Badge";
 import { Drawer } from "@/components/ui/Overlay";
 import { IconButton } from "@/components/ui/IconButton";
+import { isCmsEnabled } from "@/lib/features";
 
 export type RoleNavItem = {
   href: string;
@@ -396,7 +397,9 @@ const ADVERTISER_NAV: RoleNavItem[] = [
 const PROVIDER_NAV: RoleNavItem[] = [
   { href: "/provider", label: "Panel", icon: LayoutDashboard, exact: true },
   { href: "/provider/inventario", label: "Mis espacios", icon: Monitor },
-  { href: "/provider/cms", label: "CMS / Pantallas", icon: Tv },
+  ...(isCmsEnabled()
+    ? [{ href: "/provider/cms", label: "CMS / Pantallas", icon: Tv } satisfies RoleNavItem]
+    : []),
   { href: "/provider/reservas", label: "Solicitudes", icon: Inbox },
   { href: "/provider/analytics", label: "Analytics", icon: BarChart3 },
 ];

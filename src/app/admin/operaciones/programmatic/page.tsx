@@ -6,10 +6,13 @@ import { formatArs } from "@/lib/format";
 import { productTitle } from "@/lib/brand";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { ProgrammaticDealForm } from "./ProgrammaticDealForm";
+import { isProgrammaticEnabled } from "@/lib/features";
+import { redirect } from "next/navigation";
 
 export const metadata = { title: productTitle("Programática SSP") };
 
 export default async function ProgrammaticPage() {
+  if (!isProgrammaticEnabled()) redirect("/admin/operaciones");
   await requireOpsSession();
 
   const deals = await prisma.programmaticDeal.findMany({

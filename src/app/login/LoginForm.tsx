@@ -74,6 +74,11 @@ export function LoginForm() {
         <Button className="w-full" disabled={pending} type="submit">
           {pending ? "Ingresando…" : "Iniciar sesión"}
         </Button>
+        <p className="text-center text-sm">
+          <a className="text-muted-foreground underline underline-offset-2" href="/login/recuperar">
+            Olvidé mi contraseña
+          </a>
+        </p>
       </form>
     </div>
   );

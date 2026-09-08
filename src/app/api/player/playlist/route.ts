@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isCmsEnabled } from "@/lib/features";
 
 export async function GET(req: Request) {
+  if (!isCmsEnabled()) return NextResponse.json({ error: "disabled" }, { status: 404 });
   const { searchParams } = new URL(req.url);
   const deviceKey = searchParams.get("deviceKey");
   if (!deviceKey) return NextResponse.json({ error: "deviceKey requerido" }, { status: 400 });

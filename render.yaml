@@ -54,6 +54,8 @@ services:
         sync: false
       - key: MERCADOPAGO_ACCESS_TOKEN
         sync: false
+      - key: MERCADOPAGO_WEBHOOK_SECRET
+        sync: false
       - key: CRON_SECRET
         generateValue: true
       - key: ADMIN_NOTIFY_WHATSAPP

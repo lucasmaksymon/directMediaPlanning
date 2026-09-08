@@ -8,10 +8,12 @@ import { getFreemiumMaxScreens } from "@/lib/freemium";
 import Link from "next/link";
 import { EmptyState, PageHeader, SectionHeader } from "@/components/ui";
 import { CmsScreenForm } from "./CmsScreenForm";
+import { isCmsEnabled } from "@/lib/features";
 
 export const metadata = { title: productTitle("CMS") };
 
 export default async function ProviderCmsPage() {
+  if (!isCmsEnabled()) redirect("/provider");
   const session = await auth();
   if (!session?.user) redirect("/login");
 

@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { sendLastMinuteAlerts } from "@/app/actions/provider";
+import { releaseExpiredHolds } from "@/app/actions/reservation";
+import { requireCronSecret } from "@/lib/webhook-verify";
 
 export async function GET(req: Request) {
-  const authHeader = req.headers.get("authorization");
-  const secret = process.env.CRON_SECRET;
-  if (secret && authHeader !== `Bearer ${secret}`) {
+  if (!requireCronSecret(req.headers.get("authorization"), process.env.CRON_SECRET)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const result = await sendLastMinuteAlerts();
-  return NextResponse.json({ ok: true, ...result });
+  const [alerts, holds] = await Promise.all([sendLastMinuteAlerts(), releaseExpiredHolds()]);
+  return NextResponse.json({ ok: true, ...alerts, holdsReleased: holds.released });
 }

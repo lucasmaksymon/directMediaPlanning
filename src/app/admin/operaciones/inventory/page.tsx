@@ -9,6 +9,7 @@ import { adminPage, btnPrimary, fieldClass, labelClass, surfaceCard, tableScroll
 import { cn } from "@/lib/cn";
 import { EmptyState, FilterBar, PageHeader } from "@/components/ui/Patterns";
 import { PagePager } from "@/components/ui/PagePager";
+import { InventoryCsvForm } from "./InventoryCsvForm";
 import {
   ADMIN_PAGE_SIZE,
   firstSearchParam,
@@ -98,6 +99,7 @@ export default async function AdminInventoryPage({
         }
         title="Inventario"
       />
+      <InventoryCsvForm />
 
       <form method="GET">
         <FilterBar>

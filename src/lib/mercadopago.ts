@@ -54,7 +54,10 @@ export async function createMercadoPagoPreference(params: {
   return { preferenceId: data.id, initPoint: data.init_point };
 }
 
-export async function getMercadoPagoPayment(paymentId: string): Promise<{ status: string } | null> {
+export async function getMercadoPagoPayment(paymentId: string): Promise<{
+  status: string;
+  externalReference?: string;
+} | null> {
   const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
   if (!token) return null;
 
@@ -62,6 +65,6 @@ export async function getMercadoPagoPayment(paymentId: string): Promise<{ status
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) return null;
-  const data = (await res.json()) as { status: string };
-  return { status: data.status };
+  const data = (await res.json()) as { status: string; external_reference?: string };
+  return { status: data.status, externalReference: data.external_reference };
 }

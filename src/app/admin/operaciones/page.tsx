@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { adminPage, surfaceCard } from "@/lib/ui-classes";
 import { PageHeader } from "@/components/ui";
+import { isProgrammaticEnabled } from "@/lib/features";
 
 export default async function ProviderHomePage() {
   const session = await auth();
@@ -19,11 +20,13 @@ export default async function ProviderHomePage() {
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {[
           { href: "/admin/operaciones/inventory", label: "Inventario", desc: "Gestioná espacios y visibilidad" },
-          { href: "/admin/operaciones/reservations", label: "Solicitudes", desc: "Pedidos entrantes pendientes" },
+          { href: "/admin/reservas", label: "Solicitudes", desc: "Pedidos entrantes pendientes" },
           { href: "/admin/operaciones/inventory/new", label: "Nueva unidad", desc: "Sumá un espacio al catálogo" },
           { href: "/admin", label: "Métricas", desc: "Fill rate e ingresos" },
           { href: "/admin/operaciones/circuitos", label: "Circuitos OOH", desc: "Paquetes de múltiples espacios" },
-          { href: "/admin/operaciones/programmatic", label: "SSP / Programática", desc: "Deals OpenRTB y floor price" },
+          ...(isProgrammaticEnabled()
+            ? [{ href: "/admin/operaciones/programmatic", label: "SSP / Programática", desc: "Deals OpenRTB y floor price" }]
+            : []),
         ].map((item) => (
           <Link
             key={item.href}
