@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { useState } from "react";
@@ -75,9 +76,9 @@ export function LoginForm() {
           {pending ? "Ingresando…" : "Iniciar sesión"}
         </Button>
         <p className="text-center text-sm">
-          <a className="text-muted-foreground underline underline-offset-2" href="/login/recuperar">
+          <Link className="text-muted-foreground underline underline-offset-2" href="/login/recuperar">
             Olvidé mi contraseña
-          </a>
+          </Link>
         </p>
       </form>
     </div>

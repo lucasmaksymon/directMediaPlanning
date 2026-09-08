@@ -33,7 +33,7 @@ const parseBrief = parsePlannerBrief;
    Pre-filtra y rankea unidades según el brief
    ───────────────────────────────────────────────────────────── */
 function filterUnits(units: UnitRow[], brief: ParsedPlannerBrief): UnitRow[] {
-  const { presupuesto, zonas, esABC1, esJoven, esNacional } = brief;
+  const { presupuesto, zonas, esABC1, esNacional } = brief;
 
   // Máximo precio por unidad: si hay presupuesto, descartamos lo que solo
   // con 1 unidad ya agota más del 70% del presupuesto (salvo campañas ABC1)
