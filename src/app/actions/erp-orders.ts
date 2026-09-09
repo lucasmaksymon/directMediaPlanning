@@ -15,6 +15,7 @@ import {
 } from "@/lib/erp";
 import { erpFail, requiredId, type ErpResult } from "@/lib/erp-write";
 import { parseFormLines } from "@/lib/erp-form-lines";
+import { ensureErpElementName, ensureErpPlazaName } from "@/lib/erp-catalog";
 
 const PURCHASE_LINE_FIELDS = ["element", "location", "quantity", "days", "measures", "unitCost", "net"] as const;
 const PRODUCTION_LINE_FIELDS = ["element", "location", "quantity", "measures", "printSupport", "net"] as const;
@@ -112,13 +113,35 @@ function refreshOrders() {
   revalidatePath("/backoffice/facturacion/venta");
   revalidatePath("/backoffice/facturacion/compra");
   revalidatePath("/backoffice/informe");
+  revalidatePath("/backoffice/config/elementos");
+  revalidatePath("/backoffice/config/plazas");
 }
 
-function saleOrderData(formData: FormData) {
+async function withCampaignCatalog<T extends { element: string; location?: string | null }>(lines: T[]): Promise<T[]> {
+  return Promise.all(
+    lines.map(async (line) => ({
+      ...line,
+      element: await ensureErpElementName(line.element),
+      location: line.location ? await ensureErpPlazaName(line.location) : line.location,
+    })),
+  );
+}
+
+async function withPurchaseCatalog<T extends { element: string }>(lines: T[]): Promise<T[]> {
+  return Promise.all(
+    lines.map(async (line) => ({
+      ...line,
+      element: await ensureErpElementName(line.element),
+    })),
+  );
+}
+
+async function saleOrderData(formData: FormData) {
   const issuedAt = parseDateField(formData.get("issuedAt"));
   if (!issuedAt) throw new Error("Indicá la fecha.");
   const net = parseMoney(formData.get("net"));
   const vat = parseMoney(formData.get("vat"));
+  const plazaRaw = optionalString(formData.get("plaza"));
   return {
     clientId: requiredString(formData.get("clientId"), "el cliente"),
     issuedAt,
@@ -126,7 +149,7 @@ function saleOrderData(formData: FormData) {
     year: parseIntField(formData.get("year"), issuedAt.getFullYear()),
     number: requiredString(formData.get("number"), "el número").toUpperCase(),
     product: optionalString(formData.get("product")),
-    plaza: optionalString(formData.get("plaza")),
+    plaza: plazaRaw ? await ensureErpPlazaName(plazaRaw) : plazaRaw,
     periodLabel: optionalString(formData.get("periodLabel")),
     observations: optionalString(formData.get("observations")),
     agencyFee: parseOptionalMoney(formData.get("agencyFee")),
@@ -190,9 +213,9 @@ function productionExtraData(formData: FormData) {
 export async function createErpSaleOrder(formData: FormData): Promise<Result> {
   try {
     await requireOpsSession();
-    const items = campaignLinesFromForm(formData).map(dropLineId);
+    const items = (await withCampaignCatalog(campaignLinesFromForm(formData))).map(dropLineId);
     await prisma.erpSaleOrder.create({
-      data: { ...saleOrderData(formData), items: items.length ? { create: items } : undefined },
+      data: { ...(await saleOrderData(formData)), items: items.length ? { create: items } : undefined },
     });
     refreshOrders();
     return { ok: true };
@@ -205,10 +228,10 @@ export async function updateErpSaleOrder(formData: FormData): Promise<Result> {
   try {
     await requireOpsSession();
     const id = requiredId(formData.get("id"));
-    const lines = campaignLinesFromForm(formData);
+    const lines = await withCampaignCatalog(campaignLinesFromForm(formData));
     const keep = lines.map((l) => l.id).filter((lineId): lineId is string => Boolean(lineId));
     await prisma.$transaction(async (tx) => {
-      await tx.erpSaleOrder.update({ where: { id }, data: saleOrderData(formData) });
+      await tx.erpSaleOrder.update({ where: { id }, data: await saleOrderData(formData) });
       await tx.erpCampaignItem.deleteMany({
         where: { saleOrderId: id, ...(keep.length ? { id: { notIn: keep } } : {}) },
       });
@@ -247,7 +270,7 @@ export async function deleteErpSaleOrder(id: string): Promise<Result> {
 export async function createErpPurchaseOrder(formData: FormData): Promise<Result> {
   try {
     await requireOpsSession();
-    const items = purchaseLinesFromForm(formData).map(dropLineId);
+    const items = (await withPurchaseCatalog(purchaseLinesFromForm(formData))).map(dropLineId);
     await prisma.erpPurchaseOrder.create({
       data: {
         ...linkedOrderData(formData),
@@ -266,7 +289,7 @@ export async function updateErpPurchaseOrder(formData: FormData): Promise<Result
   try {
     await requireOpsSession();
     const id = requiredId(formData.get("id"));
-    const lines = purchaseLinesFromForm(formData);
+    const lines = await withPurchaseCatalog(purchaseLinesFromForm(formData));
     const keep = lines.map((l) => l.id).filter((lineId): lineId is string => Boolean(lineId));
     await prisma.$transaction(async (tx) => {
       await tx.erpPurchaseOrder.update({
@@ -369,11 +392,13 @@ export async function updateErpProductionOrder(formData: FormData): Promise<Resu
 export async function createErpCampaignItem(formData: FormData): Promise<Result> {
   try {
     await requireOpsSession();
+    const element = await ensureErpElementName(requiredString(formData.get("element"), "el elemento"));
+    const locationRaw = optionalString(formData.get("location"));
     await prisma.erpCampaignItem.create({
       data: {
         saleOrderId: requiredString(formData.get("saleOrderId"), "la orden"),
-        element: requiredString(formData.get("element"), "el elemento"),
-        location: optionalString(formData.get("location")),
+        element,
+        location: locationRaw ? await ensureErpPlazaName(locationRaw) : locationRaw,
         plaza: optionalString(formData.get("plaza")),
         quantity: parseMoney(formData.get("quantity")),
         days: parseOptionalInt(formData.get("days")),
@@ -400,7 +425,7 @@ export async function createErpPurchaseOrderItem(formData: FormData): Promise<Re
     await prisma.erpPurchaseOrderItem.create({
       data: {
         purchaseOrderId: requiredString(formData.get("purchaseOrderId"), "la orden"),
-        element: requiredString(formData.get("element"), "el elemento"),
+        element: await ensureErpElementName(requiredString(formData.get("element"), "el elemento")),
         location: optionalString(formData.get("location")),
         quantity: parseMoney(formData.get("quantity")),
         days: parseOptionalInt(formData.get("days")),

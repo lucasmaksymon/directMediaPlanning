@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, X } from "lucide-react";
+import { Check, ChevronDown, Plus, X } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -11,6 +11,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { filterAutocompleteOptions, isExactAutocompleteMatch } from "@/lib/autocomplete-filter";
 import { cn } from "@/lib/cn";
 import { fieldBase } from "@/lib/ui-variants";
 
@@ -27,6 +28,11 @@ type AutocompleteBase = {
   className?: string;
   invalid?: boolean;
   compact?: boolean;
+  /** Permite commitear el texto tipeado cuando no hay coincidencia exacta. */
+  creatable?: boolean;
+  createLabel?: (query: string) => string;
+  /** Texto serializable para Server Components: «Crear plaza "Pilar"». */
+  createNoun?: string;
 };
 
 export type AutocompleteProps =
@@ -42,10 +48,6 @@ export type AutocompleteProps =
       value?: string[];
       onChange?: (value: string[]) => void;
     });
-
-function fold(value: string) {
-  return value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
-}
 
 function selectedValues(props: AutocompleteProps, inner: string | string[]) {
   if (props.multiple) {
@@ -68,6 +70,9 @@ export function Autocomplete(props: AutocompleteProps) {
     className,
     invalid,
     compact,
+    creatable,
+    createLabel,
+    createNoun,
   } = props;
   const multiple = props.multiple === true;
   const generatedId = useId();
@@ -86,11 +91,13 @@ export function Autocomplete(props: AutocompleteProps) {
   const selectedSet = useMemo(() => new Set(values), [values]);
   const labelByValue = useMemo(() => new Map(options.map((o) => [o.value, o.label])), [options]);
 
-  const filtered = useMemo(() => {
-    const q = fold(query.trim());
-    if (!q) return options;
-    return options.filter((o) => fold(o.label).includes(q) || fold(o.value).includes(q));
-  }, [options, query]);
+  const filtered = useMemo(() => filterAutocompleteOptions(options, query), [options, query]);
+  const queryTrim = query.trim();
+  const searching = queryTrim.length > 0;
+  const exactMatch = useMemo(() => isExactAutocompleteMatch(options, queryTrim), [options, queryTrim]);
+  const canCreate = Boolean(creatable && !multiple && queryTrim && !exactMatch);
+  const createIndex = canCreate ? filtered.length : -1;
+  const navCount = filtered.length + (canCreate ? 1 : 0);
 
   const commit = useCallback(
     (next: string | string[]) => {
@@ -199,12 +206,8 @@ export function Autocomplete(props: AutocompleteProps) {
     setHighlight(0);
   }, [query, open]);
 
-  const display =
-    open || query
-      ? query
-      : multiple
-        ? ""
-        : (labelByValue.get(values[0] ?? "") ?? "");
+  const selectedLabel = multiple ? "" : (labelByValue.get(values[0] ?? "") ?? values[0] ?? "");
+  const display = open ? query : selectedLabel;
   const hasValue = values.length > 0;
 
   return (
@@ -269,7 +272,7 @@ export function Autocomplete(props: AutocompleteProps) {
             if (e.key === "ArrowDown") {
               e.preventDefault();
               setOpen(true);
-              setHighlight((i) => Math.min(i + 1, Math.max(filtered.length - 1, 0)));
+              setHighlight((i) => Math.min(i + 1, Math.max(navCount - 1, 0)));
             } else if (e.key === "ArrowUp") {
               e.preventDefault();
               setHighlight((i) => Math.max(i - 1, 0));
@@ -278,6 +281,9 @@ export function Autocomplete(props: AutocompleteProps) {
               if (open && option) {
                 e.preventDefault();
                 pick(option.value);
+              } else if (open && canCreate) {
+                e.preventDefault();
+                pick(queryTrim);
               }
             } else if (e.key === "Backspace" && !query && multiple && values.length) {
               pick(values[values.length - 1]);
@@ -310,7 +316,7 @@ export function Autocomplete(props: AutocompleteProps) {
               role="listbox"
               style={{ top: pos.top, left: pos.left, width: pos.width, maxHeight: pos.maxHeight }}
             >
-              {!required ? (
+              {!required && !searching ? (
                 <li>
                   <button
                     className="flex w-full items-center px-3 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted"
@@ -326,13 +332,13 @@ export function Autocomplete(props: AutocompleteProps) {
                   </button>
                 </li>
               ) : null}
-              {filtered.length === 0 ? (
+              {filtered.length === 0 && !canCreate ? (
                 <li className="px-3 py-2 text-sm text-muted-foreground">Sin resultados</li>
               ) : (
                 filtered.map((option, index) => {
                   const active = selectedSet.has(option.value);
                   return (
-                    <li key={option.value}>
+                    <li key={`${option.value}::${option.label}::${index}`}>
                       <button
                         aria-selected={active}
                         className={cn(
@@ -352,6 +358,26 @@ export function Autocomplete(props: AutocompleteProps) {
                   );
                 })
               )}
+              {canCreate ? (
+                <li>
+                  <button
+                    className={cn(
+                      "flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-foreground hover:bg-muted",
+                      highlight === createIndex && "bg-muted",
+                    )}
+                    onMouseEnter={() => setHighlight(createIndex)}
+                    onClick={() => pick(queryTrim)}
+                    role="option"
+                    type="button"
+                  >
+                    <Plus className="size-3.5 shrink-0 text-led" />
+                    <span className="min-w-0 truncate">
+                      {createLabel?.(queryTrim)
+                        ?? (createNoun ? `Crear ${createNoun} «${queryTrim}»` : `Crear «${queryTrim}»`)}
+                    </span>
+                  </button>
+                </li>
+              ) : null}
             </ul>,
             document.body,
           )

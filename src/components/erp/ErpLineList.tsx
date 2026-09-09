@@ -13,6 +13,7 @@ export type ErpLineField = {
   placeholder?: string;
   wide?: boolean;
   options?: { value: string; label: string }[];
+  creatable?: boolean;
 };
 
 export type ErpLineRow = {
@@ -51,6 +52,25 @@ export function ErpLineList({
       : [{ key: nextKey(), id: "", values: emptyValues(fields) }];
     return initial;
   });
+  const [extraOptions, setExtraOptions] = useState<Record<string, { value: string; label: string }[]>>({});
+
+  function optionsFor(field: ErpLineField) {
+    if (!field.options && !field.creatable) return undefined;
+    const extra = extraOptions[field.name] ?? [];
+    const base = field.options ?? [];
+    const seen = new Set(base.map((o) => o.value));
+    return [...base, ...extra.filter((o) => !seen.has(o.value))];
+  }
+
+  function rememberOption(field: ErpLineField, value: string) {
+    if (!field.creatable || !value) return;
+    setExtraOptions((prev) => {
+      const extra = prev[field.name] ?? [];
+      const known = field.options ?? [];
+      if (known.some((o) => o.value === value) || extra.some((o) => o.value === value)) return prev;
+      return { ...prev, [field.name]: [...extra, { value, label: value }] };
+    });
+  }
 
   return (
     <div className={cn("sm:col-span-2 xl:col-span-4 space-y-2 pt-1", className)}>
@@ -90,14 +110,19 @@ export function ErpLineList({
                 <span className="block text-[10px] uppercase tracking-wide text-muted-foreground">
                   {field.label}
                 </span>
-                {field.options ? (
+                {optionsFor(field) ? (
                   <Autocomplete
                     compact
+                    creatable={field.creatable}
+                    createLabel={
+                      field.creatable ? (q) => `Crear ${field.label.toLowerCase()} «${q}»` : undefined
+                    }
                     defaultValue={line.values[field.name] ?? ""}
                     emptyLabel="Seleccioná"
                     name={`${prefix}.${field.name}`}
-                    options={field.options}
-                    placeholder="Buscar…"
+                    onChange={(value) => rememberOption(field, value)}
+                    options={optionsFor(field) ?? []}
+                    placeholder={field.placeholder ?? (field.creatable ? "Buscar o crear…" : "Buscar…")}
                   />
                 ) : field.type === "file" ? (
                   <ErpAttach compact defaultValue={line.values[field.name] ?? ""} name={`${prefix}.${field.name}`} />

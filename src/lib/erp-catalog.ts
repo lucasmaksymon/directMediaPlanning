@@ -148,6 +148,90 @@ async function ensureCity(
   cache.add(key);
 }
 
+const CITY_PROVINCE_RE = /^(.+?)\s*\(([^)]+)\)\s*$/;
+
+function plazaAlias(raw: string) {
+  const upper = raw.toUpperCase();
+  if (PLAZA_ALIASES[upper]) return PLAZA_ALIASES[upper];
+  const folded = fold(raw);
+  for (const [key, value] of Object.entries(PLAZA_ALIASES)) {
+    if (fold(key) === folded) return value;
+  }
+  return null;
+}
+
+function defaultProvinceForCity(city: string) {
+  const folded = fold(city);
+  if (folded === "caba" || folded.includes("ciudad autonoma")) return "CABA";
+  if (folded === "mendoza") return "Mendoza";
+  if (folded === "rosario" || folded === "santa fe") return "Santa Fe";
+  if (folded === "cordoba") return "Córdoba";
+  return "Buenos Aires";
+}
+
+/** Interpreta "Pilar", "Pilar (Buenos Aires)" o alias (CABA, VL…). */
+export function parsePlazaInput(raw: string): { province: string; city: string; explicitProvince: boolean } | null {
+  const trimmed = raw.replace(/\s+/g, " ").trim();
+  if (!trimmed) return null;
+
+  const alias = plazaAlias(trimmed);
+  if (alias) return { ...alias, explicitProvince: true };
+
+  const paren = trimmed.match(CITY_PROVINCE_RE);
+  if (paren) {
+    const city = paren[1].trim();
+    const province = paren[2].trim();
+    if (city && province) return { province, city, explicitProvince: true };
+  }
+
+  const folded = fold(trimmed);
+  if (folded === "caba" || folded.includes("ciudad autonoma")) {
+    return { province: "CABA", city: "CABA", explicitProvince: false };
+  }
+
+  return { province: defaultProvinceForCity(trimmed), city: trimmed, explicitProvince: false };
+}
+
+export async function ensureErpElementName(raw: string): Promise<string> {
+  const name = canonicalizeErpElement(raw);
+  if (!name) return raw.replace(/\s+/g, " ").trim();
+  const existing = await prisma.erpElement.findFirst({
+    where: { name: { equals: name, mode: "insensitive" } },
+  });
+  if (existing) {
+    if (existing.estado !== 1) {
+      await prisma.erpElement.update({ where: { id: existing.id }, data: { estado: 1 } });
+    }
+    return existing.name;
+  }
+  await prisma.erpElement.create({ data: { name, estado: 1 } });
+  return name;
+}
+
+export async function ensureErpPlazaName(raw: string): Promise<string> {
+  const parsed = parsePlazaInput(raw);
+  if (!parsed) return raw.replace(/\s+/g, " ").trim();
+
+  const existingCity = await prisma.erpCity.findFirst({
+    where: {
+      name: { equals: parsed.city, mode: "insensitive" },
+      ...(parsed.explicitProvince
+        ? { province: { name: { equals: parsed.province, mode: "insensitive" } } }
+        : {}),
+    },
+  });
+  if (existingCity) {
+    if (existingCity.estado !== 1) {
+      await prisma.erpCity.update({ where: { id: existingCity.id }, data: { estado: 1 } });
+    }
+    return existingCity.name;
+  }
+
+  const province = await ensureProvince(parsed.province, new Map());
+  await ensureCity(province.id, parsed.city, new Set());
+  return parsed.city;
+}
+
 export async function listErpPlazasForSelect(): Promise<ErpPlazaOption[]> {
   const provinces = await prisma.erpProvince.findMany({
     where: { estado: 1 },
@@ -160,6 +244,15 @@ export async function listErpPlazasForSelect(): Promise<ErpPlazaOption[]> {
       province: p.name,
       cities: p.cities.map((c) => ({ id: c.id, name: c.name })),
     }));
+}
+
+export function toErpPlazaSelectOptions(plazas: ErpPlazaOption[]) {
+  return plazas.flatMap((p) =>
+    p.cities.map((c) => ({
+      value: c.name,
+      label: p.province === c.name ? c.name : `${c.name} (${p.province})`,
+    })),
+  );
 }
 
 export async function syncErpCatalogFromInventory(): Promise<ErpCatalogSyncSummary> {

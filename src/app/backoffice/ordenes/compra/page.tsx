@@ -11,6 +11,7 @@ import { ErpSettlementField } from "@/components/erp/ErpSettlementField";
 import { createErpPurchaseOrder, updateErpPurchaseOrder } from "@/app/actions/erp-orders";
 import { ERP_VENDOR, erpInputNumber, isoDate } from "@/lib/erp";
 import { ERP_ORDER_ESTADOS } from "@/lib/erp-write";
+import { listErpElementsForSelect } from "@/lib/erp-catalog";
 
 export const metadata = { title: productTitle("O.P. Compra") };
 
@@ -21,7 +22,7 @@ export default async function ErpOpCompraPage({
 }) {
   const { edit } = await searchParams;
   const now = new Date();
-  const [orders, saleOrders, vendors] = await Promise.all([
+  const [orders, saleOrders, vendors, elements] = await Promise.all([
     prisma.erpPurchaseOrder.findMany({
       orderBy: { issuedAt: "desc" },
       include: {
@@ -40,6 +41,7 @@ export default async function ErpOpCompraPage({
       where: { estado: 1, kind: ERP_VENDOR.media },
       orderBy: { name: "asc" },
     }),
+    listErpElementsForSelect(),
   ]);
   const current = orders.find((o) => o.id === edit);
 
@@ -141,7 +143,13 @@ export default async function ErpOpCompraPage({
           <ErpLineList
             addLabel="Agregar línea"
             fields={[
-              { name: "element", label: "Elemento", placeholder: "MUPIS, LED…" },
+              {
+                name: "element",
+                label: "Elemento",
+                placeholder: "Buscar o crear…",
+                options: elements.map((e) => ({ value: e.name, label: e.name })),
+                creatable: true,
+              },
               { name: "location", label: "Ubicación" },
               { name: "quantity", label: "Cantidad", type: "number" },
               { name: "days", label: "Días", type: "number" },

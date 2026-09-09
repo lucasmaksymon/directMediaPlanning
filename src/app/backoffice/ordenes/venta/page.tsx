@@ -11,7 +11,7 @@ import { ErpSettlementField } from "@/components/erp/ErpSettlementField";
 import { createErpSaleOrder, updateErpSaleOrder } from "@/app/actions/erp-orders";
 import { ERP_MONTHS, erpInputNumber, isoDate } from "@/lib/erp";
 import { ERP_ORDER_ESTADOS } from "@/lib/erp-write";
-import { listErpElementsForSelect, listErpPlazasForSelect } from "@/lib/erp-catalog";
+import { listErpElementsForSelect, listErpPlazasForSelect, toErpPlazaSelectOptions } from "@/lib/erp-catalog";
 
 export const metadata = { title: productTitle("O.P. Venta") };
 
@@ -33,6 +33,7 @@ export default async function ErpOpVentaPage({
     listErpElementsForSelect(),
   ]);
   const current = orders.find((o) => o.id === edit);
+  const plazaOptions = toErpPlazaSelectOptions(plazas);
 
   return (
     <div className={cn(adminPage, "gap-4")}>
@@ -68,7 +69,15 @@ export default async function ErpOpVentaPage({
             <Input defaultValue={current?.product ?? ""} id="product" name="product" />
           </ErpField>
           <ErpField htmlFor="plaza" label="Plaza">
-            <Input defaultValue={current?.plaza ?? ""} id="plaza" name="plaza" />
+            <Autocomplete
+              creatable
+              createNoun="plaza"
+              defaultValue={current?.plaza ?? ""}
+              id="plaza"
+              name="plaza"
+              options={plazaOptions}
+              placeholder="Buscar o crear… ej. Pilar (Buenos Aires)"
+            />
           </ErpField>
           <ErpField htmlFor="issuedAt" label="Fecha">
             <Input defaultValue={isoDate(current?.issuedAt ?? now)} id="issuedAt" name="issuedAt" type="date" />
@@ -113,22 +122,21 @@ export default async function ErpOpVentaPage({
           <ErpLineList
             addLabel="Agregar ítem"
             fields={[
-              elements.length > 0
-                ? { name: "element", label: "Elemento", options: elements.map((e) => ({ value: e.name, label: e.name })) }
-                : { name: "element", label: "Elemento", placeholder: "CPM, MUPIS, LED…" },
-              plazas.length > 0
-                ? {
-                    name: "location",
-                    label: "Plaza",
-                    options: plazas.flatMap((p) =>
-                      p.cities.map((c) => ({
-                        value: c.name,
-                        label: p.province === c.name ? c.name : `${c.name} (${p.province})`,
-                      })),
-                    ),
-                  }
-                : { name: "location", label: "Plaza", placeholder: "CABA, Vicente López…" },
-              { name: "plaza", label: "Plaza ítem", placeholder: "CABA" },
+              {
+                name: "element",
+                label: "Elemento",
+                placeholder: "Buscar o crear…",
+                options: elements.map((e) => ({ value: e.name, label: e.name })),
+                creatable: true,
+              },
+              {
+                name: "location",
+                label: "Plaza",
+                placeholder: "Buscar o crear… ej. Pilar (Buenos Aires)",
+                options: plazaOptions,
+                creatable: true,
+              },
+              { name: "plaza", label: "Ubicación", placeholder: "Av. Libertador y…" },
               { name: "quantity", label: "Cantidad", type: "number" },
               { name: "faces", label: "Caras", type: "number" },
               { name: "days", label: "Días", type: "number" },
