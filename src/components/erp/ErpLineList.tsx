@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { Autocomplete, Button, IconButton, Input } from "@/components/ui";
+import { Autocomplete, Button, IconButton, Input, Select } from "@/components/ui";
 import { ErpAttach } from "@/components/erp/ErpAttach";
 import { cn } from "@/lib/cn";
 
 export type ErpLineField = {
   name: string;
   label: string;
-  type?: "text" | "number" | "date" | "file";
+  type?: "text" | "number" | "date" | "file" | "select";
   placeholder?: string;
   wide?: boolean;
   options?: { value: string; label: string }[];
@@ -37,6 +37,7 @@ export function ErpLineList({
   fields,
   rows = [],
   addLabel = "Agregar línea",
+  allowEmpty = false,
   className,
 }: {
   prefix: string;
@@ -44,12 +45,16 @@ export function ErpLineList({
   fields: ErpLineField[];
   rows?: ErpLineRow[];
   addLabel?: string;
+  /** Listas opcionales (ajustes, adicionales) arrancan y pueden quedar en cero filas. */
+  allowEmpty?: boolean;
   className?: string;
 }) {
   const [lines, setLines] = useState(() => {
     const initial = rows.length
       ? rows.map((row) => ({ key: nextKey(), id: row.id ?? "", values: { ...emptyValues(fields), ...row.values } }))
-      : [{ key: nextKey(), id: "", values: emptyValues(fields) }];
+      : allowEmpty
+        ? []
+        : [{ key: nextKey(), id: "", values: emptyValues(fields) }];
     return initial;
   });
   const [extraOptions, setExtraOptions] = useState<Record<string, { value: string; label: string }[]>>({});
@@ -94,9 +99,13 @@ export function ErpLineList({
           >
             <IconButton
               className="absolute right-1.5 top-1.5"
-              disabled={lines.length <= 1}
+              disabled={!allowEmpty && lines.length <= 1}
               label="Quitar línea"
-              onClick={() => setLines((prev) => (prev.length <= 1 ? prev : prev.filter((l) => l.key !== line.key)))}
+              onClick={() =>
+                setLines((prev) =>
+                  !allowEmpty && prev.length <= 1 ? prev : prev.filter((l) => l.key !== line.key),
+                )
+              }
               size="icon-sm"
             >
               <Trash2 className="size-3.5" />
@@ -110,7 +119,19 @@ export function ErpLineList({
                 <span className="block text-[10px] uppercase tracking-wide text-muted-foreground">
                   {field.label}
                 </span>
-                {optionsFor(field) ? (
+                {field.type === "select" ? (
+                  <Select
+                    compact
+                    defaultValue={line.values[field.name] ?? ""}
+                    name={`${prefix}.${field.name}`}
+                  >
+                    {(field.options ?? []).map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </Select>
+                ) : optionsFor(field) ? (
                   <Autocomplete
                     compact
                     creatable={field.creatable}

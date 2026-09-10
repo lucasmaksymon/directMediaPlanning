@@ -745,6 +745,12 @@ model ErpPurchaseOrder {
   media         String?
   measures      String?
   locations     String?      @db.Text
+  circuit       String?
+  support       String?
+  plaza         String?
+  costLabel     String?
+  days          Int?
+  spotCount     Int?
   startsAt      DateTime?
   endsAt        DateTime?
   paidQty       Decimal      @default(0) @db.Decimal(12, 2)
@@ -753,6 +759,7 @@ model ErpPurchaseOrder {
   observations  String?      @db.Text
   printShop     String?
   printSupport  String?
+  grossNet      Decimal      @default(0) @db.Decimal(14, 2)
   net           Decimal      @db.Decimal(14, 2)
   vat           Decimal      @db.Decimal(14, 2)
   amount        Decimal      @db.Decimal(14, 2)
@@ -762,6 +769,7 @@ model ErpPurchaseOrder {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   items         ErpPurchaseOrderItem[]
+  adjustments   ErpPurchaseOrderAdjustment[]
   invoiceLinks  ErpPurchaseInvoiceOrder[]
 
   @@index([saleOrderId])
@@ -779,6 +787,21 @@ model ErpPurchaseOrderItem {
   measures        String?
   unitCost        Decimal          @default(0) @db.Decimal(14, 2)
   net             Decimal          @default(0) @db.Decimal(14, 2)
+  createdAt       DateTime         @default(now())
+
+  @@index([purchaseOrderId])
+}
+
+/// Línea suelta del cierre de la orden: confidencial de agencia, descuento especial, recargo… kind 1 resta, 2 suma.
+model ErpPurchaseOrderAdjustment {
+  id              String           @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder   ErpPurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  label           String
+  kind            Int              @default(1)
+  percent         Decimal?         @db.Decimal(8, 4)
+  amount          Decimal          @default(0) @db.Decimal(14, 2)
+  sortOrder       Int              @default(0)
   createdAt       DateTime         @default(now())
 
   @@index([purchaseOrderId])

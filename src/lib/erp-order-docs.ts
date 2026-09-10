@@ -18,6 +18,81 @@ export const ERP_ORDER_LEGAL = {
     "NEXTMEDIA — Next International Communication SRL — Av. Alicia M. de Justo 1150 — 4º Piso Of. 410 B C.A.B.A. — Tel/Fax: (011) 4341-4515/16 — CUIT 30-71144767-5 — paula@nextmedia.com.ar",
 } as const;
 
+/** Cierre de la orden de compra: 1 resta del bruto, 2 lo suma. */
+export const ERP_ADJUSTMENT = { deduct: 1, add: 2 } as const;
+
+export const ERP_ADJUSTMENT_KINDS = [
+  { value: String(ERP_ADJUSTMENT.deduct), label: "Resta" },
+  { value: String(ERP_ADJUSTMENT.add), label: "Suma" },
+] as const;
+
+/** Conceptos habituales; la lista es abierta porque cada medio cierra distinto. */
+export const ERP_ADJUSTMENT_LABELS = [
+  "CONFIDENCIAL AGENCIA",
+  "DESCUENTO ESPECIAL",
+  "BONIFICACIÓN",
+  "RECARGO",
+] as const;
+
+export type PurchaseAdjustment = {
+  label: string;
+  kind: number;
+  percent?: number | null;
+  amount: number;
+};
+
+/** El importe manda; el porcentaje solo se usa cuando no se cargó importe. */
+export function adjustmentValue(gross: number, adj: PurchaseAdjustment) {
+  if (adj.amount) return adj.amount;
+  if (adj.percent) return (gross * adj.percent) / 100;
+  return 0;
+}
+
+export function purchaseBreakdown(opts: {
+  grossNet?: number | null;
+  items?: { net: number }[];
+  adjustments?: PurchaseAdjustment[];
+}) {
+  const lineTotal = (opts.items ?? []).reduce((a, i) => a + i.net, 0);
+  const gross = opts.grossNet || lineTotal;
+  const rows = (opts.adjustments ?? []).map((adj) => ({
+    ...adj,
+    value: adjustmentValue(gross, adj),
+  }));
+  const net = rows.reduce(
+    (total, row) => total + (row.kind === ERP_ADJUSTMENT.add ? row.value : -row.value),
+    gross,
+  );
+  return { gross, rows, net };
+}
+
+/** "COSTO NETO TOTAL 6 DÍAS", o la leyenda libre que haya cargado el usuario. */
+export function purchaseCostLabel(opts: { costLabel?: string | null; days?: number | null }) {
+  if (opts.costLabel?.trim()) return opts.costLabel.trim().toUpperCase();
+  if (opts.days) return `COSTO NETO TOTAL ${opts.days} DÍAS`;
+  return "COSTO NETO TOTAL";
+}
+
+export function adjustmentLabel(adj: PurchaseAdjustment) {
+  return adj.percent ? `${adj.label} ${formatPercent(adj.percent)}%` : adj.label;
+}
+
+function formatPercent(n: number) {
+  return Number.isInteger(n) ? String(n) : n.toLocaleString("es-AR");
+}
+
+export function longDate(d: Date | string | null | undefined) {
+  if (d == null || d === "") return null;
+  const date = d instanceof Date ? d : new Date(d);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("es-AR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export function defaultSaleObservations(client: string) {
   return `${ERP_ORDER_LEGAL.startSubjectToMaterial}\n${ERP_ORDER_LEGAL.cuentaYOrden(client)}`;
 }

@@ -22,6 +22,8 @@ const styles = StyleSheet.create({
   meta: { marginBottom: 3 },
   label: { fontFamily: "Helvetica-Bold" },
   section: { fontSize: 10, fontFamily: "Helvetica-Bold", marginTop: 8, marginBottom: 5 },
+  sectionRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" },
+  sectionAside: { fontSize: 9, fontFamily: "Helvetica-Bold" },
   tableHead: { flexDirection: "row", fontFamily: "Helvetica-Bold", borderBottomWidth: 0.8, borderBottomColor: "#111", paddingBottom: 3, marginBottom: 3 },
   row: { flexDirection: "row", paddingVertical: 2, borderBottomWidth: 0.3, borderBottomColor: "#ddd" },
   kv: { flexDirection: "row", marginBottom: 3 },
@@ -237,7 +239,17 @@ export function ErpPurchaseOrderDocument(props: {
   media?: string | null;
   measures?: string | null;
   locations?: string | null;
+  circuit?: string | null;
+  support?: string | null;
+  plaza?: string | null;
+  pautaTitle: string;
+  costHeader: string;
+  costLabel: string;
+  startsAt?: string | null;
+  endsAt?: string | null;
   period?: string | null;
+  days?: number | null;
+  spotCount?: number | null;
   paidQty: number;
   bonusQty: number;
   unitCost: number;
@@ -245,11 +257,16 @@ export function ErpPurchaseOrderDocument(props: {
   printSupport?: string | null;
   observations?: string | null;
   items: PurchaseOrderPdfItem[];
+  adjustments: { label: string; value: number }[];
+  gross: number;
   net: string;
   vat: string;
   amount: string;
+  hasVat: boolean;
 }) {
   const totalQty = props.paidQty + props.bonusQty;
+  const showDays = props.items.some((item) => item.days != null);
+  const nameWidth = showDays ? "30%" : "36%";
   return (
     <Document title={`ORDEN DE PUBLICIDAD ${props.number}`} author="NEXTMEDIA">
       <Page size="A4" style={styles.page}>
@@ -267,40 +284,85 @@ export function ErpPurchaseOrderDocument(props: {
         <Kv label="Cliente" value={props.client} />
         <Kv label="Producto" value={props.product} />
 
-        <Text style={styles.section}>PAUTA PUBLICITARIA</Text>
+        <View style={styles.sectionRow}>
+          <Text style={styles.section}>{props.pautaTitle}</Text>
+          {props.circuit ? <Text style={styles.sectionAside}>CIRCUITO: {props.circuit}</Text> : null}
+        </View>
         <Kv label="Medio" value={props.media} />
+        <Kv label="Soporte" value={props.support} />
+        <Kv label="Plaza" value={props.plaza} />
         <Kv label="Medidas" value={props.measures} />
         <Kv label="Ubicaciones" value={props.locations} />
-        <Kv label="Período" value={props.period} />
-        {props.paidQty > 0 ? <Kv label="Elementos pagos" value={formatQty(props.paidQty)} /> : null}
-        {props.bonusQty > 0 ? <Kv label="Elementos bonificados" value={formatQty(props.bonusQty)} /> : null}
-        {totalQty > 0 ? <Kv label="Elementos totales" value={formatQty(totalQty)} /> : null}
-        {props.unitCost > 0 ? <Kv label="Costo neto unitario" value={money(props.unitCost)} /> : null}
-        <Kv label="Costo neto total" value={`${props.net} + IVA`} />
 
         {props.items.length > 0 ? (
           <>
-            <Text style={styles.section}>DESCRIPCIÓN DE LA COMPRA</Text>
-            <View style={styles.tableHead}>
-              <Text style={{ width: "18%" }}>ELEMENTO</Text>
-              <Text style={{ width: "28%" }}>UBICACIÓN</Text>
-              <Text style={{ width: "10%" }}>DÍAS</Text>
-              <Text style={{ width: "10%" }}>CANT.</Text>
-              <Text style={{ width: "16%", textAlign: "right" }}>UNITARIO</Text>
-              <Text style={{ width: "18%", textAlign: "right" }}>NETO</Text>
+            <View style={[styles.tableHead, { marginTop: 6 }]}>
+              <Text style={{ width: "6%" }}>NRO</Text>
+              <Text style={{ width: nameWidth }}>DISPOSITIVOS</Text>
+              <Text style={{ width: "8%" }}>CANT.</Text>
+              {showDays ? <Text style={{ width: "6%" }}>DÍAS</Text> : null}
+              <Text style={{ width: "26%" }}>UBICACIÓN RESERVADA</Text>
+              <Text style={{ width: "24%", textAlign: "right" }}>{props.costHeader}</Text>
             </View>
             {props.items.map((item, i) => (
               <View key={i} style={styles.row} wrap={false}>
-                <Text style={{ width: "18%" }}>{item.element}</Text>
-                <Text style={{ width: "28%" }}>{item.location || "—"}</Text>
-                <Text style={{ width: "10%" }}>{item.days ?? "—"}</Text>
-                <Text style={{ width: "10%" }}>{formatQty(item.quantity)}</Text>
-                <Text style={{ width: "16%", textAlign: "right" }}>{formatMoneyOrDash(item.unitCost)}</Text>
-                <Text style={{ width: "18%", textAlign: "right" }}>{formatMoneyOrDash(item.net)}</Text>
+                <Text style={{ width: "6%" }}>{i + 1}</Text>
+                <Text style={{ width: nameWidth }}>{item.element}</Text>
+                <Text style={{ width: "8%" }}>{formatQty(item.quantity)}</Text>
+                {showDays ? <Text style={{ width: "6%" }}>{item.days ?? "—"}</Text> : null}
+                <Text style={{ width: "26%" }}>{item.location || "—"}</Text>
+                <Text style={{ width: "24%", textAlign: "right" }}>{formatMoneyOrDash(item.net || item.unitCost)}</Text>
               </View>
             ))}
           </>
         ) : null}
+
+        {props.startsAt || props.endsAt ? (
+          <>
+            <Text style={[styles.section, { marginBottom: 3 }]}>DURACIÓN</Text>
+            <Kv label="Desde" value={props.startsAt} />
+            <Kv label="Hasta" value={props.endsAt} />
+            <Text style={styles.muted}>{ERP_ORDER_LEGAL.startSubjectToMaterial}</Text>
+          </>
+        ) : props.period ? (
+          <Kv label="Período" value={props.period} />
+        ) : null}
+
+        {props.spotCount ? <Kv label="Ubicaciones" value={formatQty(props.spotCount)} /> : null}
+        {props.days ? <Kv label="Días" value={formatQty(props.days)} /> : null}
+        {props.paidQty > 0 ? <Kv label="Elementos pagos" value={formatQty(props.paidQty)} /> : null}
+        {props.bonusQty > 0 ? <Kv label="Elementos bonificados" value={formatQty(props.bonusQty)} /> : null}
+        {totalQty > 0 ? <Kv label="Elementos totales" value={formatQty(totalQty)} /> : null}
+        {props.unitCost > 0 ? <Kv label="Costo neto unitario" value={money(props.unitCost)} /> : null}
+
+        <View style={styles.totals}>
+          <View style={styles.totalRow}>
+            <Text>{props.costLabel}</Text>
+            <Text>{money(props.gross)}</Text>
+          </View>
+          {props.adjustments.map((adj, i) => (
+            <View key={i} style={styles.totalRow}>
+              <Text>{adj.label}</Text>
+              <Text>{money(adj.value)}</Text>
+            </View>
+          ))}
+          <View style={[styles.totalRow, styles.totalStrong]}>
+            <Text>COSTO TOTAL NETO FINAL</Text>
+            <Text>{props.hasVat ? props.net : `${props.net} + IVA`}</Text>
+          </View>
+          {props.hasVat ? (
+            <>
+              <View style={styles.totalRow}>
+                <Text>IVA 21%</Text>
+                <Text>{props.vat}</Text>
+              </View>
+              <View style={[styles.totalRow, styles.totalStrong]}>
+                <Text>TOTAL $ ARG</Text>
+                <Text>{props.amount}</Text>
+              </View>
+            </>
+          ) : null}
+        </View>
 
         {props.printShop || props.printSupport ? (
           <>

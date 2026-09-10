@@ -3,9 +3,13 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
 import { displayDate, money } from "@/lib/erp";
 import {
+  adjustmentLabel,
   defaultProductionObservations,
   defaultPurchaseObservations,
   defaultSaleObservations,
+  longDate,
+  purchaseBreakdown,
+  purchaseCostLabel,
   saleBreakdown,
   salePeriodText,
 } from "@/lib/erp-order-docs";
@@ -90,13 +94,31 @@ export async function GET(req: Request) {
         vendor: { select: { name: true, taxId: true } },
         saleOrder: { select: { number: true, product: true, month: true, year: true, client: { select: { name: true } } } },
         items: true,
+        adjustments: { orderBy: { sortOrder: "asc" } },
       },
     });
     if (!order) return Response.json({ error: "Orden no encontrada." }, { status: 404 });
     const period =
       order.startsAt || order.endsAt
-        ? `${order.startsAt ? displayDate(order.startsAt) : "—"}${order.endsAt ? ` al ${displayDate(order.endsAt)}` : ""}`
+        ? null
         : salePeriodText({ month: order.saleOrder.month, year: order.saleOrder.year });
+    const items = order.items.map((item) => ({
+      element: item.element,
+      location: item.location,
+      quantity: Number(item.quantity),
+      days: item.days,
+      measures: item.measures,
+      unitCost: Number(item.unitCost),
+      net: Number(item.net),
+    }));
+    const adjustments = order.adjustments.map((adj) => ({
+      label: adj.label,
+      kind: adj.kind,
+      percent: adj.percent == null ? null : Number(adj.percent),
+      amount: Number(adj.amount),
+    }));
+    const breakdown = purchaseBreakdown({ grossNet: Number(order.grossNet), items, adjustments });
+    const costLabel = purchaseCostLabel({ costLabel: order.costLabel, days: order.days });
     const buffer = await renderToBuffer(
       ErpPurchaseOrderDocument({
         number: order.number,
@@ -108,25 +130,33 @@ export async function GET(req: Request) {
         media: order.media,
         measures: order.measures,
         locations: order.locations,
+        circuit: order.circuit,
+        support: order.support,
+        plaza: order.plaza,
+        pautaTitle: `PAUTA PUBLICITARIA ${order.saleOrder.year}`,
+        costHeader: costLabel.replace(/^COSTO NETO TOTAL/, "COSTO"),
+        costLabel,
+        startsAt: longDate(order.startsAt),
+        endsAt: longDate(order.endsAt),
         period,
+        days: order.days,
+        spotCount: order.spotCount,
         paidQty: Number(order.paidQty),
         bonusQty: Number(order.bonusQty),
         unitCost: Number(order.unitCost),
         printShop: order.printShop,
         printSupport: order.printSupport,
         observations: order.observations || defaultPurchaseObservations(order.saleOrder.client.name),
-        items: order.items.map((item) => ({
-          element: item.element,
-          location: item.location,
-          quantity: Number(item.quantity),
-          days: item.days,
-          measures: item.measures,
-          unitCost: Number(item.unitCost),
-          net: Number(item.net),
+        items,
+        adjustments: breakdown.rows.map((row) => ({
+          label: adjustmentLabel(row),
+          value: row.value,
         })),
+        gross: breakdown.gross,
         net: money(order.net),
         vat: money(order.vat),
         amount: money(order.amount),
+        hasVat: Number(order.vat) > 0,
       }),
     );
     return pdfResponse(buffer, `OP-${order.number}.pdf`);

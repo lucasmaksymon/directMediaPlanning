@@ -15,9 +15,11 @@ import {
 } from "@/lib/erp";
 import { erpFail, requiredId, type ErpResult } from "@/lib/erp-write";
 import { parseFormLines } from "@/lib/erp-form-lines";
+import { ERP_ADJUSTMENT, purchaseBreakdown, type PurchaseAdjustment } from "@/lib/erp-order-docs";
 import { ensureErpElementName, ensureErpPlazaName } from "@/lib/erp-catalog";
 
 const PURCHASE_LINE_FIELDS = ["element", "location", "quantity", "days", "measures", "unitCost", "net"] as const;
+const ADJUSTMENT_LINE_FIELDS = ["label", "kind", "percent", "amount"] as const;
 const PRODUCTION_LINE_FIELDS = ["element", "location", "quantity", "measures", "printSupport", "net"] as const;
 const DELIVERY_LINE_FIELDS = ["destination", "quantity"] as const;
 const CAMPAIGN_LINE_FIELDS = [
@@ -48,6 +50,19 @@ function purchaseLinesFromForm(formData: FormData) {
       measures: optionalString(line.values.measures),
       unitCost: parseMoney(line.values.unitCost),
       net: parseMoney(line.values.net),
+    }));
+}
+
+function adjustmentLinesFromForm(formData: FormData) {
+  return parseFormLines(formData, "aj", [...ADJUSTMENT_LINE_FIELDS])
+    .filter((line) => line.values.label)
+    .map((line, index) => ({
+      id: line.id,
+      label: line.values.label.toUpperCase(),
+      kind: parseIntField(line.values.kind, ERP_ADJUSTMENT.deduct),
+      percent: parseOptionalMoney(line.values.percent),
+      amount: parseMoney(line.values.amount),
+      sortOrder: index,
     }));
 }
 
@@ -180,11 +195,18 @@ function linkedOrderData(formData: FormData) {
   };
 }
 
-function purchaseExtraData(formData: FormData) {
+async function purchaseExtraData(formData: FormData) {
+  const plazaRaw = optionalString(formData.get("plaza"));
   return {
     media: optionalString(formData.get("media")),
     measures: optionalString(formData.get("measures")),
     locations: optionalString(formData.get("locations")),
+    circuit: optionalString(formData.get("circuit")),
+    support: optionalString(formData.get("support")),
+    plaza: plazaRaw ? await ensureErpPlazaName(plazaRaw) : plazaRaw,
+    costLabel: optionalString(formData.get("costLabel")),
+    days: parseOptionalInt(formData.get("days")),
+    spotCount: parseOptionalInt(formData.get("spotCount")),
     startsAt: parseDateField(formData.get("startsAt")),
     endsAt: parseDateField(formData.get("endsAt")),
     paidQty: parseMoney(formData.get("paidQty")),
@@ -193,6 +215,27 @@ function purchaseExtraData(formData: FormData) {
     observations: optionalString(formData.get("observations")),
     printShop: optionalString(formData.get("printShop")),
     printSupport: optionalString(formData.get("printSupport")),
+  };
+}
+
+/** El neto de compra no se tipea: sale del costo bruto menos los ajustes del cierre. */
+async function purchaseOrderData(
+  formData: FormData,
+  items: { net: number }[],
+  adjustments: PurchaseAdjustment[],
+) {
+  const base = linkedOrderData(formData);
+  const { gross, net } = purchaseBreakdown({
+    grossNet: parseMoney(formData.get("grossNet")),
+    items,
+    adjustments,
+  });
+  return {
+    ...base,
+    ...(await purchaseExtraData(formData)),
+    grossNet: gross,
+    net,
+    amount: net + base.vat,
   };
 }
 
@@ -270,12 +313,15 @@ export async function deleteErpSaleOrder(id: string): Promise<Result> {
 export async function createErpPurchaseOrder(formData: FormData): Promise<Result> {
   try {
     await requireOpsSession();
-    const items = (await withPurchaseCatalog(purchaseLinesFromForm(formData))).map(dropLineId);
+    const lines = await withPurchaseCatalog(purchaseLinesFromForm(formData));
+    const adjustmentLines = adjustmentLinesFromForm(formData);
+    const items = lines.map(dropLineId);
+    const adjustments = adjustmentLines.map(dropLineId);
     await prisma.erpPurchaseOrder.create({
       data: {
-        ...linkedOrderData(formData),
-        ...purchaseExtraData(formData),
+        ...(await purchaseOrderData(formData, lines, adjustmentLines)),
         items: items.length ? { create: items } : undefined,
+        adjustments: adjustments.length ? { create: adjustments } : undefined,
       },
     });
     refreshOrders();
@@ -290,19 +336,29 @@ export async function updateErpPurchaseOrder(formData: FormData): Promise<Result
     await requireOpsSession();
     const id = requiredId(formData.get("id"));
     const lines = await withPurchaseCatalog(purchaseLinesFromForm(formData));
+    const adjustmentLines = adjustmentLinesFromForm(formData);
     const keep = lines.map((l) => l.id).filter((lineId): lineId is string => Boolean(lineId));
+    const keepAdjustments = adjustmentLines
+      .map((l) => l.id)
+      .filter((lineId): lineId is string => Boolean(lineId));
+    const data = await purchaseOrderData(formData, lines, adjustmentLines);
     await prisma.$transaction(async (tx) => {
-      await tx.erpPurchaseOrder.update({
-        where: { id },
-        data: { ...linkedOrderData(formData), ...purchaseExtraData(formData) },
-      });
+      await tx.erpPurchaseOrder.update({ where: { id }, data });
       await tx.erpPurchaseOrderItem.deleteMany({
         where: { purchaseOrderId: id, ...(keep.length ? { id: { notIn: keep } } : {}) },
       });
+      await tx.erpPurchaseOrderAdjustment.deleteMany({
+        where: { purchaseOrderId: id, ...(keepAdjustments.length ? { id: { notIn: keepAdjustments } } : {}) },
+      });
       for (const line of lines) {
-        const { id: lineId, ...data } = line;
-        if (lineId) await tx.erpPurchaseOrderItem.update({ where: { id: lineId }, data });
-        else await tx.erpPurchaseOrderItem.create({ data: { purchaseOrderId: id, ...data } });
+        const { id: lineId, ...row } = line;
+        if (lineId) await tx.erpPurchaseOrderItem.update({ where: { id: lineId }, data: row });
+        else await tx.erpPurchaseOrderItem.create({ data: { purchaseOrderId: id, ...row } });
+      }
+      for (const line of adjustmentLines) {
+        const { id: lineId, ...row } = line;
+        if (lineId) await tx.erpPurchaseOrderAdjustment.update({ where: { id: lineId }, data: row });
+        else await tx.erpPurchaseOrderAdjustment.create({ data: { purchaseOrderId: id, ...row } });
       }
     });
     refreshOrders();

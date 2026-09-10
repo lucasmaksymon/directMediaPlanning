@@ -11,7 +11,8 @@ import { ErpSettlementField } from "@/components/erp/ErpSettlementField";
 import { createErpPurchaseOrder, updateErpPurchaseOrder } from "@/app/actions/erp-orders";
 import { ERP_VENDOR, erpInputNumber, isoDate } from "@/lib/erp";
 import { ERP_ORDER_ESTADOS } from "@/lib/erp-write";
-import { listErpElementsForSelect } from "@/lib/erp-catalog";
+import { ERP_ADJUSTMENT_KINDS, ERP_ADJUSTMENT_LABELS } from "@/lib/erp-order-docs";
+import { listErpElementsForSelect, listErpPlazasForSelect, toErpPlazaSelectOptions } from "@/lib/erp-catalog";
 
 export const metadata = { title: productTitle("O.P. Compra") };
 
@@ -22,13 +23,14 @@ export default async function ErpOpCompraPage({
 }) {
   const { edit } = await searchParams;
   const now = new Date();
-  const [orders, saleOrders, vendors, elements] = await Promise.all([
+  const [orders, saleOrders, vendors, elements, plazas] = await Promise.all([
     prisma.erpPurchaseOrder.findMany({
       orderBy: { issuedAt: "desc" },
       include: {
         vendor: { select: { name: true } },
         saleOrder: { select: { number: true, product: true, client: { select: { name: true } } } },
         items: true,
+        adjustments: { orderBy: { sortOrder: "asc" } },
       },
       take: 200,
     }),
@@ -42,8 +44,10 @@ export default async function ErpOpCompraPage({
       orderBy: { name: "asc" },
     }),
     listErpElementsForSelect(),
+    listErpPlazasForSelect(),
   ]);
   const current = orders.find((o) => o.id === edit);
+  const plazaOptions = toErpPlazaSelectOptions(plazas);
 
   return (
     <div className={cn(adminPage, "gap-4")}>
@@ -91,6 +95,22 @@ export default async function ErpOpCompraPage({
           <ErpField htmlFor="media" label="Medio / elemento">
             <Input defaultValue={current?.media ?? ""} id="media" name="media" />
           </ErpField>
+          <ErpField htmlFor="circuit" label="Circuito">
+            <Input defaultValue={current?.circuit ?? ""} id="circuit" name="circuit" placeholder="Igual al número si no se aclara" />
+          </ErpField>
+          <ErpField htmlFor="support" label="Soporte">
+            <Input defaultValue={current?.support ?? ""} id="support" name="support" placeholder="DIGITAL, TRADICIONAL…" />
+          </ErpField>
+          <ErpField htmlFor="plaza" label="Plaza">
+            <Autocomplete
+              defaultValue={current?.plaza ?? ""}
+              creatable
+              id="plaza"
+              name="plaza"
+              options={plazaOptions}
+              placeholder="Buscar o crear…"
+            />
+          </ErpField>
           <ErpField htmlFor="measures" label="Medidas">
             <Input defaultValue={current?.measures ?? ""} id="measures" name="measures" />
           </ErpField>
@@ -102,6 +122,17 @@ export default async function ErpOpCompraPage({
           </ErpField>
           <ErpField htmlFor="endsAt" label="Hasta">
             <Input defaultValue={current?.endsAt ? isoDate(current.endsAt) : ""} id="endsAt" name="endsAt" type="date" />
+          </ErpField>
+          <ErpField htmlFor="days" label="Días">
+            <Input defaultValue={current?.days != null ? String(current.days) : ""} id="days" name="days" inputMode="numeric" />
+          </ErpField>
+          <ErpField htmlFor="spotCount" label="Ubicaciones (cantidad)">
+            <Input
+              defaultValue={current?.spotCount != null ? String(current.spotCount) : ""}
+              id="spotCount"
+              inputMode="numeric"
+              name="spotCount"
+            />
           </ErpField>
           <ErpField htmlFor="paidQty" label="Elementos pagos">
             <Input defaultValue={erpInputNumber(current?.paidQty)} id="paidQty" name="paidQty" />
@@ -121,8 +152,21 @@ export default async function ErpOpCompraPage({
               ))}
             </Select>
           </ErpField>
-          <ErpField htmlFor="net" label="Neto">
-            <Input defaultValue={erpInputNumber(current?.net)} id="net" name="net" />
+          <ErpField htmlFor="costLabel" label="Leyenda del costo">
+            <Input
+              defaultValue={current?.costLabel ?? ""}
+              id="costLabel"
+              name="costLabel"
+              placeholder="Costo 3 días en exclusivo y 3 en loop"
+            />
+          </ErpField>
+          <ErpField htmlFor="grossNet" label="Costo neto total">
+            <Input
+              defaultValue={current ? erpInputNumber(current.grossNet) : ""}
+              id="grossNet"
+              name="grossNet"
+              placeholder="Se suma del detalle si lo dejás vacío"
+            />
           </ErpField>
           <ErpField htmlFor="vat" label="IVA">
             <Input defaultValue={erpInputNumber(current?.vat)} id="vat" name="vat" />
@@ -173,6 +217,35 @@ export default async function ErpOpCompraPage({
               })) ?? []
             }
             title="Detalle de pauta"
+          />
+          <ErpLineList
+            addLabel="Agregar ajuste"
+            allowEmpty
+            fields={[
+              {
+                name: "label",
+                label: "Concepto",
+                placeholder: "Buscar o crear…",
+                options: ERP_ADJUSTMENT_LABELS.map((l) => ({ value: l, label: l })),
+                creatable: true,
+              },
+              { name: "kind", label: "Tipo", type: "select", options: [...ERP_ADJUSTMENT_KINDS] },
+              { name: "percent", label: "% sobre el costo", type: "number" },
+              { name: "amount", label: "Importe", type: "number" },
+            ]}
+            prefix="aj"
+            rows={
+              current?.adjustments.map((adj) => ({
+                id: adj.id,
+                values: {
+                  label: adj.label,
+                  kind: String(adj.kind),
+                  percent: adj.percent == null ? "" : erpInputNumber(adj.percent),
+                  amount: erpInputNumber(adj.amount),
+                },
+              })) ?? []
+            }
+            title="Ajustes del cierre"
           />
         </ErpForm>
 
