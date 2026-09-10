@@ -685,6 +685,9 @@ model ErpSaleOrder {
   marketplaceReservation Reservation?
 
   @@index([clientId, year, month])
+  @@index([year, month])
+  @@index([issuedAt])
+  @@index([estado])
   @@index([number])
 }
 
@@ -709,6 +712,7 @@ model ErpCampaignItem {
   createdAt     DateTime     @default(now())
 
   @@index([saleOrderId])
+  @@index([startsAt, endsAt])
 }
 
 /// Fila de la hoja GESTIÓN: ítem + FC compra + producción + FC venta.
@@ -775,6 +779,8 @@ model ErpPurchaseOrder {
 
   @@index([saleOrderId])
   @@index([vendorId])
+  @@index([issuedAt])
+  @@index([estado])
 }
 
 model ErpPurchaseOrderItem {
@@ -840,6 +846,8 @@ model ErpProductionOrder {
 
   @@index([saleOrderId])
   @@index([vendorId])
+  @@index([issuedAt])
+  @@index([estado])
 }
 
 model ErpProductionOrderItem {
@@ -900,6 +908,8 @@ model ErpSaleInvoice {
 
   @@index([saleOrderId])
   @@index([clientId])
+  @@index([issuedAt])
+  @@index([collectStatus])
 }
 
 model ErpPurchaseInvoice {
@@ -933,6 +943,9 @@ model ErpPurchaseInvoice {
   gestionProductions ErpGestionLine[] @relation("GestionProduction")
 
   @@index([vendorId])
+  @@index([issuedAt])
+  @@index([payStatus])
+  @@index([isVatPurchase])
 }
 
 model ErpPurchaseInvoiceOrder {
@@ -945,6 +958,10 @@ model ErpPurchaseInvoiceOrder {
   productionOrder    ErpProductionOrder? @relation("ProductionInvoiceOrders", fields: [productionOrderId], references: [id], onDelete: SetNull)
   vendorKind         Int
   createdAt          DateTime            @default(now())
+
+  @@index([invoiceId])
+  @@index([purchaseOrderId])
+  @@index([productionOrderId])
 }
 
 model ErpSaleReceipt {
@@ -972,6 +989,7 @@ model ErpSaleReceiptInvoice {
   invoice   ErpSaleInvoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
 
   @@unique([receiptId, invoiceId])
+  @@index([invoiceId])
 }
 
 model ErpPurchaseReceipt {
@@ -998,6 +1016,7 @@ model ErpPurchaseReceiptInvoice {
   invoice   ErpPurchaseInvoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
 
   @@unique([receiptId, invoiceId])
+  @@index([invoiceId])
 }
 
 model ErpPaymentOrder {

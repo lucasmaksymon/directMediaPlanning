@@ -13,6 +13,7 @@ import { ERP_VENDOR, erpInputNumber, isoDate } from "@/lib/erp";
 import { ERP_ORDER_ESTADOS } from "@/lib/erp-write";
 import { ERP_ADJUSTMENT_KINDS, ERP_ADJUSTMENT_LABELS, ERP_VAT_RATE } from "@/lib/erp-order-docs";
 import { listErpElementsForSelect, listErpPlazasForSelect, toErpPlazaSelectOptions } from "@/lib/erp-catalog";
+import { listActiveVendors, listPurchaseOrdersForTable, listSaleOrdersForPick } from "@/lib/erp-list";
 
 export const metadata = { title: productTitle("O.P. Compra") };
 
@@ -23,30 +24,19 @@ export default async function ErpOpCompraPage({
 }) {
   const { edit } = await searchParams;
   const now = new Date();
-  const [orders, saleOrders, vendors, elements, plazas] = await Promise.all([
-    prisma.erpPurchaseOrder.findMany({
-      orderBy: { issuedAt: "desc" },
-      include: {
-        vendor: { select: { name: true } },
-        saleOrder: { select: { number: true, product: true, client: { select: { name: true } } } },
-        items: true,
-        adjustments: { orderBy: { sortOrder: "asc" } },
-      },
-      take: 200,
-    }),
-    prisma.erpSaleOrder.findMany({
-      orderBy: { issuedAt: "desc" },
-      include: { client: { select: { name: true } } },
-      take: 200,
-    }),
-    prisma.erpVendor.findMany({
-      where: { estado: 1, kind: ERP_VENDOR.media },
-      orderBy: { name: "asc" },
-    }),
+  const [orders, current, saleOrders, vendors, elements, plazas] = await Promise.all([
+    listPurchaseOrdersForTable(),
+    edit
+      ? prisma.erpPurchaseOrder.findUnique({
+          where: { id: edit },
+          include: { items: true, adjustments: { orderBy: { sortOrder: "asc" } } },
+        })
+      : Promise.resolve(null),
+    listSaleOrdersForPick(),
+    listActiveVendors(ERP_VENDOR.media),
     listErpElementsForSelect(),
     listErpPlazasForSelect(),
   ]);
-  const current = orders.find((o) => o.id === edit);
   const plazaOptions = toErpPlazaSelectOptions(plazas);
 
   return (

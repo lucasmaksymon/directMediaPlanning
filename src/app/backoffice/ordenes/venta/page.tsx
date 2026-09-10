@@ -12,6 +12,7 @@ import { createErpSaleOrder, updateErpSaleOrder } from "@/app/actions/erp-orders
 import { ERP_MONTHS, erpInputNumber, isoDate } from "@/lib/erp";
 import { ERP_ORDER_ESTADOS } from "@/lib/erp-write";
 import { listErpElementsForSelect, listErpPlazasForSelect, toErpPlazaSelectOptions } from "@/lib/erp-catalog";
+import { listActiveClients, listSaleOrdersForTable } from "@/lib/erp-list";
 
 export const metadata = { title: productTitle("O.P. Venta") };
 
@@ -22,17 +23,15 @@ export default async function ErpOpVentaPage({
 }) {
   const { edit } = await searchParams;
   const now = new Date();
-  const [orders, clients, plazas, elements] = await Promise.all([
-    prisma.erpSaleOrder.findMany({
-      orderBy: { issuedAt: "desc" },
-      include: { client: { select: { name: true } }, items: true },
-      take: 200,
-    }),
-    prisma.erpClient.findMany({ where: { estado: 1 }, orderBy: { name: "asc" } }),
+  const [orders, current, clients, plazas, elements] = await Promise.all([
+    listSaleOrdersForTable(),
+    edit
+      ? prisma.erpSaleOrder.findUnique({ where: { id: edit }, include: { items: true } })
+      : Promise.resolve(null),
+    listActiveClients(),
     listErpPlazasForSelect(),
     listErpElementsForSelect(),
   ]);
-  const current = orders.find((o) => o.id === edit);
   const plazaOptions = toErpPlazaSelectOptions(plazas);
 
   return (

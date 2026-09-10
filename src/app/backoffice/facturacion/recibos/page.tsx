@@ -9,6 +9,7 @@ import { createErpSaleReceipt, updateErpSaleReceipt } from "@/app/actions/erp-bi
 import { ErpSaleReceiptFormFields } from "@/components/erp/ocr/ErpSaleReceiptFormFields";
 import { ErpOcrImportClient } from "@/components/erp/ocr/ErpOcrImportClient";
 import { erpInputNumber, isoDate, isoDateOrEmpty, money } from "@/lib/erp";
+import { listActiveClients } from "@/lib/erp-list";
 
 export const metadata = { title: productTitle("Recibos de venta") };
 
@@ -29,11 +30,20 @@ export default async function ErpRecibosPage({
       },
       take: 200,
     }),
-    prisma.erpClient.findMany({ where: { estado: 1 }, orderBy: { name: "asc" } }),
+    listActiveClients(),
     prisma.erpSaleInvoice.findMany({
       orderBy: { issuedAt: "desc" },
-      include: { client: { select: { name: true } } },
-      take: 300,
+      select: {
+        id: true,
+        amount: true,
+        vat: true,
+        docType: true,
+        pos: true,
+        number: true,
+        clientId: true,
+        client: { select: { name: true } },
+      },
+      take: 150,
     }),
   ]);
   const current = receipts.find((r) => r.id === edit);

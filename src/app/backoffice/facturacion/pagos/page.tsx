@@ -20,6 +20,7 @@ import {
   isoDateOrEmpty,
   money,
 } from "@/lib/erp";
+import { listActiveVendors } from "@/lib/erp-list";
 
 export const metadata = { title: productTitle("Órdenes de pago") };
 
@@ -58,7 +59,7 @@ export default async function ErpOrdenesPagoPage({
       },
       take: 200,
     }),
-    prisma.erpVendor.findMany({ where: { estado: 1 }, orderBy: { name: "asc" } }),
+    listActiveVendors(),
     prisma.erpPurchaseInvoice.findMany({
       orderBy: { issuedAt: "desc" },
       include: { vendor: { select: { name: true } } },

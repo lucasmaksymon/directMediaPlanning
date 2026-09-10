@@ -244,6 +244,38 @@ function invDoc(inv: { isCreditNote?: boolean; docType: string; pos: number; num
 
 export async function loadGestionLines(filter: GestionFilter): Promise<GestionLineRow[]> {
   const year = filter.year ?? new Date().getFullYear();
+  const invoiceSelect = {
+    id: true,
+    docType: true,
+    pos: true,
+    number: true,
+    isCreditNote: true,
+    issuedAt: true,
+    amount: true,
+    vat: true,
+    iibbCaba: true,
+    iibbBsAs: true,
+    vatWithholding: true,
+    diegoFee: true,
+    payStatus: true,
+    vendor: { select: { name: true } },
+  } as const;
+  const saleInvoiceSelect = {
+    id: true,
+    docType: true,
+    pos: true,
+    number: true,
+    issuedAt: true,
+    amount: true,
+    vat: true,
+    retVat: true,
+    retSuss: true,
+    retGan: true,
+    retIibb: true,
+    collected: true,
+    collectStatus: true,
+    receiptRef: true,
+  } as const;
   const lines = await prisma.erpGestionLine.findMany({
     where: {
       saleOrder: {
@@ -259,13 +291,39 @@ export async function loadGestionLines(filter: GestionFilter): Promise<GestionLi
             }
           : {}),
       },
+      ...(filter.sale === "to_invoice" ? { saleInvoiceId: null } : {}),
+      ...(filter.sale === "pending" ? { saleInvoice: { collectStatus: ERP_COLLECT.pending } } : {}),
+      ...(filter.sale === "collected" ? { saleInvoice: { collectStatus: ERP_COLLECT.collected } } : {}),
+      ...(filter.pay === "pending"
+        ? {
+            OR: [
+              { purchaseInvoice: { payStatus: { not: ERP_SETTLE.paid } } },
+              { productionInvoice: { payStatus: { not: ERP_SETTLE.paid } } },
+            ],
+          }
+        : {}),
+      ...(filter.pay === "paid"
+        ? {
+            AND: [
+              { OR: [{ purchaseInvoiceId: { not: null } }, { productionInvoiceId: { not: null } }] },
+              { OR: [{ purchaseInvoiceId: null }, { purchaseInvoice: { payStatus: ERP_SETTLE.paid } }] },
+              { OR: [{ productionInvoiceId: null }, { productionInvoice: { payStatus: ERP_SETTLE.paid } }] },
+            ],
+          }
+        : {}),
     },
     orderBy: [{ saleOrder: { month: "asc" } }, { saleOrder: { number: "asc" } }, { sort: "asc" }],
-    include: {
+    select: {
+      id: true,
+      element: true,
+      location: true,
+      quantity: true,
+      startsAt: true,
+      endsAt: true,
       saleOrder: { select: { id: true, number: true, month: true, year: true, client: { select: { name: true, legalName: true } } } },
-      purchaseInvoice: { include: { vendor: { select: { name: true } } } },
-      productionInvoice: { include: { vendor: { select: { name: true } } } },
-      saleInvoice: true,
+      purchaseInvoice: { select: invoiceSelect },
+      productionInvoice: { select: invoiceSelect },
+      saleInvoice: { select: saleInvoiceSelect },
     },
   });
 
@@ -274,18 +332,6 @@ export async function loadGestionLines(filter: GestionFilter): Promise<GestionLi
     const purchase = line.purchaseInvoice;
     const production = line.productionInvoice;
     const sale = line.saleInvoice;
-    const saleStatus = !sale ? "A facturar" : sale.collectStatus === ERP_COLLECT.collected ? "Cobrado" : "Pendiente";
-    const payBits = [purchase, production].filter(Boolean);
-    const payStatus = !payBits.length
-      ? "—"
-      : payBits.some((i) => i && i.payStatus !== ERP_SETTLE.paid)
-        ? "Pendiente"
-        : "Pagado";
-    if (filter.sale === "to_invoice" && saleStatus !== "A facturar") continue;
-    if (filter.sale === "pending" && saleStatus !== "Pendiente") continue;
-    if (filter.sale === "collected" && saleStatus !== "Cobrado") continue;
-    if (filter.pay === "pending" && payStatus !== "Pendiente") continue;
-    if (filter.pay === "paid" && payStatus !== "Pagado") continue;
 
     const purchaseBlock: GestionPurchaseBlock | null = purchase
       ? (() => {

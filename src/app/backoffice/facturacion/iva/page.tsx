@@ -9,6 +9,7 @@ import { ErpField } from "@/components/erp/ErpField";
 import { createErpPurchaseInvoice, updateErpPurchaseInvoice } from "@/app/actions/erp-billing";
 import { ErpDocTypeSelect } from "@/components/erp/ErpDocTypeSelect";
 import { erpInputNumber, isoDate } from "@/lib/erp";
+import { listActiveVendors, listRecentProductionOrdersForPick, listRecentPurchaseOrdersForPick } from "@/lib/erp-list";
 
 export const metadata = { title: productTitle("Facturas compra IVA") };
 
@@ -23,21 +24,25 @@ export default async function ErpFacturasIvaPage({
     prisma.erpPurchaseInvoice.findMany({
       where: { isVatPurchase: true },
       orderBy: { issuedAt: "desc" },
-      include: {
+      select: {
+        id: true,
+        vendorId: true,
+        issuedAt: true,
+        dueAt: true,
+        docType: true,
+        pos: true,
+        number: true,
+        amount: true,
+        vat: true,
+        commission: true,
         vendor: { select: { name: true } },
         orderLinks: { select: { purchaseOrderId: true, productionOrderId: true } },
       },
       take: 200,
     }),
-    prisma.erpVendor.findMany({ where: { estado: 1 }, orderBy: { name: "asc" } }),
-    prisma.erpPurchaseOrder.findMany({
-      include: { vendor: { select: { name: true } }, saleOrder: { select: { number: true } } },
-      orderBy: { issuedAt: "desc" },
-    }),
-    prisma.erpProductionOrder.findMany({
-      include: { vendor: { select: { name: true } }, saleOrder: { select: { number: true } } },
-      orderBy: { issuedAt: "desc" },
-    }),
+    listActiveVendors(),
+    listRecentPurchaseOrdersForPick(),
+    listRecentProductionOrdersForPick(),
   ]);
   const current = invoices.find((f) => f.id === edit);
   const currentOrderId = current?.orderLinks[0]?.purchaseOrderId ?? current?.orderLinks[0]?.productionOrderId ?? "";

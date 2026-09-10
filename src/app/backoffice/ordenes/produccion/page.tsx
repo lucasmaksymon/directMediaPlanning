@@ -11,6 +11,7 @@ import { ErpSettlementField } from "@/components/erp/ErpSettlementField";
 import { createErpProductionOrder, updateErpProductionOrder } from "@/app/actions/erp-orders";
 import { ERP_VENDOR, erpInputNumber, isoDate } from "@/lib/erp";
 import { ERP_ORDER_ESTADOS } from "@/lib/erp-write";
+import { listActiveVendors, listProductionOrdersForTable, listSaleOrdersForPick } from "@/lib/erp-list";
 
 export const metadata = { title: productTitle("O. Producción") };
 
@@ -21,28 +22,17 @@ export default async function ErpOProduccionPage({
 }) {
   const { edit } = await searchParams;
   const now = new Date();
-  const [orders, saleOrders, vendors] = await Promise.all([
-    prisma.erpProductionOrder.findMany({
-      orderBy: { issuedAt: "desc" },
-      include: {
-        vendor: { select: { name: true } },
-        saleOrder: { select: { number: true, product: true, client: { select: { name: true } } } },
-        items: true,
-        deliveries: true,
-      },
-      take: 200,
-    }),
-    prisma.erpSaleOrder.findMany({
-      orderBy: { issuedAt: "desc" },
-      include: { client: { select: { name: true } } },
-      take: 200,
-    }),
-    prisma.erpVendor.findMany({
-      where: { estado: 1, kind: ERP_VENDOR.producer },
-      orderBy: { name: "asc" },
-    }),
+  const [orders, current, saleOrders, vendors] = await Promise.all([
+    listProductionOrdersForTable(),
+    edit
+      ? prisma.erpProductionOrder.findUnique({
+          where: { id: edit },
+          include: { items: true, deliveries: true },
+        })
+      : Promise.resolve(null),
+    listSaleOrdersForPick(),
+    listActiveVendors(ERP_VENDOR.producer),
   ]);
-  const current = orders.find((o) => o.id === edit);
 
   return (
     <div className={cn(adminPage, "gap-4")}>

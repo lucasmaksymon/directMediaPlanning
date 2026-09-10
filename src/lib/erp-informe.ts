@@ -37,18 +37,41 @@ export async function buildMonthlyReport(month: number, year: number): Promise<I
       client: { select: { name: true } },
       invoices: { select: { id: true, amount: true, vat: true } },
       purchaseOrders: {
-        include: {
+        select: {
+          estado: true,
           invoiceLinks: {
-            include: {
-              invoice: true,
+            select: {
+              vendorKind: true,
+              invoice: {
+                select: {
+                  isVatPurchase: true,
+                  amount: true,
+                  vat: true,
+                  iibbCaba: true,
+                  iibbBsAs: true,
+                  vatWithholding: true,
+                },
+              },
             },
           },
         },
       },
       productionOrders: {
-        include: {
+        select: {
+          estado: true,
           invoiceLinks: {
-            include: { invoice: true },
+            select: {
+              vendorKind: true,
+              invoice: {
+                select: {
+                  amount: true,
+                  vat: true,
+                  iibbCaba: true,
+                  iibbBsAs: true,
+                  vatWithholding: true,
+                },
+              },
+            },
           },
         },
       },
@@ -59,9 +82,13 @@ export async function buildMonthlyReport(month: number, year: number): Promise<I
   const receiptLinks = saleInvoiceIds.length
     ? await prisma.erpSaleReceiptInvoice.findMany({
         where: { invoiceId: { in: saleInvoiceIds } },
-        include: {
+        select: {
+          invoiceId: true,
+          receiptId: true,
           receipt: {
-            include: { payments: true },
+            select: {
+              payments: { select: { paymentKind: true, amount: true } },
+            },
           },
         },
       })
@@ -79,9 +106,12 @@ export async function buildMonthlyReport(month: number, year: number): Promise<I
         },
       },
     },
-    include: {
+    select: {
+      amount: true,
+      vat: true,
+      commission: true,
       orderLinks: {
-        include: {
+        select: {
           purchaseOrder: { select: { saleOrderId: true, estado: true } },
           productionOrder: { select: { saleOrderId: true, estado: true } },
         },
@@ -95,6 +125,13 @@ export async function buildMonthlyReport(month: number, year: number): Promise<I
   let monthIva = 0;
   let monthComision = 0;
   let monthGan = 0;
+
+  const receiptByInvoice = new Map<string, typeof receiptLinks>();
+  for (const link of receiptLinks) {
+    const list = receiptByInvoice.get(link.invoiceId) ?? [];
+    list.push(link);
+    receiptByInvoice.set(link.invoiceId, list);
+  }
 
   const byClient = new Map<string, typeof orders>();
   for (const order of orders) {
@@ -153,7 +190,7 @@ export async function buildMonthlyReport(month: number, year: number): Promise<I
       for (const inv of order.invoices) {
         ventaNeto += n(inv.amount);
         ventaIva += n(inv.vat);
-        for (const link of receiptLinks.filter((l) => l.invoiceId === inv.id)) {
+        for (const link of receiptByInvoice.get(inv.id) ?? []) {
           for (const pay of link.receipt.payments) {
             if (pay.paymentKind < ERP_PAY.retVat) continue;
             const key = `${link.receiptId}:${pay.paymentKind}`;

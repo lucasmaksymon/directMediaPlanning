@@ -1,3 +1,4 @@
+import { revalidateTag, unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 
 export type ErpPlazaOption = {
@@ -205,6 +206,7 @@ export async function ensureErpElementName(raw: string): Promise<string> {
     return existing.name;
   }
   await prisma.erpElement.create({ data: { name, estado: 1 } });
+  revalidateTag("erp-catalog");
   return name;
 }
 
@@ -229,22 +231,27 @@ export async function ensureErpPlazaName(raw: string): Promise<string> {
 
   const province = await ensureProvince(parsed.province, new Map());
   await ensureCity(province.id, parsed.city, new Set());
+  revalidateTag("erp-catalog");
   return parsed.city;
 }
 
-export async function listErpPlazasForSelect(): Promise<ErpPlazaOption[]> {
-  const provinces = await prisma.erpProvince.findMany({
-    where: { estado: 1 },
-    orderBy: { name: "asc" },
-    include: { cities: { where: { estado: 1 }, orderBy: { name: "asc" } } },
-  });
-  return provinces
-    .filter((p) => p.cities.length > 0)
-    .map((p) => ({
-      province: p.name,
-      cities: p.cities.map((c) => ({ id: c.id, name: c.name })),
-    }));
-}
+export const listErpPlazasForSelect = unstable_cache(
+  async (): Promise<ErpPlazaOption[]> => {
+    const provinces = await prisma.erpProvince.findMany({
+      where: { estado: 1 },
+      orderBy: { name: "asc" },
+      include: { cities: { where: { estado: 1 }, orderBy: { name: "asc" } } },
+    });
+    return provinces
+      .filter((p) => p.cities.length > 0)
+      .map((p) => ({
+        province: p.name,
+        cities: p.cities.map((c) => ({ id: c.id, name: c.name })),
+      }));
+  },
+  ["erp-plazas"],
+  { revalidate: 300, tags: ["erp-catalog"] },
+);
 
 export function toErpPlazaSelectOptions(plazas: ErpPlazaOption[]) {
   return plazas.flatMap((p) =>
@@ -343,13 +350,16 @@ export async function syncErpCatalogFromInventory(): Promise<ErpCatalogSyncSumma
   return { provincesCreated, citiesCreated, currenciesCreated, renamed };
 }
 
-export async function listErpElementsForSelect() {
-  return prisma.erpElement.findMany({
-    where: { estado: 1 },
-    orderBy: { name: "asc" },
-    select: { id: true, name: true },
-  });
-}
+export const listErpElementsForSelect = unstable_cache(
+  async () =>
+    prisma.erpElement.findMany({
+      where: { estado: 1 },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+  ["erp-elements"],
+  { revalidate: 300, tags: ["erp-catalog"] },
+);
 
 export async function syncErpElementsFromCampaigns(): Promise<ErpElementSyncSummary> {
   const [items, lines] = await Promise.all([

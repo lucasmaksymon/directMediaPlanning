@@ -9,6 +9,7 @@ import { createErpPurchaseInvoice, updateErpPurchaseInvoice } from "@/app/action
 import { ErpPurchaseInvoiceFormFields } from "@/components/erp/ocr/ErpPurchaseInvoiceFormFields";
 import { ErpOcrImportClient } from "@/components/erp/ocr/ErpOcrImportClient";
 import { ERP_ORDER, erpInputNumber, erpPurchaseInvoiceTotal, isoDate, money } from "@/lib/erp";
+import { listActiveVendors, listOpenProductionOrdersForPick, listOpenPurchaseOrdersForPick } from "@/lib/erp-list";
 
 export const metadata = { title: productTitle("Facturas de compra") };
 
@@ -19,6 +20,14 @@ export default async function ErpFacturasCompraPage({
 }) {
   const { edit } = await searchParams;
   const now = new Date();
+  const currentHint = edit
+    ? await prisma.erpPurchaseInvoice.findUnique({
+        where: { id: edit },
+        select: { orderLinks: { select: { purchaseOrderId: true, productionOrderId: true } } },
+      })
+    : null;
+  const keepPo = currentHint?.orderLinks[0]?.purchaseOrderId ?? undefined;
+  const keepPr = currentHint?.orderLinks[0]?.productionOrderId ?? undefined;
   const [invoices, vendors, purchaseOrders, productionOrders] = await Promise.all([
     prisma.erpPurchaseInvoice.findMany({
       where: { isVatPurchase: false },
@@ -29,15 +38,9 @@ export default async function ErpFacturasCompraPage({
       },
       take: 200,
     }),
-    prisma.erpVendor.findMany({ where: { estado: 1 }, orderBy: { name: "asc" } }),
-    prisma.erpPurchaseOrder.findMany({
-      where: { estado: { in: [ERP_ORDER.issued, ERP_ORDER.invoiced] } },
-      include: { vendor: { select: { name: true } } },
-    }),
-    prisma.erpProductionOrder.findMany({
-      where: { estado: { in: [ERP_ORDER.issued, ERP_ORDER.invoiced] } },
-      include: { vendor: { select: { name: true } } },
-    }),
+    listActiveVendors(),
+    listOpenPurchaseOrdersForPick(keepPo),
+    listOpenProductionOrdersForPick(keepPr),
   ]);
   const current = invoices.find((f) => f.id === edit);
   const currentOrderId = current?.orderLinks[0]?.purchaseOrderId ?? current?.orderLinks[0]?.productionOrderId ?? "";

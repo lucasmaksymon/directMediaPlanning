@@ -8,7 +8,8 @@ import { ErpForm } from "@/components/erp/ErpForm";
 import { createErpSaleInvoice, updateErpSaleInvoice } from "@/app/actions/erp-billing";
 import { ErpSaleInvoiceFormFields } from "@/components/erp/ocr/ErpSaleInvoiceFormFields";
 import { ErpOcrImportClient } from "@/components/erp/ocr/ErpOcrImportClient";
-import { ERP_ORDER, erpInputNumber, erpReceiptRef, isoDate, money } from "@/lib/erp";
+import { erpInputNumber, erpReceiptRef, isoDate, money } from "@/lib/erp";
+import { listOpenSaleOrdersForPick } from "@/lib/erp-list";
 
 export const metadata = { title: productTitle("Facturas de venta") };
 
@@ -19,27 +20,24 @@ export default async function ErpFacturasVentaPage({
 }) {
   const { edit } = await searchParams;
   const now = new Date();
+  const currentHint = edit
+    ? await prisma.erpSaleInvoice.findUnique({ where: { id: edit }, select: { saleOrderId: true } })
+    : null;
   const [invoices, allOrders, receipts] = await Promise.all([
     prisma.erpSaleInvoice.findMany({
       orderBy: { issuedAt: "desc" },
       include: { client: { select: { name: true } }, saleOrder: { select: { number: true, client: { select: { name: true } } } } },
       take: 200,
     }),
-    prisma.erpSaleOrder.findMany({
-      where: { estado: { in: [ERP_ORDER.issued, ERP_ORDER.invoiced] } },
-      orderBy: { issuedAt: "desc" },
-      include: { client: { select: { name: true, legalName: true } } },
-    }),
+    listOpenSaleOrdersForPick(currentHint?.saleOrderId),
     prisma.erpSaleReceipt.findMany({
       orderBy: { issuedAt: "desc" },
-      include: { client: { select: { name: true } } },
-      take: 300,
+      select: { id: true, number: true, amount: true, clientId: true, client: { select: { name: true } } },
+      take: 80,
     }),
   ]);
   const current = invoices.find((f) => f.id === edit);
-  const orderOptions = allOrders.filter(
-    (o) => o.estado === ERP_ORDER.issued || o.id === current?.saleOrderId,
-  );
+  const orderOptions = allOrders;
 
   return (
     <div className={cn(adminPage, "gap-4")}>
