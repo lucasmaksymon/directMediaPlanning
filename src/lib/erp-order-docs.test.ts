@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   ERP_ADJUSTMENT,
+  ERP_VAT_RATE,
   adjustmentLabel,
   purchaseBreakdown,
   purchaseCostLabel,
+  purchaseVat,
 } from "./erp-order-docs";
 
 describe("purchaseBreakdown", () => {
@@ -25,13 +27,22 @@ describe("purchaseBreakdown", () => {
     expect(net).toBe(2160000);
   });
 
-  it("prioriza el importe cargado a mano sobre el porcentaje", () => {
+  it("el porcentaje manda aunque haya un importe cargado", () => {
     const { rows, net } = purchaseBreakdown({
       grossNet: 3094393,
-      adjustments: [{ label: "DESCUENTO ESPECIAL", kind: ERP_ADJUSTMENT.deduct, percent: 7, amount: 216607.51 }],
+      adjustments: [{ label: "DESCUENTO ESPECIAL", kind: ERP_ADJUSTMENT.deduct, percent: 7, amount: 10000 }],
     });
     expect(rows[0].value).toBe(216607.51);
     expect(net).toBe(2877785.49);
+  });
+
+  it("usa el importe cuando el cierre se pactó a monto fijo", () => {
+    const { rows, net } = purchaseBreakdown({
+      grossNet: 1000000,
+      adjustments: [{ label: "DESCUENTO ESPECIAL", kind: ERP_ADJUSTMENT.deduct, percent: null, amount: 150000 }],
+    });
+    expect(rows[0].value).toBe(150000);
+    expect(net).toBe(850000);
   });
 
   it("acumula ajustes que restan y que suman", () => {
@@ -47,6 +58,21 @@ describe("purchaseBreakdown", () => {
 
   it("sin ajustes el neto es el bruto", () => {
     expect(purchaseBreakdown({ grossNet: 500 }).net).toBe(500);
+  });
+});
+
+describe("purchaseVat", () => {
+  it("aplica la alícuota sobre el neto final, no sobre el bruto", () => {
+    const { net } = purchaseBreakdown({
+      grossNet: 1789743,
+      adjustments: [{ label: "CONFIDENCIAL AGENCIA", kind: ERP_ADJUSTMENT.deduct, percent: 10, amount: 0 }],
+    });
+    expect(net).toBe(1610768.7);
+    expect(purchaseVat(net, ERP_VAT_RATE)).toBe(338261.43);
+  });
+
+  it("permite órdenes sin IVA discriminado", () => {
+    expect(purchaseVat(2790000, 0)).toBe(0);
   });
 });
 

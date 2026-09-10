@@ -154,6 +154,7 @@ export async function GET(req: Request) {
         })),
         gross: breakdown.gross,
         net: money(order.net),
+        vatRate: Number(order.vatRate),
         vat: money(order.vat),
         amount: money(order.amount),
         hasVat: Number(order.vat) > 0,

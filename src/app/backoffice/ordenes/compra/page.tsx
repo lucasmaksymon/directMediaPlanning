@@ -11,7 +11,7 @@ import { ErpSettlementField } from "@/components/erp/ErpSettlementField";
 import { createErpPurchaseOrder, updateErpPurchaseOrder } from "@/app/actions/erp-orders";
 import { ERP_VENDOR, erpInputNumber, isoDate } from "@/lib/erp";
 import { ERP_ORDER_ESTADOS } from "@/lib/erp-write";
-import { ERP_ADJUSTMENT_KINDS, ERP_ADJUSTMENT_LABELS } from "@/lib/erp-order-docs";
+import { ERP_ADJUSTMENT_KINDS, ERP_ADJUSTMENT_LABELS, ERP_VAT_RATE } from "@/lib/erp-order-docs";
 import { listErpElementsForSelect, listErpPlazasForSelect, toErpPlazaSelectOptions } from "@/lib/erp-catalog";
 
 export const metadata = { title: productTitle("O.P. Compra") };
@@ -168,8 +168,13 @@ export default async function ErpOpCompraPage({
               placeholder="Se suma del detalle si lo dejás vacío"
             />
           </ErpField>
-          <ErpField htmlFor="vat" label="IVA">
-            <Input defaultValue={erpInputNumber(current?.vat)} id="vat" name="vat" />
+          <ErpField htmlFor="vatRate" label="IVA %">
+            <Input
+              defaultValue={current ? erpInputNumber(current.vatRate) : String(ERP_VAT_RATE)}
+              id="vatRate"
+              name="vatRate"
+              placeholder="0 si no lleva IVA discriminado"
+            />
           </ErpField>
           <ErpField htmlFor="printShop" label="Imprenta">
             <Input defaultValue={current?.printShop ?? ""} id="printShop" name="printShop" />

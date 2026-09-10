@@ -41,11 +41,20 @@ export type PurchaseAdjustment = {
   amount: number;
 };
 
-/** El importe manda; el porcentaje solo se usa cuando no se cargó importe. */
+/** El porcentaje manda; el importe es para los cierres pactados a monto fijo. */
 export function adjustmentValue(gross: number, adj: PurchaseAdjustment) {
-  if (adj.amount) return adj.amount;
-  if (adj.percent) return (gross * adj.percent) / 100;
-  return 0;
+  if (adj.percent) return round2((gross * adj.percent) / 100);
+  return adj.amount;
+}
+
+export const ERP_VAT_RATE = 21;
+
+export function purchaseVat(net: number, vatRate: number) {
+  return round2((net * vatRate) / 100);
+}
+
+function round2(n: number) {
+  return Math.round(n * 100) / 100;
 }
 
 export function purchaseBreakdown(opts: {
@@ -59,9 +68,11 @@ export function purchaseBreakdown(opts: {
     ...adj,
     value: adjustmentValue(gross, adj),
   }));
-  const net = rows.reduce(
-    (total, row) => total + (row.kind === ERP_ADJUSTMENT.add ? row.value : -row.value),
-    gross,
+  const net = round2(
+    rows.reduce(
+      (total, row) => total + (row.kind === ERP_ADJUSTMENT.add ? row.value : -row.value),
+      gross,
+    ),
   );
   return { gross, rows, net };
 }

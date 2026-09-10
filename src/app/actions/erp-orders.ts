@@ -15,7 +15,12 @@ import {
 } from "@/lib/erp";
 import { erpFail, requiredId, type ErpResult } from "@/lib/erp-write";
 import { parseFormLines } from "@/lib/erp-form-lines";
-import { ERP_ADJUSTMENT, purchaseBreakdown, type PurchaseAdjustment } from "@/lib/erp-order-docs";
+import {
+  ERP_ADJUSTMENT,
+  purchaseBreakdown,
+  purchaseVat,
+  type PurchaseAdjustment,
+} from "@/lib/erp-order-docs";
 import { ensureErpElementName, ensureErpPlazaName } from "@/lib/erp-catalog";
 
 const PURCHASE_LINE_FIELDS = ["element", "location", "quantity", "days", "measures", "unitCost", "net"] as const;
@@ -218,7 +223,11 @@ async function purchaseExtraData(formData: FormData) {
   };
 }
 
-/** El neto de compra no se tipea: sale del costo bruto menos los ajustes del cierre. */
+/**
+ * En compra no se tipea ni el neto ni el IVA: el neto sale del costo bruto menos
+ * los ajustes del cierre, y el IVA de aplicarle la alícuota a ese neto. Si se
+ * tipearan sueltos quedan desfasados apenas cambia un ajuste.
+ */
 async function purchaseOrderData(
   formData: FormData,
   items: { net: number }[],
@@ -230,12 +239,16 @@ async function purchaseOrderData(
     items,
     adjustments,
   });
+  const vatRate = parseMoney(formData.get("vatRate"));
+  const vat = purchaseVat(net, vatRate);
   return {
     ...base,
     ...(await purchaseExtraData(formData)),
     grossNet: gross,
     net,
-    amount: net + base.vat,
+    vatRate,
+    vat,
+    amount: net + vat,
   };
 }
 

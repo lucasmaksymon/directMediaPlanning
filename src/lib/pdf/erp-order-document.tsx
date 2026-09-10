@@ -260,6 +260,7 @@ export function ErpPurchaseOrderDocument(props: {
   adjustments: { label: string; value: number }[];
   gross: number;
   net: string;
+  vatRate: number;
   vat: string;
   amount: string;
   hasVat: boolean;
@@ -353,7 +354,7 @@ export function ErpPurchaseOrderDocument(props: {
           {props.hasVat ? (
             <>
               <View style={styles.totalRow}>
-                <Text>IVA 21%</Text>
+                <Text>IVA {props.vatRate}%</Text>
                 <Text>{props.vat}</Text>
               </View>
               <View style={[styles.totalRow, styles.totalStrong]}>
