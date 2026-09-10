@@ -18,7 +18,7 @@ import { ocrDraftFromMatch, type OcrFormDraft, type OcrKind, type OcrMatchResult
 
 const TOOLBAR_SLOT = "[data-erp-page-toolbar]";
 
-type Catalog = { value: string; label: string };
+type Catalog = { value: string; label: string; vendorId?: string };
 
 type ImportRow = {
   id: string;
@@ -462,16 +462,27 @@ export function ErpOcrImportClient({
                         <div className="space-y-1">
                           <Autocomplete
                             compact
-                            onChange={(value) => updateRow(row.id, (current) => patchDraft(current, { vendorId: value }))}
+                            onChange={(value) =>
+                              updateRow(row.id, (current) => {
+                                const keep = purchaseOrders.some(
+                                  (o) => o.value === current.draft.orderId && o.vendorId === value,
+                                );
+                                return patchDraft(current, {
+                                  vendorId: value,
+                                  orderId: keep ? current.draft.orderId : "",
+                                });
+                              })
+                            }
                             options={vendors}
                             placeholder="Proveedor…"
                             value={row.draft.vendorId}
                           />
                           <Autocomplete
                             compact
+                            disabled={!row.draft.vendorId}
                             onChange={(value) => updateRow(row.id, (current) => patchDraft(current, { orderId: value }))}
-                            options={purchaseOrders}
-                            placeholder="Orden…"
+                            options={purchaseOrders.filter((o) => o.vendorId === row.draft.vendorId)}
+                            placeholder={row.draft.vendorId ? "Orden de este proveedor…" : "Elegí un proveedor…"}
                             value={row.draft.orderId}
                           />
                         </div>

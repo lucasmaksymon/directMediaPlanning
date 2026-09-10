@@ -79,12 +79,21 @@ export function ErpPurchaseInvoiceFormFields({
   now: string;
   allowOcr: boolean;
   vendors: { value: string; label: string }[];
-  orders: { value: string; label: string }[];
+  orders: { value: string; label: string; vendorId: string }[];
 }) {
   const [draft, setDraft] = useState(() => draftFromCurrent(current, now));
+  const [vendorId, setVendorId] = useState(draft.vendorId);
+  const [orderId, setOrderId] = useState(draft.orderId);
   const [key, setKey] = useState(0);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [blockers, setBlockers] = useState<string[]>([]);
+  const orderOptions = orders.filter((o) => o.vendorId === vendorId);
+
+  function applyVendor(nextVendorId: string) {
+    setVendorId(nextVendorId);
+    const keep = orders.some((o) => o.value === orderId && o.vendorId === nextVendorId);
+    if (!keep) setOrderId("");
+  }
 
   return (
     <>
@@ -92,9 +101,13 @@ export function ErpPurchaseInvoiceFormFields({
       <input name="isVatPurchase" type="hidden" value="0" />
       {allowOcr ? (
         <ErpOcrImport
+          issuedOnly={false}
           kind="purchase_invoice"
           onResult={(result) => {
-            setDraft(ocrDraftFromMatch(result));
+            const next = ocrDraftFromMatch(result);
+            setDraft(next);
+            setVendorId(next.vendorId);
+            setOrderId(next.orderId);
             setWarnings(result.extracted.warnings);
             setBlockers(result.blockers);
             setKey((n) => n + 1);
@@ -105,22 +118,31 @@ export function ErpPurchaseInvoiceFormFields({
       <div className="contents" key={key}>
         <ErpField htmlFor="vendorId" label="Proveedor">
           <Autocomplete
-            defaultValue={draft.vendorId}
             id="vendorId"
             name="vendorId"
+            onChange={applyVendor}
             options={vendors}
             placeholder="Buscar proveedor…"
             required
+            value={vendorId}
           />
         </ErpField>
-        <ErpField htmlFor="orderId" label="Orden emitida">
+        <ErpField htmlFor="isCreditNote" label="Tipo de comprobante">
+          <Select defaultValue={draft.isCreditNote} id="isCreditNote" name="isCreditNote">
+            <option value="0">Factura</option>
+            <option value="1">Nota de crédito</option>
+          </Select>
+        </ErpField>
+        <ErpField htmlFor="orderId" label="Orden">
           <Autocomplete
-            defaultValue={draft.orderId}
+            disabled={!vendorId}
             id="orderId"
             name="orderId"
-            options={orders}
-            placeholder="Buscar orden…"
+            onChange={setOrderId}
+            options={orderOptions}
+            placeholder={vendorId ? "Buscar orden de este proveedor…" : "Elegí un proveedor primero"}
             required
+            value={orderId}
           />
         </ErpField>
         <ErpField htmlFor="issuedAt" label="Fecha">
@@ -158,12 +180,6 @@ export function ErpPurchaseInvoiceFormFields({
         </ErpField>
         <ErpField htmlFor="diegoFee" label="Com. Diego">
           <Input defaultValue={draft.diegoFee} id="diegoFee" name="diegoFee" />
-        </ErpField>
-        <ErpField htmlFor="isCreditNote" label="Tipo de comprobante">
-          <Select defaultValue={draft.isCreditNote} id="isCreditNote" name="isCreditNote">
-            <option value="0">Factura</option>
-            <option value="1">Nota de crédito</option>
-          </Select>
         </ErpField>
         <ErpField htmlFor="payStatus" label="Pago">
           <Select defaultValue={String(current?.payStatus ?? 0)} id="payStatus" name="payStatus">

@@ -47,25 +47,28 @@ export default async function ErpFacturasCompraPage({
   const allOrders = [
     ...purchaseOrders.map((o) => ({
       id: o.id,
+      vendorId: o.vendorId,
       estado: o.estado,
-      label: `Compra ${o.number} · ${o.vendor.name}`,
-      batchLabel: `Compra ${o.number} · ${o.vendor.name} · ${money(o.amount)}`,
+      label: `Compra ${o.number} · ${o.vendor.name}${o.estado === ERP_ORDER.invoiced ? " · Facturada" : ""}`,
+      batchLabel: `Compra ${o.number} · ${o.vendor.name} · ${money(o.amount)}${o.estado === ERP_ORDER.invoiced ? " · Facturada" : ""}`,
     })),
     ...productionOrders.map((o) => ({
       id: o.id,
+      vendorId: o.vendorId,
       estado: o.estado,
-      label: `Producción ${o.number} · ${o.vendor.name}`,
-      batchLabel: `Producción ${o.number} · ${o.vendor.name} · ${money(o.amount)}`,
+      label: `Producción ${o.number} · ${o.vendor.name}${o.estado === ERP_ORDER.invoiced ? " · Facturada" : ""}`,
+      batchLabel: `Producción ${o.number} · ${o.vendor.name} · ${money(o.amount)}${o.estado === ERP_ORDER.invoiced ? " · Facturada" : ""}`,
     })),
   ];
   const openOrders = allOrders.filter(
-    (o) => o.estado === ERP_ORDER.issued || o.id === currentOrderId,
+    (o) =>
+      o.estado === ERP_ORDER.issued || o.estado === ERP_ORDER.invoiced || o.id === currentOrderId,
   );
 
   return (
     <div className={cn(adminPage, "gap-4")}>
       <PageHeader
-        description="Factura al proveedor. Incluye retenciones IVA / IIBB. Cierra la orden al cubrir el importe."
+        description="Factura al proveedor. Incluye retenciones IVA / IIBB. Cierra la orden al cubrir el importe neto (facturas menos notas de crédito)."
         eyebrow="Facturación"
         title="Facturas de compra"
       />
@@ -105,13 +108,13 @@ export default async function ErpFacturasCompraPage({
                 : null
             }
             now={isoDate(now)}
-            orders={openOrders.map((o) => ({ value: o.id, label: o.label }))}
+            orders={openOrders.map((o) => ({ value: o.id, label: o.label, vendorId: o.vendorId }))}
             vendors={vendors.map((v) => ({ value: v.id, label: v.name }))}
           />
         </ErpForm>
         <ErpOcrImportClient
           kind="purchase_invoice"
-          purchaseOrders={allOrders.map((o) => ({ value: o.id, label: o.batchLabel }))}
+          purchaseOrders={allOrders.map((o) => ({ value: o.id, label: o.batchLabel, vendorId: o.vendorId }))}
           vendors={vendors.map((v) => ({ value: v.id, label: v.name }))}
         />
 

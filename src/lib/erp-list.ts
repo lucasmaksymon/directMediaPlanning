@@ -20,6 +20,7 @@ const purchasePickSelect = {
   number: true,
   estado: true,
   amount: true,
+  vendorId: true,
   vendor: { select: { name: true } },
   saleOrder: { select: { number: true } },
 } as const;
@@ -29,6 +30,7 @@ const productionPickSelect = {
   number: true,
   estado: true,
   amount: true,
+  vendorId: true,
   vendor: { select: { name: true } },
   saleOrder: { select: { number: true } },
 } as const;
@@ -108,26 +110,51 @@ export function listOpenSaleOrdersForPick(keepId?: string) {
   });
 }
 
-export function listOpenPurchaseOrdersForPick(keepId?: string) {
-  return prisma.erpPurchaseOrder.findMany({
-    where: keepId
-      ? { OR: [{ estado: ERP_ORDER.issued }, { id: keepId }] }
-      : { estado: ERP_ORDER.issued },
-    orderBy: { issuedAt: "desc" },
-    take: ERP_PICK_TAKE,
-    select: purchasePickSelect,
-  });
+/** Emitidas y facturadas: hace falta la facturada para cargar una NC (p. ej. confidencial). */
+export async function listOpenPurchaseOrdersForPick(keepId?: string) {
+  const [issued, invoiced] = await Promise.all([
+    prisma.erpPurchaseOrder.findMany({
+      where: keepId
+        ? { OR: [{ estado: ERP_ORDER.issued }, { id: keepId }] }
+        : { estado: ERP_ORDER.issued },
+      orderBy: { issuedAt: "desc" },
+      take: ERP_PICK_TAKE,
+      select: purchasePickSelect,
+    }),
+    prisma.erpPurchaseOrder.findMany({
+      where: {
+        estado: ERP_ORDER.invoiced,
+        ...(keepId ? { id: { not: keepId } } : {}),
+      },
+      orderBy: { issuedAt: "desc" },
+      take: ERP_PICK_TAKE,
+      select: purchasePickSelect,
+    }),
+  ]);
+  return [...issued, ...invoiced];
 }
 
-export function listOpenProductionOrdersForPick(keepId?: string) {
-  return prisma.erpProductionOrder.findMany({
-    where: keepId
-      ? { OR: [{ estado: ERP_ORDER.issued }, { id: keepId }] }
-      : { estado: ERP_ORDER.issued },
-    orderBy: { issuedAt: "desc" },
-    take: ERP_PICK_TAKE,
-    select: productionPickSelect,
-  });
+export async function listOpenProductionOrdersForPick(keepId?: string) {
+  const [issued, invoiced] = await Promise.all([
+    prisma.erpProductionOrder.findMany({
+      where: keepId
+        ? { OR: [{ estado: ERP_ORDER.issued }, { id: keepId }] }
+        : { estado: ERP_ORDER.issued },
+      orderBy: { issuedAt: "desc" },
+      take: ERP_PICK_TAKE,
+      select: productionPickSelect,
+    }),
+    prisma.erpProductionOrder.findMany({
+      where: {
+        estado: ERP_ORDER.invoiced,
+        ...(keepId ? { id: { not: keepId } } : {}),
+      },
+      orderBy: { issuedAt: "desc" },
+      take: ERP_PICK_TAKE,
+      select: productionPickSelect,
+    }),
+  ]);
+  return [...issued, ...invoiced];
 }
 
 export function listRecentPurchaseOrdersForPick() {

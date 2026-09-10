@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { ERP_ORDER, nextAutoOrderEstado, requiredString } from "@/lib/erp";
+import { ERP_ORDER, invoiceCoverAmount, nextAutoOrderEstado, requiredString } from "@/lib/erp";
 
 export type ErpResult = { ok: true } | { ok: false; error: string };
 
@@ -47,12 +47,9 @@ export async function syncPurchaseOrderEstado(purchaseOrderId: string) {
   });
   const links = await prisma.erpPurchaseInvoiceOrder.findMany({
     where: { purchaseOrderId },
-    include: { invoice: { select: { amount: true, vat: true } } },
+    include: { invoice: { select: { amount: true, vat: true, isCreditNote: true } } },
   });
-  const invoiced = links.reduce(
-    (acc, l) => acc + Number(l.invoice.amount) + Number(l.invoice.vat),
-    0,
-  );
+  const invoiced = links.reduce((acc, l) => acc + invoiceCoverAmount(l.invoice), 0);
   const estado = nextAutoOrderEstado(invoiced, Number(order.amount), order.estado);
   if (estado !== order.estado) {
     await prisma.erpPurchaseOrder.update({ where: { id: purchaseOrderId }, data: { estado } });
@@ -66,12 +63,9 @@ export async function syncProductionOrderEstado(productionOrderId: string) {
   });
   const links = await prisma.erpPurchaseInvoiceOrder.findMany({
     where: { productionOrderId },
-    include: { invoice: { select: { amount: true, vat: true } } },
+    include: { invoice: { select: { amount: true, vat: true, isCreditNote: true } } },
   });
-  const invoiced = links.reduce(
-    (acc, l) => acc + Number(l.invoice.amount) + Number(l.invoice.vat),
-    0,
-  );
+  const invoiced = links.reduce((acc, l) => acc + invoiceCoverAmount(l.invoice), 0);
   const estado = nextAutoOrderEstado(invoiced, Number(order.amount), order.estado);
   if (estado !== order.estado) {
     await prisma.erpProductionOrder.update({ where: { id: productionOrderId }, data: { estado } });

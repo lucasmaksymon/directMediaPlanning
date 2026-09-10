@@ -274,6 +274,12 @@ export function displayDate(d: Date | string | null | undefined) {
   return date.toLocaleDateString("es-AR");
 }
 
+/** Importe que cubre la orden: las facturas suman y las notas de crédito restan. */
+export function invoiceCoverAmount(inv: { amount: unknown; vat: unknown; isCreditNote?: boolean }) {
+  const total = Number(inv.amount ?? 0) + Number(inv.vat ?? 0);
+  return inv.isCreditNote ? -total : total;
+}
+
 export function shouldCloseOrder(invoicedTotal: number, orderAmount: number) {
   return invoicedTotal >= orderAmount - 0.009;
 }
