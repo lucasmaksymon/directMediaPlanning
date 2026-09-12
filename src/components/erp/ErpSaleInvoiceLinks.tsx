@@ -88,8 +88,9 @@ export function ErpSaleInvoiceLinks({
         />
         {selected && selected.invoicedAmount > 0.009 ? (
           <p className="text-xs text-muted-foreground">
-            Ya facturado {money(selected.invoicedAmount)} de {money(selected.orderAmount)}. Resta{" "}
-            {money(selected.remainingAmount)}.
+            {selected.remainingAmount > 0.009
+              ? `Ya facturado ${money(selected.invoicedAmount)} de ${money(selected.orderAmount)}. Resta ${money(selected.remainingAmount)}.`
+              : `Ya facturado ${money(selected.invoicedAmount)} de ${money(selected.orderAmount)}. El total ya está cubierto.`}
           </p>
         ) : null}
       </ErpField>

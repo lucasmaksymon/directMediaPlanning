@@ -301,14 +301,20 @@ function roundMoney(n: number) {
   return Math.round(n * 100) / 100;
 }
 
-/** Lo que falta facturar de una O.P. (neto e IVA por separado). */
+/** Lo que falta facturar de una O.P. Se mide contra el total (neto + IVA). */
 export function saleOrderRemaining(
   order: { net: unknown; vat: unknown },
   invoiced: { amount: number; vat: number },
 ): { net: number; vat: number; amount: number } {
-  const net = roundMoney(Math.max(0, Number(order.net) - Number(invoiced.amount ?? 0)));
-  const vat = roundMoney(Math.max(0, Number(order.vat) - Number(invoiced.vat ?? 0)));
-  return { net, vat, amount: roundMoney(net + vat) };
+  const orderNet = Number(order.net);
+  const orderVat = Number(order.vat);
+  const orderAmount = roundMoney(orderNet + orderVat);
+  const invoicedGross = roundMoney(Number(invoiced.amount ?? 0) + Number(invoiced.vat ?? 0));
+  const remainingGross = roundMoney(Math.max(0, orderAmount - invoicedGross));
+  if (remainingGross <= 0.009) return { net: 0, vat: 0, amount: 0 };
+  const vatRatio = orderAmount > 0 ? orderVat / orderAmount : 0;
+  const vat = roundMoney(remainingGross * vatRatio);
+  return { net: roundMoney(remainingGross - vat), vat, amount: remainingGross };
 }
 
 export function saleOrderPickLabel(

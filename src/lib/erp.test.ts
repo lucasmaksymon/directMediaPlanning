@@ -60,4 +60,9 @@ describe("saleOrderRemaining", () => {
     expect(saleOrderPickLabel(order, { amount: 0 })).toContain("Facturada");
     expect(saleOrderPickLabel(order, { amount: 121 })).not.toContain("Facturada");
   });
+
+  it("no deja resto si el bruto ya cubre el total aunque falte neto o IVA", () => {
+    const remaining = saleOrderRemaining({ net: 21423192, vat: 4498870.32 }, { amount: 15180000, vat: 17970000 });
+    expect(remaining).toEqual({ net: 0, vat: 0, amount: 0 });
+  });
 });
