@@ -94,6 +94,7 @@ export function ErpSaleInvoiceFormFields({
       {current ? <input name="id" type="hidden" value={current.id} /> : null}
       {allowOcr ? (
         <ErpOcrImport
+          issuedOnly={false}
           kind="sale_invoice"
           onResult={(result) => {
             setDraft(ocrDraftFromMatch(result));

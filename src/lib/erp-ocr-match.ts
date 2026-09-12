@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { ERP_COLLECT, ERP_ORDER, money } from "@/lib/erp";
+import { ERP_COLLECT, ERP_ORDER, money, saleOrderInvoiceCover, saleOrderPickLabel, saleOrderRemaining } from "@/lib/erp";
 import {
   foldName,
   isOurCompany,
@@ -116,10 +116,12 @@ export async function matchOcrExtracted(
               number: true,
               amount: true,
               net: true,
+              vat: true,
               issuedAt: true,
               estado: true,
               clientId: true,
               client: { select: { name: true } },
+              invoices: { select: { amount: true, vat: true } },
             },
           })
         : Promise.resolve([]),
@@ -218,12 +220,17 @@ export async function matchOcrExtracted(
 
   const saleOrderOptions = saleOrders
     .map((order) => {
+      const invoiced = saleOrderInvoiceCover(order.invoices);
+      const remaining = saleOrderRemaining(order, invoiced);
+      const target = remaining.amount > 0.009 ? remaining.amount : Number(order.amount);
       const partyBoost = client && order.clientId === client.id ? 1 : 0.15;
+      const openBoost = remaining.amount > 0.009 ? 0.08 : 0;
       const score =
         partyBoost * 0.5 +
-        amountScore(Number(order.amount), total) * 0.3 +
-        dateScore(extracted.issuedAt, order.issuedAt) * 0.2;
-      return option(order.id, `${order.number} · ${order.client.name} · ${money(order.amount)}`, score);
+        amountScore(target, total) * 0.3 +
+        dateScore(extracted.issuedAt, order.issuedAt) * 0.2 +
+        openBoost;
+      return option(order.id, saleOrderPickLabel(order, remaining), score);
     })
     .sort((a, b) => b.score - a.score);
 

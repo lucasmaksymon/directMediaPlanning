@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Autocomplete, Input } from "@/components/ui";
 import { ErpField } from "@/components/erp/ErpField";
-import { erpInputNumber } from "@/lib/erp";
+import { erpInputNumber, money } from "@/lib/erp";
 
 export type ErpSaleOrderOption = {
   id: string;
@@ -12,6 +12,11 @@ export type ErpSaleOrderOption = {
   legalName: string;
   net: number;
   vat: number;
+  remainingNet: number;
+  remainingVat: number;
+  remainingAmount: number;
+  invoicedAmount: number;
+  orderAmount: number;
 };
 
 export type ErpReceiptOption = {
@@ -41,10 +46,18 @@ export function ErpSaleInvoiceLinks({
   const selected = orders.find((o) => o.id === orderId);
   const [legalName, setLegalName] = useState(defaultLegalName || selected?.legalName || "");
   const [amount, setAmount] = useState(
-    defaultAmount != null && defaultAmount !== "" ? erpInputNumber(defaultAmount) : selected ? erpInputNumber(selected.net) : "0",
+    defaultAmount != null && defaultAmount !== ""
+      ? erpInputNumber(defaultAmount)
+      : selected
+        ? erpInputNumber(selected.remainingNet)
+        : "0",
   );
   const [vat, setVat] = useState(
-    defaultVat != null && defaultVat !== "" ? erpInputNumber(defaultVat) : selected ? erpInputNumber(selected.vat) : "0",
+    defaultVat != null && defaultVat !== ""
+      ? erpInputNumber(defaultVat)
+      : selected
+        ? erpInputNumber(selected.remainingVat)
+        : "0",
   );
   const clientReceipts = useMemo(
     () => (selected ? receipts.filter((r) => r.clientId === selected.clientId) : receipts),
@@ -55,7 +68,7 @@ export function ErpSaleInvoiceLinks({
 
   return (
     <>
-      <ErpField htmlFor="saleOrderId" label="O.P. venta (emitida)">
+      <ErpField htmlFor="saleOrderId" label="O.P. venta">
         <Autocomplete
           id="saleOrderId"
           name="saleOrderId"
@@ -64,8 +77,8 @@ export function ErpSaleInvoiceLinks({
             const next = orders.find((o) => o.id === id);
             if (next) {
               setLegalName(next.legalName);
-              setAmount(erpInputNumber(next.net));
-              setVat(erpInputNumber(next.vat));
+              setAmount(erpInputNumber(next.remainingNet));
+              setVat(erpInputNumber(next.remainingVat));
             }
           }}
           options={orders.map((o) => ({ value: o.id, label: o.label }))}
@@ -73,6 +86,12 @@ export function ErpSaleInvoiceLinks({
           required
           value={orderId}
         />
+        {selected && selected.invoicedAmount > 0.009 ? (
+          <p className="text-xs text-muted-foreground">
+            Ya facturado {money(selected.invoicedAmount)} de {money(selected.orderAmount)}. Resta{" "}
+            {money(selected.remainingAmount)}.
+          </p>
+        ) : null}
       </ErpField>
       <ErpField htmlFor="legalName" label="Factura A (razón social)">
         <Input

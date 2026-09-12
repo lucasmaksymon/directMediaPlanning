@@ -8,7 +8,15 @@ import { ErpForm } from "@/components/erp/ErpForm";
 import { createErpSaleInvoice, updateErpSaleInvoice } from "@/app/actions/erp-billing";
 import { ErpSaleInvoiceFormFields } from "@/components/erp/ocr/ErpSaleInvoiceFormFields";
 import { ErpOcrImportClient } from "@/components/erp/ocr/ErpOcrImportClient";
-import { erpInputNumber, erpReceiptRef, isoDate, money } from "@/lib/erp";
+import {
+  erpInputNumber,
+  erpReceiptRef,
+  isoDate,
+  money,
+  saleOrderInvoiceCover,
+  saleOrderPickLabel,
+  saleOrderRemaining,
+} from "@/lib/erp";
 import { listOpenSaleOrdersForPick } from "@/lib/erp-list";
 
 export const metadata = { title: productTitle("Facturas de venta") };
@@ -42,7 +50,7 @@ export default async function ErpFacturasVentaPage({
   return (
     <div className={cn(adminPage, "gap-4")}>
       <PageHeader
-        description="Si la suma de importe + IVA cubre la orden, la O.P. pasa a estado Facturada. Si se borra y ya no cubre, se reabre."
+        description="Podés cargar varias facturas sobre la misma O.P. (por show). La orden pasa a Facturada cuando la suma cubre el total; si se borra y ya no cubre, se reabre."
         eyebrow="Facturación"
         title="Facturas de venta"
       />
@@ -84,14 +92,23 @@ export default async function ErpFacturasVentaPage({
                 : null
             }
             now={isoDate(now)}
-            orders={orderOptions.map((o) => ({
-              id: o.id,
-              label: `${o.number} · ${o.client.name} · ${money(o.amount)}`,
-              clientId: o.clientId,
-              legalName: o.client.legalName?.trim() || o.client.name,
-              net: Number(o.net),
-              vat: Number(o.vat),
-            }))}
+            orders={orderOptions.map((o) => {
+              const invoiced = saleOrderInvoiceCover(o.invoices);
+              const remaining = saleOrderRemaining(o, invoiced);
+              return {
+                id: o.id,
+                label: saleOrderPickLabel(o, remaining),
+                clientId: o.clientId,
+                legalName: o.client.legalName?.trim() || o.client.name,
+                net: Number(o.net),
+                vat: Number(o.vat),
+                remainingNet: remaining.net,
+                remainingVat: remaining.vat,
+                remainingAmount: remaining.amount,
+                invoicedAmount: invoiced.amount + invoiced.vat,
+                orderAmount: Number(o.amount),
+              };
+            })}
             receipts={receipts.map((r) => ({
               clientId: r.clientId,
               ref: erpReceiptRef(r.number),
@@ -101,10 +118,10 @@ export default async function ErpFacturasVentaPage({
         </ErpForm>
         <ErpOcrImportClient
           kind="sale_invoice"
-          saleOrders={allOrders.map((o) => ({
-            value: o.id,
-            label: `${o.number} · ${o.client.name} · ${money(o.amount)}`,
-          }))}
+          saleOrders={allOrders.map((o) => {
+            const remaining = saleOrderRemaining(o, saleOrderInvoiceCover(o.invoices));
+            return { value: o.id, label: saleOrderPickLabel(o, remaining) };
+          })}
         />
 
         {invoices.length === 0 ? (

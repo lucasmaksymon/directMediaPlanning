@@ -20,6 +20,7 @@ import {
   requiredString,
 } from "@/lib/erp";
 import { parseFormLines } from "@/lib/erp-form-lines";
+import { syncSaleInvoiceGestion, unlinkSaleInvoiceFromGestion } from "@/lib/erp-gestion";
 
 const RECEIPT_PAY_FIELDS = [
   "paymentKind",
@@ -159,8 +160,6 @@ export async function createErpSaleInvoice(formData: FormData): Promise<Result> 
       where: { id: saleOrderId },
       select: {
         clientId: true,
-        net: true,
-        vat: true,
         client: {
           select: {
             name: true,
@@ -172,9 +171,9 @@ export async function createErpSaleInvoice(formData: FormData): Promise<Result> 
     });
     const issuedAt = parseDateField(formData.get("issuedAt"));
     if (!issuedAt) throw new Error("Indicá la fecha.");
-    const amount = parseMoney(formData.get("amount")) || Number(order.net);
-    const vat = parseMoney(formData.get("vat")) || Number(order.vat);
-    await prisma.erpSaleInvoice.create({
+    const amount = parseMoney(formData.get("amount"));
+    const vat = parseMoney(formData.get("vat"));
+    const invoice = await prisma.erpSaleInvoice.create({
       data: {
         client: { connect: { id: order.clientId } },
         saleOrder: { connect: { id: saleOrderId } },
@@ -202,6 +201,7 @@ export async function createErpSaleInvoice(formData: FormData): Promise<Result> 
         collectStatus: parseIntField(formData.get("collectStatus"), ERP_COLLECT.pending),
       },
     });
+    await syncSaleInvoiceGestion(saleOrderId, invoice.id);
     await syncSaleOrderEstado(saleOrderId);
     refreshBilling();
     return { ok: true };
@@ -223,8 +223,6 @@ export async function updateErpSaleInvoice(formData: FormData): Promise<Result> 
       where: { id: saleOrderId },
       select: {
         clientId: true,
-        net: true,
-        vat: true,
         client: {
           select: {
             name: true,
@@ -236,8 +234,8 @@ export async function updateErpSaleInvoice(formData: FormData): Promise<Result> 
     });
     const issuedAt = parseDateField(formData.get("issuedAt"));
     if (!issuedAt) throw new Error("Indicá la fecha.");
-    const amount = parseMoney(formData.get("amount")) || Number(order.net);
-    const vat = parseMoney(formData.get("vat")) || Number(order.vat);
+    const amount = parseMoney(formData.get("amount"));
+    const vat = parseMoney(formData.get("vat"));
     await prisma.erpSaleInvoice.update({
       where: { id },
       data: {
@@ -267,6 +265,7 @@ export async function updateErpSaleInvoice(formData: FormData): Promise<Result> 
         collectStatus: parseIntField(formData.get("collectStatus"), ERP_COLLECT.pending),
       },
     });
+    await syncSaleInvoiceGestion(saleOrderId, id);
     await syncSaleOrderEstado(saleOrderId);
     if (current.saleOrderId !== saleOrderId) await syncSaleOrderEstado(current.saleOrderId);
     refreshBilling();
@@ -286,6 +285,7 @@ export async function deleteErpSaleInvoice(id: string): Promise<Result> {
     if (invoice._count.receiptLinks > 0) {
       throw new Error("No se puede borrar: está en un recibo.");
     }
+    await unlinkSaleInvoiceFromGestion(id);
     await prisma.erpSaleInvoice.delete({ where: { id } });
     await syncSaleOrderEstado(invoice.saleOrderId);
     refreshBilling();

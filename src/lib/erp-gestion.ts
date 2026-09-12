@@ -522,3 +522,34 @@ export async function loadPendingPayables() {
     };
   });
 }
+
+/** Asigna la factura a la primera fila GESTIÓN de la orden que aún no tiene venta. */
+export async function syncSaleInvoiceGestion(saleOrderId: string, invoiceId: string) {
+  const existing = await prisma.erpGestionLine.findFirst({
+    where: { saleInvoiceId: invoiceId },
+    select: { id: true, saleOrderId: true },
+  });
+  if (existing?.saleOrderId === saleOrderId) return;
+  if (existing) {
+    await prisma.erpGestionLine.update({
+      where: { id: existing.id },
+      data: { saleInvoiceId: null },
+    });
+  }
+  const empty = await prisma.erpGestionLine.findFirst({
+    where: { saleOrderId, saleInvoiceId: null },
+    orderBy: { sort: "asc" },
+  });
+  if (!empty) return;
+  await prisma.erpGestionLine.update({
+    where: { id: empty.id },
+    data: { saleInvoiceId: invoiceId },
+  });
+}
+
+export async function unlinkSaleInvoiceFromGestion(invoiceId: string) {
+  await prisma.erpGestionLine.updateMany({
+    where: { saleInvoiceId: invoiceId },
+    data: { saleInvoiceId: null },
+  });
+}

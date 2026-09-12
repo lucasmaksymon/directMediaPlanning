@@ -284,6 +284,47 @@ export function shouldCloseOrder(invoicedTotal: number, orderAmount: number) {
   return invoicedTotal >= orderAmount - 0.009;
 }
 
+export function saleOrderInvoiceCover(invoices: Array<{ amount: unknown; vat: unknown }>): {
+  amount: number;
+  vat: number;
+} {
+  let amount = 0;
+  let vat = 0;
+  for (const inv of invoices) {
+    amount += Number(inv.amount ?? 0);
+    vat += Number(inv.vat ?? 0);
+  }
+  return { amount, vat };
+}
+
+function roundMoney(n: number) {
+  return Math.round(n * 100) / 100;
+}
+
+/** Lo que falta facturar de una O.P. (neto e IVA por separado). */
+export function saleOrderRemaining(
+  order: { net: unknown; vat: unknown },
+  invoiced: { amount: number; vat: number },
+): { net: number; vat: number; amount: number } {
+  const net = roundMoney(Math.max(0, Number(order.net) - Number(invoiced.amount ?? 0)));
+  const vat = roundMoney(Math.max(0, Number(order.vat) - Number(invoiced.vat ?? 0)));
+  return { net, vat, amount: roundMoney(net + vat) };
+}
+
+export function saleOrderPickLabel(
+  order: { number: string; client: { name: string }; amount: unknown },
+  remaining: { amount: number },
+) {
+  const total = Number(order.amount);
+  const extra =
+    remaining.amount > 0.009 && remaining.amount + 0.009 < total
+      ? ` · resta ${money(remaining.amount)}`
+      : remaining.amount <= 0.009
+        ? " · Facturada"
+        : "";
+  return `${order.number} · ${order.client.name} · ${money(total)}${extra}`;
+}
+
 /** Si cubre el importe → 4; si no, vuelve a emitida (salvo que siga en borrador). */
 export function nextAutoOrderEstado(
   invoicedTotal: number,

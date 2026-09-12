@@ -99,15 +99,31 @@ export function listSaleOrdersForPick() {
   });
 }
 
-export function listOpenSaleOrdersForPick(keepId?: string) {
-  return prisma.erpSaleOrder.findMany({
-    where: keepId
-      ? { OR: [{ estado: ERP_ORDER.issued }, { id: keepId }] }
-      : { estado: ERP_ORDER.issued },
-    orderBy: { issuedAt: "desc" },
-    take: ERP_PICK_TAKE,
-    select: salePickSelect,
-  });
+const saleInvoicePickSelect = {
+  ...salePickSelect,
+  invoices: { select: { amount: true, vat: true } },
+} as const;
+
+/** Emitidas y facturadas: una O.P. puede tener varias facturas (p. ej. un show cada una). */
+export async function listOpenSaleOrdersForPick(keepId?: string) {
+  const [issued, invoiced] = await Promise.all([
+    prisma.erpSaleOrder.findMany({
+      where: keepId
+        ? { OR: [{ estado: ERP_ORDER.issued }, { id: keepId }] }
+        : { estado: ERP_ORDER.issued },
+      orderBy: { issuedAt: "desc" },
+      select: saleInvoicePickSelect,
+    }),
+    prisma.erpSaleOrder.findMany({
+      where: {
+        estado: ERP_ORDER.invoiced,
+        ...(keepId ? { id: { not: keepId } } : {}),
+      },
+      orderBy: { issuedAt: "desc" },
+      select: saleInvoicePickSelect,
+    }),
+  ]);
+  return [...issued, ...invoiced];
 }
 
 /** Emitidas y facturadas: hace falta la facturada para cargar una NC (p. ej. confidencial). */
