@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ERP_ORDER,
   invoiceCoverAmount,
+  isSaleOrderOpen,
   nextAutoOrderEstado,
   saleOrderInvoiceCover,
   saleOrderPickLabel,
@@ -64,5 +65,11 @@ describe("saleOrderRemaining", () => {
   it("no deja resto si el bruto ya cubre el total aunque falte neto o IVA", () => {
     const remaining = saleOrderRemaining({ net: 21423192, vat: 4498870.32 }, { amount: 15180000, vat: 17970000 });
     expect(remaining).toEqual({ net: 0, vat: 0, amount: 0 });
+  });
+
+  it("queda seleccionable solo si todavía resta saldo", () => {
+    const order = { net: 100, vat: 21 };
+    expect(isSaleOrderOpen(order, { amount: 40, vat: 8.4 })).toBe(true);
+    expect(isSaleOrderOpen(order, { amount: 100, vat: 21 })).toBe(false);
   });
 });

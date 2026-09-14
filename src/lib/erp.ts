@@ -317,6 +317,13 @@ export function saleOrderRemaining(
   return { net: roundMoney(remainingGross - vat), vat, amount: remainingGross };
 }
 
+export function isSaleOrderOpen(
+  order: { net: unknown; vat: unknown },
+  invoiced: { amount: number; vat: number },
+) {
+  return saleOrderRemaining(order, invoiced).amount > 0.009;
+}
+
 export function saleOrderPickLabel(
   order: { number: string; client: { name: string }; amount: unknown },
   remaining: { amount: number },

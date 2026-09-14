@@ -1,5 +1,13 @@
 import { prisma } from "@/lib/prisma";
-import { ERP_COLLECT, ERP_ORDER, money, saleOrderInvoiceCover, saleOrderPickLabel, saleOrderRemaining } from "@/lib/erp";
+import {
+  ERP_COLLECT,
+  ERP_ORDER,
+  isSaleOrderOpen,
+  money,
+  saleOrderInvoiceCover,
+  saleOrderPickLabel,
+  saleOrderRemaining,
+} from "@/lib/erp";
 import {
   foldName,
   isOurCompany,
@@ -219,6 +227,7 @@ export async function matchOcrExtracted(
   const vendor = best(vendorOptions);
 
   const saleOrderOptions = saleOrders
+    .filter((order) => isSaleOrderOpen(order, saleOrderInvoiceCover(order.invoices)))
     .map((order) => {
       const invoiced = saleOrderInvoiceCover(order.invoices);
       const remaining = saleOrderRemaining(order, invoiced);

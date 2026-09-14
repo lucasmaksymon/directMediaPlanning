@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { ERP_ORDER } from "@/lib/erp";
+import { ERP_ORDER, isSaleOrderOpen, saleOrderInvoiceCover } from "@/lib/erp";
 
 export const ERP_LIST_TAKE = 200;
 export const ERP_PICK_TAKE = 80;
@@ -104,26 +104,19 @@ const saleInvoicePickSelect = {
   invoices: { select: { amount: true, vat: true } },
 } as const;
 
-/** Emitidas y facturadas: una O.P. puede tener varias facturas (p. ej. un show cada una). */
+/** O.P. con saldo: se puede seguir facturando. Al cubrir el total, desaparece. */
 export async function listOpenSaleOrdersForPick(keepId?: string) {
-  const [issued, invoiced] = await Promise.all([
-    prisma.erpSaleOrder.findMany({
-      where: keepId
-        ? { OR: [{ estado: ERP_ORDER.issued }, { id: keepId }] }
-        : { estado: ERP_ORDER.issued },
-      orderBy: { issuedAt: "desc" },
-      select: saleInvoicePickSelect,
-    }),
-    prisma.erpSaleOrder.findMany({
-      where: {
-        estado: ERP_ORDER.invoiced,
-        ...(keepId ? { id: { not: keepId } } : {}),
-      },
-      orderBy: { issuedAt: "desc" },
-      select: saleInvoicePickSelect,
-    }),
-  ]);
-  return [...issued, ...invoiced];
+  const orders = await prisma.erpSaleOrder.findMany({
+    where: keepId
+      ? { OR: [{ estado: { in: [ERP_ORDER.issued, ERP_ORDER.invoiced] } }, { id: keepId }] }
+      : { estado: { in: [ERP_ORDER.issued, ERP_ORDER.invoiced] } },
+    orderBy: { issuedAt: "desc" },
+    select: saleInvoicePickSelect,
+  });
+  return orders.filter((order) => {
+    if (keepId && order.id === keepId) return true;
+    return isSaleOrderOpen(order, saleOrderInvoiceCover(order.invoices));
+  });
 }
 
 /** Emitidas y facturadas: hace falta la facturada para cargar una NC (p. ej. confidencial). */

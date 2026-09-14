@@ -50,7 +50,7 @@ export default async function ErpFacturasVentaPage({
   return (
     <div className={cn(adminPage, "gap-4")}>
       <PageHeader
-        description="Podés cargar varias facturas sobre la misma O.P. (por show). La orden pasa a Facturada cuando la suma cubre el total; si se borra y ya no cubre, se reabre."
+        description="Podés cargar varias facturas sobre la misma O.P. (por show). Cuando la suma cubre el total, la orden se cierra y deja de aparecer para facturar."
         eyebrow="Facturación"
         title="Facturas de venta"
       />
