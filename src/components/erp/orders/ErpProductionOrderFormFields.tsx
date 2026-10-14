@@ -39,7 +39,6 @@ export function ErpProductionOrderFormFields({
       {currentId ? <input name="id" type="hidden" value={currentId} /> : null}
       <ErpOrderOcrImport
         currentId={currentId}
-        editHref="/backoffice/ordenes/produccion"
         kind="production_order"
         onResult={(result) => {
           setSaleOrders((prev) => withPick(prev, result.saleOrder));

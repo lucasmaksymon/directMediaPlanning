@@ -12,6 +12,18 @@ export const ORDER_OCR_KIND_LABEL: Record<OrderOcrKind, string> = {
   production_order: "orden de producción",
 };
 
+export const ORDER_OCR_KIND_HREF: Record<OrderOcrKind, string> = {
+  sale_order: "/backoffice/ordenes/venta",
+  purchase_order: "/backoffice/ordenes/compra",
+  production_order: "/backoffice/ordenes/produccion",
+};
+
+export const ORDER_OCR_KIND_SECTION: Record<OrderOcrKind, string> = {
+  sale_order: "O.P. Venta",
+  purchase_order: "O.P. Compra",
+  production_order: "O. Producción",
+};
+
 export type OrderOcrSaleItem = {
   element: string;
   location: string | null;

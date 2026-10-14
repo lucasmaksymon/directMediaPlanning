@@ -36,7 +36,6 @@ export function ErpSaleOrderFormFields({
       {currentId ? <input name="id" type="hidden" value={currentId} /> : null}
       <ErpOrderOcrImport
         currentId={currentId}
-        editHref="/backoffice/ordenes/venta"
         kind="sale_order"
         onResult={(result) => {
           setDraft((prev) => saleDraftFromOcr(result, prev));

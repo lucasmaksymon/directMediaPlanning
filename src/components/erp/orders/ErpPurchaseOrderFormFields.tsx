@@ -44,7 +44,6 @@ export function ErpPurchaseOrderFormFields({
       {currentId ? <input name="id" type="hidden" value={currentId} /> : null}
       <ErpOrderOcrImport
         currentId={currentId}
-        editHref="/backoffice/ordenes/compra"
         kind="purchase_order"
         onResult={(result) => {
           setSaleOrders((prev) => withPick(prev, result.saleOrder));
