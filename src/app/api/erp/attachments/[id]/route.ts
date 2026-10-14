@@ -7,7 +7,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     await requireOpsSession();
     const { id } = await params;
     const file = await readErpAttachment(decodeURIComponent(id));
-    if (!file) return new NextResponse("No encontrado.", { status: 404 });
+    if (!file) {
+      return new NextResponse("El archivo ya no está disponible. Volvé a subirlo desde el formulario (Adjunto → Cambiar).", {
+        status: 404,
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      });
+    }
     const named = new URL(req.url).searchParams.get("name")?.replace(/["\r\n]/g, "_");
     const filename = named || file.filename;
     return new NextResponse(new Uint8Array(file.bytes), {
