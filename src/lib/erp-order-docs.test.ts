@@ -56,6 +56,18 @@ describe("purchaseBreakdown", () => {
     expect(net).toBe(950);
   });
 
+  it("encadena los porcentajes sobre el subtotal ya descontado", () => {
+    const { rows, net } = purchaseBreakdown({
+      grossNet: 19775000,
+      adjustments: [
+        { label: "DESCUENTO COMPRA AMBOS FORMATOS", kind: ERP_ADJUSTMENT.deduct, percent: 10, amount: 0 },
+        { label: "CONFIDENCIAL AGENCIA", kind: ERP_ADJUSTMENT.deduct, percent: 10, amount: 0 },
+      ],
+    });
+    expect(rows.map((r) => r.value)).toEqual([1977500, 1779750]);
+    expect(net).toBe(16017750);
+  });
+
   it("sin ajustes el neto es el bruto", () => {
     expect(purchaseBreakdown({ grossNet: 500 }).net).toBe(500);
   });

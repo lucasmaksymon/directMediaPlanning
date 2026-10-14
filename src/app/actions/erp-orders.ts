@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireOpsSession } from "@/lib/ops-access";
 import {
   ERP_ORDER,
+  ERP_VENDOR,
   optionalString,
   parseDateField,
   parseIntField,
@@ -135,6 +136,7 @@ function refreshOrders() {
   revalidatePath("/backoffice/informe");
   revalidatePath("/backoffice/config/elementos");
   revalidatePath("/backoffice/config/plazas");
+  revalidatePath("/backoffice/proveedores");
 }
 
 async function withCampaignCatalog<T extends { element: string; location?: string | null }>(lines: T[]): Promise<T[]> {
@@ -154,6 +156,21 @@ async function withPurchaseCatalog<T extends { element: string }>(lines: T[]): P
       element: await ensureErpElementName(line.element),
     })),
   );
+}
+
+/** El selector de proveedor acepta un nombre nuevo (p. ej. el medio leído del PDF): se da de alta al guardar. */
+async function resolveVendorId(raw: FormDataEntryValue | null, kind: number, noun: string) {
+  const value = requiredString(raw, noun);
+  const byId = await prisma.erpVendor.findUnique({ where: { id: value }, select: { id: true } });
+  if (byId) return byId.id;
+  const name = value.toUpperCase();
+  const byName = await prisma.erpVendor.findFirst({
+    where: { kind, name: { equals: name, mode: "insensitive" } },
+    select: { id: true },
+  });
+  if (byName) return byName.id;
+  const created = await prisma.erpVendor.create({ data: { kind, name }, select: { id: true } });
+  return created.id;
 }
 
 async function saleOrderData(formData: FormData) {
@@ -178,6 +195,7 @@ async function saleOrderData(formData: FormData) {
     amount: net + vat,
     estado: parseIntField(formData.get("estado"), ERP_ORDER.issued),
     cashPayment: String(formData.get("cashPayment") ?? "") === "1",
+    attachmentUrl: optionalString(formData.get("attachmentUrl")),
   };
 }
 
@@ -197,6 +215,7 @@ function linkedOrderData(formData: FormData) {
     amount: net + vat,
     estado: parseIntField(formData.get("estado"), ERP_ORDER.issued),
     cashPayment: String(formData.get("cashPayment") ?? "") === "1",
+    attachmentUrl: optionalString(formData.get("attachmentUrl")),
   };
 }
 
@@ -243,6 +262,7 @@ async function purchaseOrderData(
   const vat = purchaseVat(net, vatRate);
   return {
     ...base,
+    vendorId: await resolveVendorId(formData.get("vendorId"), ERP_VENDOR.media, "el proveedor"),
     ...(await purchaseExtraData(formData)),
     grossNet: gross,
     net,
@@ -400,11 +420,12 @@ export async function createErpProductionOrder(formData: FormData): Promise<Resu
     const data = linkedOrderData(formData);
     const items = productionLinesFromForm(formData).map(dropLineId);
     const deliveries = deliveryLinesFromForm(formData).map(dropLineId);
+    const vendorId = await resolveVendorId(formData.get("vendorId"), ERP_VENDOR.producer, "el productor");
     await prisma.erpProductionOrder.create({
       data: {
         ...data,
         ...productionExtraData(formData),
-        vendorId: requiredString(formData.get("vendorId"), "el productor"),
+        vendorId,
         items: items.length ? { create: items } : undefined,
         deliveries: deliveries.length ? { create: deliveries } : undefined,
       },
@@ -425,13 +446,14 @@ export async function updateErpProductionOrder(formData: FormData): Promise<Resu
     const deliveryLines = deliveryLinesFromForm(formData);
     const keepItems = itemLines.map((l) => l.id).filter((lineId): lineId is string => Boolean(lineId));
     const keepDeliveries = deliveryLines.map((l) => l.id).filter((lineId): lineId is string => Boolean(lineId));
+    const vendorId = await resolveVendorId(formData.get("vendorId"), ERP_VENDOR.producer, "el productor");
     await prisma.$transaction(async (tx) => {
       await tx.erpProductionOrder.update({
         where: { id },
         data: {
           ...data,
           ...productionExtraData(formData),
-          vendorId: requiredString(formData.get("vendorId"), "el productor"),
+          vendorId,
         },
       });
       await tx.erpProductionOrderItem.deleteMany({

@@ -2,15 +2,14 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { Autocomplete, EmptyState, Input, PageHeader, Select, Textarea } from "@/components/ui";
+import { EmptyState, PageHeader } from "@/components/ui";
 import { OrdenesCompraTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
-import { ErpField } from "@/components/erp/ErpField";
-import { ErpLineList } from "@/components/erp/ErpLineList";
-import { ErpSettlementField } from "@/components/erp/ErpSettlementField";
+import { ErpProductionOrderFormFields } from "@/components/erp/orders/ErpProductionOrderFormFields";
 import { createErpProductionOrder, updateErpProductionOrder } from "@/app/actions/erp-orders";
 import { ERP_VENDOR, erpInputNumber, isoDate } from "@/lib/erp";
 import { ERP_ORDER_ESTADOS } from "@/lib/erp-write";
+import { ERP_VAT_RATE, inferVatRate } from "@/lib/erp-order-docs";
 import { listActiveVendors, listProductionOrdersForTable, listSaleOrdersForPick } from "@/lib/erp-list";
 
 export const metadata = { title: productTitle("O. Producción") };
@@ -27,17 +26,28 @@ export default async function ErpOProduccionPage({
     edit
       ? prisma.erpProductionOrder.findUnique({
           where: { id: edit },
-          include: { items: true, deliveries: true },
+          include: {
+            items: true,
+            deliveries: true,
+            saleOrder: { select: { id: true, number: true, client: { select: { name: true } } } },
+          },
         })
       : Promise.resolve(null),
     listSaleOrdersForPick(),
     listActiveVendors(ERP_VENDOR.producer),
   ]);
+  const saleOrderOptions = saleOrders.map((o) => ({ value: o.id, label: `${o.number} · ${o.client.name}` }));
+  if (current && !saleOrderOptions.some((o) => o.value === current.saleOrderId)) {
+    saleOrderOptions.unshift({
+      value: current.saleOrder.id,
+      label: `${current.saleOrder.number} · ${current.saleOrder.client.name}`,
+    });
+  }
 
   return (
     <div className={cn(adminPage, "gap-4")}>
       <PageHeader
-        description="Orden al productor, atada a una O.P. de venta."
+        description="Orden al productor (OP … P), atada a una O.P. de venta. Subí el PDF para completarla."
         eyebrow="Órdenes"
         title="O. Producción"
       />
@@ -50,122 +60,53 @@ export default async function ErpOProduccionPage({
           submitLabel={current ? "Guardar cambios" : "Guardar"}
           title={current ? "Editar orden de producción" : "Nueva orden de producción"}
         >
-          {current ? <input name="id" type="hidden" value={current.id} /> : null}
-          <ErpField htmlFor="saleOrderId" label="O.P. venta">
-            <Autocomplete
-              defaultValue={current?.saleOrderId}
-              id="saleOrderId"
-              name="saleOrderId"
-              options={saleOrders.map((o) => ({ value: o.id, label: `${o.number} · ${o.client.name}` }))}
-              placeholder="Buscar orden…"
-              required
-            />
-          </ErpField>
-          <ErpField htmlFor="vendorId" label="Productor">
-            <Autocomplete
-              defaultValue={current?.vendorId}
-              id="vendorId"
-              name="vendorId"
-              options={vendors.map((v) => ({ value: v.id, label: v.name }))}
-              placeholder="Buscar productor…"
-              required
-            />
-          </ErpField>
-          <ErpField htmlFor="number" label="Número">
-            <Input defaultValue={current?.number} id="number" name="number" required />
-          </ErpField>
-          <ErpField htmlFor="product" label="Producto">
-            <Input defaultValue={current?.product ?? ""} id="product" name="product" />
-          </ErpField>
-          <ErpField htmlFor="measures" label="Medidas">
-            <Input defaultValue={current?.measures ?? ""} id="measures" name="measures" />
-          </ErpField>
-          <ErpField htmlFor="printSupport" label="Soporte impresión">
-            <Input defaultValue={current?.printSupport ?? ""} id="printSupport" name="printSupport" />
-          </ErpField>
-          <ErpField htmlFor="quantity" label="Cantidad">
-            <Input defaultValue={erpInputNumber(current?.quantity)} id="quantity" name="quantity" />
-          </ErpField>
-          <ErpField htmlFor="motifs" label="Motivos">
-            <Input defaultValue={current?.motifs ?? ""} id="motifs" name="motifs" />
-          </ErpField>
-          <ErpField htmlFor="unitCost" label="Precio unitario">
-            <Input defaultValue={erpInputNumber(current?.unitCost)} id="unitCost" name="unitCost" />
-          </ErpField>
-          <ErpField htmlFor="invoiceDetail" label="Detalle FC">
-            <Input defaultValue={current?.invoiceDetail ?? ""} id="invoiceDetail" name="invoiceDetail" />
-          </ErpField>
-          <ErpField htmlFor="issuedAt" label="Fecha">
-            <Input defaultValue={isoDate(current?.issuedAt ?? now)} id="issuedAt" name="issuedAt" type="date" />
-          </ErpField>
-          <ErpField htmlFor="estado" label="Estado">
-            <Select defaultValue={String(current?.estado ?? 1)} id="estado" name="estado">
-              {ERP_ORDER_ESTADOS.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </Select>
-          </ErpField>
-          <ErpField htmlFor="net" label="Neto">
-            <Input defaultValue={erpInputNumber(current?.net)} id="net" name="net" />
-          </ErpField>
-          <ErpField htmlFor="vat" label="IVA">
-            <Input defaultValue={erpInputNumber(current?.vat)} id="vat" name="vat" />
-          </ErpField>
-          <ErpField htmlFor="colorProof" label="Prueba color">
-            <Input defaultValue={current?.colorProof ?? ""} id="colorProof" name="colorProof" />
-          </ErpField>
-          <ErpField htmlFor="pickup" label="Retiro material" wide>
-            <Input defaultValue={current?.pickup ?? ""} id="pickup" name="pickup" />
-          </ErpField>
-          <ErpSettlementField cashPayment={current?.cashPayment} />
-          <ErpField htmlFor="observations" label="Observaciones" wide>
-            <Textarea defaultValue={current?.observations ?? ""} id="observations" name="observations" rows={3} />
-          </ErpField>
-          <ErpLineList
-            addLabel="Agregar dispositivo"
-            fields={[
-              { name: "element", label: "Dispositivo" },
-              { name: "location", label: "Dirección" },
-              { name: "quantity", label: "Cantidad", type: "number" },
-              { name: "measures", label: "Medidas" },
-              { name: "printSupport", label: "Soporte" },
-              { name: "net", label: "Costo", type: "number" },
-            ]}
-            prefix="pr"
-            rows={
-              current?.items.map((item) => ({
-                id: item.id,
-                values: {
-                  element: item.element,
-                  location: item.location ?? "",
-                  quantity: erpInputNumber(item.quantity),
-                  measures: item.measures ?? "",
-                  printSupport: item.printSupport ?? "",
-                  net: erpInputNumber(item.net),
-                },
-              })) ?? []
-            }
-            title="Dispositivos"
-          />
-          <ErpLineList
-            addLabel="Agregar destino"
-            fields={[
-              { name: "destination", label: "Destino" },
-              { name: "quantity", label: "Cantidad", type: "number" },
-            ]}
-            prefix="dl"
-            rows={
-              current?.deliveries.map((d) => ({
-                id: d.id,
-                values: {
-                  destination: d.destination,
-                  quantity: erpInputNumber(d.quantity),
-                },
-              })) ?? []
-            }
-            title="Retiro / destinos"
+          <ErpProductionOrderFormFields
+            currentId={current?.id}
+            estados={ERP_ORDER_ESTADOS}
+            initial={{
+              saleOrderId: current?.saleOrderId ?? "",
+              vendorId: current?.vendorId ?? "",
+              number: current?.number ?? "",
+              product: current?.product ?? "",
+              measures: current?.measures ?? "",
+              printSupport: current?.printSupport ?? "",
+              quantity: erpInputNumber(current?.quantity),
+              motifs: current?.motifs ?? "",
+              unitCost: erpInputNumber(current?.unitCost),
+              invoiceDetail: current?.invoiceDetail ?? "",
+              issuedAt: isoDate(current?.issuedAt ?? now),
+              estado: String(current?.estado ?? 1),
+              net: current ? erpInputNumber(current.net) : "",
+              vat: current ? erpInputNumber(current.vat) : "",
+              vatRate: String(current ? inferVatRate(Number(current.net), Number(current.vat)) : ERP_VAT_RATE),
+              colorProof: current?.colorProof ?? "",
+              pickup: current?.pickup ?? "",
+              cashPayment: current?.cashPayment ?? false,
+              observations: current?.observations ?? "",
+              attachmentUrl: current?.attachmentUrl ?? "",
+              items:
+                current?.items.map((item) => ({
+                  id: item.id,
+                  values: {
+                    element: item.element,
+                    location: item.location ?? "",
+                    quantity: erpInputNumber(item.quantity),
+                    measures: item.measures ?? "",
+                    printSupport: item.printSupport ?? "",
+                    net: erpInputNumber(item.net),
+                  },
+                })) ?? [],
+              deliveries:
+                current?.deliveries.map((d) => ({
+                  id: d.id,
+                  values: {
+                    destination: d.destination,
+                    quantity: erpInputNumber(d.quantity),
+                  },
+                })) ?? [],
+            }}
+            saleOrders={saleOrderOptions}
+            vendors={vendors.map((v) => ({ value: v.id, label: v.name }))}
           />
         </ErpForm>
 

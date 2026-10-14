@@ -367,6 +367,17 @@ export async function extractErpDocument(input: {
   filename: string;
   kindHint: OcrKind;
 }): Promise<OcrExtracted> {
+  const raw = await requestOcrJson({ ...input, prompt: ocrPrompt(input.kindHint, input.filename) });
+  return parseOcrExtracted(raw, input.kindHint);
+}
+
+/** Manda el PDF o la imagen a la IA con el prompt dado y devuelve el JSON crudo. */
+export async function requestOcrJson(input: {
+  bytes: Buffer;
+  mime: string;
+  filename: string;
+  prompt: string;
+}): Promise<unknown> {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error("El servicio de IA no está configurado. Agregá OPENAI_API_KEY al entorno.");
   }
@@ -376,7 +387,7 @@ export async function extractErpDocument(input: {
   const mime = inferOcrMime(input.mime, input.filename);
   const model = process.env.OPENAI_OCR_MODEL || "gpt-4o";
   const dataUrl = `data:${mime};base64,${input.bytes.toString("base64")}`;
-  const prompt = ocrPrompt(input.kindHint, input.filename);
+  const prompt = input.prompt;
 
   const content = isPdf(mime, input.filename)
     ? [
@@ -401,7 +412,7 @@ export async function extractErpDocument(input: {
     });
     const raw = response.output_text?.trim() ?? "";
     if (!raw) throw new Error("La IA no devolvió texto.");
-    return parseOcrExtracted(parseJsonPayload(raw), input.kindHint);
+    return parseJsonPayload(raw);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (/invalid.*pdf|unsupported.*file|file_data/i.test(message)) {

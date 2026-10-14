@@ -42,8 +42,8 @@ export type PurchaseAdjustment = {
 };
 
 /** El porcentaje manda; el importe es para los cierres pactados a monto fijo. */
-export function adjustmentValue(gross: number, adj: PurchaseAdjustment) {
-  if (adj.percent) return round2((gross * adj.percent) / 100);
+export function adjustmentValue(base: number, adj: PurchaseAdjustment) {
+  if (adj.percent) return round2((base * adj.percent) / 100);
   return adj.amount;
 }
 
@@ -51,6 +51,14 @@ export const ERP_VAT_RATE = 21;
 
 export function purchaseVat(net: number, vatRate: number) {
   return round2((net * vatRate) / 100);
+}
+
+/** Venta y producción guardan el IVA en pesos; la alícuota se deduce para seguir recalculando al editar. */
+export function inferVatRate(net: number, vat: number) {
+  if (!net) return ERP_VAT_RATE;
+  const rate = (vat / net) * 100;
+  for (const known of [21, 10.5, 27, 0]) if (Math.abs(rate - known) < 0.15) return known;
+  return round2(rate);
 }
 
 function round2(n: number) {
@@ -64,17 +72,14 @@ export function purchaseBreakdown(opts: {
 }) {
   const lineTotal = (opts.items ?? []).reduce((a, i) => a + i.net, 0);
   const gross = opts.grossNet || lineTotal;
-  const rows = (opts.adjustments ?? []).map((adj) => ({
-    ...adj,
-    value: adjustmentValue(gross, adj),
-  }));
-  const net = round2(
-    rows.reduce(
-      (total, row) => total + (row.kind === ERP_ADJUSTMENT.add ? row.value : -row.value),
-      gross,
-    ),
-  );
-  return { gross, rows, net };
+  // Los medios encadenan los cierres: el confidencial se calcula sobre el subtotal ya descontado.
+  let running = gross;
+  const rows = (opts.adjustments ?? []).map((adj) => {
+    const value = adjustmentValue(running, adj);
+    running = round2(running + (adj.kind === ERP_ADJUSTMENT.add ? value : -value));
+    return { ...adj, value };
+  });
+  return { gross, rows, net: round2(running) };
 }
 
 /** "COSTO NETO TOTAL 6 DÍAS", o la leyenda libre que haya cargado el usuario. */

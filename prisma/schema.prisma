@@ -675,6 +675,7 @@ model ErpSaleOrder {
   estado        Int      @default(1)
   cashPayment   Boolean  @default(false)
   attachmentExt String?
+  attachmentUrl String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   items            ErpCampaignItem[]
@@ -771,6 +772,7 @@ model ErpPurchaseOrder {
   estado        Int          @default(1)
   cashPayment   Boolean      @default(false)
   attachmentExt String?
+  attachmentUrl String?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   items         ErpPurchaseOrderItem[]
@@ -838,6 +840,7 @@ model ErpProductionOrder {
   estado        Int          @default(1)
   cashPayment   Boolean      @default(false)
   attachmentExt String?
+  attachmentUrl String?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   items         ErpProductionOrderItem[]
