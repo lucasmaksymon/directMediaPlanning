@@ -3,6 +3,7 @@ import { readFile } from "fs/promises";
 import path from "path";
 import { imageSize } from "image-size";
 import sharp from "sharp";
+import { isErpAttachmentUrl, readErpAttachmentByUrl } from "@/lib/erp-attachment";
 import type { PresentationSlideResolved } from "@/lib/presentations/types";
 
 /** Lado largo para ficha A4/PPTX: alcanza y evita OOM en Render. */
@@ -80,6 +81,11 @@ export async function loadImageAsDataUri(
   throwIfAborted(signal);
 
   try {
+    if (isErpAttachmentUrl(url)) {
+      const stored = await readErpAttachmentByUrl(url);
+      return stored ? await compressForExport(stored.bytes) : null;
+    }
+
     if (url.startsWith("/")) {
       const local = resolveLocalImagePath(url);
       if (!local) return null;

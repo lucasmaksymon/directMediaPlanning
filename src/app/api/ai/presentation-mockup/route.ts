@@ -7,7 +7,7 @@ import {
   normalizeCorners,
   parseDetectedSurfaces,
 } from "@/lib/ai/composite-billboard";
-import { savePresentationImage } from "@/lib/presentations/local-upload";
+import { isPresentationUploadUrl, savePresentationImage } from "@/lib/presentations/local-upload";
 import { clientKey, rateLimit, rateLimitError } from "@/lib/rate-limit";
 import { isPresentationMockupEnabled } from "@/lib/features";
 import { NextResponse } from "next/server";
@@ -30,7 +30,7 @@ function isAllowedSceneUrl(url: string) {
 }
 
 function isAllowedCreativeUrl(url: string) {
-  return /^https?:\/\//i.test(url) || url.startsWith("/tmp/presentations/");
+  return isPresentationUploadUrl(url);
 }
 
 async function detectAdSurface(

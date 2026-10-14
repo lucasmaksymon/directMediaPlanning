@@ -1061,7 +1061,9 @@ export function PresentationBuilder({ units }: { units: UnitCard[] }) {
             mockupImageUrl:
               s.mockupStatus === "ready" &&
               s.imageUrl &&
-              (/^https?:\/\//i.test(s.imageUrl) || s.imageUrl.startsWith("/tmp/presentations/"))
+              (/^https?:\/\//i.test(s.imageUrl) ||
+                s.imageUrl.startsWith("/tmp/presentations/") ||
+                s.imageUrl.startsWith("/api/erp/attachments/"))
                 ? s.imageUrl
                 : undefined,
           })),

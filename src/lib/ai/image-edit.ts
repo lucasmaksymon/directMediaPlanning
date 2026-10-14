@@ -4,6 +4,7 @@ import path from "path";
 import type OpenAI from "openai";
 import { toFile } from "openai";
 import { UTApi, UTFile } from "uploadthing/server";
+import { isErpAttachmentUrl, readErpAttachmentByUrl } from "@/lib/erp-attachment";
 import { savePresentationImage } from "@/lib/presentations/local-upload";
 
 function hasUploadThingToken() {
@@ -44,6 +45,12 @@ function resolveSafePublicImage(url: string): string | null {
 
 export async function fetchImageBuffer(url: string): Promise<{ buffer: Buffer; mime: string; ext: string }> {
   const trimmed = url.trim();
+  if (isErpAttachmentUrl(trimmed)) {
+    const stored = await readErpAttachmentByUrl(trimmed);
+    if (!stored) throw new Error("La imagen ya no está disponible. Volvé a subirla.");
+    const ext = extFromContentType(stored.mime);
+    return { buffer: stored.bytes, mime: stored.mime, ext };
+  }
   if (trimmed.startsWith("/")) {
     const local = resolveSafePublicImage(trimmed);
     if (!local) {

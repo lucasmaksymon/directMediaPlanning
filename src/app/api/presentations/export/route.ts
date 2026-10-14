@@ -7,6 +7,7 @@ import { PresentationDocument } from "@/lib/presentations/presentation-document"
 import { buildPresentationPptx } from "@/lib/presentations/pptx";
 import { withResolvedImages } from "@/lib/presentations/resolve-image";
 import { MAX_PRESENTATION_SLIDES } from "@/lib/presentations/limits";
+import { isPresentationUploadUrl } from "@/lib/presentations/local-upload";
 import { PRESENTATION_FIELD_KEYS } from "@/lib/presentations/types";
 import { normalizeVisibleFields } from "@/lib/presentations/slide-data";
 import { normalizePresentationTheme } from "@/lib/presentations/theme";
@@ -79,10 +80,7 @@ const bodySchema = z.object({
         mockupImageUrl: z
           .string()
           .max(2000)
-          .refine(
-            (s) => /^https?:\/\//i.test(s) || s.startsWith("/tmp/presentations/"),
-            "URL inválida",
-          )
+          .refine((s) => isPresentationUploadUrl(s), "URL inválida")
           .optional(),
       }),
     )

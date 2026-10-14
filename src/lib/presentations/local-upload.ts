@@ -1,6 +1,5 @@
 import { randomBytes } from "crypto";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
+import { isErpAttachmentUrl, saveErpAttachment } from "@/lib/erp-attachment";
 
 export const PRESENTATION_UPLOAD_PREFIX = "/tmp/presentations";
 
@@ -9,7 +8,11 @@ const ALLOWED_EXT = new Set(["jpg", "jpeg", "png", "webp", "gif"]);
 export function isPresentationUploadUrl(url: string | null | undefined): boolean {
   if (!url?.trim()) return false;
   const value = url.trim();
-  return /^https?:\/\//i.test(value) || value.startsWith(`${PRESENTATION_UPLOAD_PREFIX}/`);
+  return (
+    /^https?:\/\//i.test(value) ||
+    value.startsWith(`${PRESENTATION_UPLOAD_PREFIX}/`) ||
+    isErpAttachmentUrl(value)
+  );
 }
 
 function extFromMime(mime: string): string {
@@ -19,14 +22,12 @@ function extFromMime(mime: string): string {
   return "jpg";
 }
 
+/** Se guarda en la base: el disco de Render se borra en cada deploy y public/ solo sirve lo que había al compilar. */
 export async function savePresentationImage(buffer: Buffer, mime = "image/jpeg"): Promise<string> {
   const ext = extFromMime(mime);
   if (!ALLOWED_EXT.has(ext)) {
     throw new Error("Formato de imagen no soportado.");
   }
-  const name = `${Date.now()}-${randomBytes(6).toString("hex")}.${ext}`;
-  const dir = path.join(process.cwd(), "public", "tmp", "presentations");
-  await mkdir(dir, { recursive: true });
-  await writeFile(path.join(dir, name), buffer);
-  return `${PRESENTATION_UPLOAD_PREFIX}/${name}`;
+  const name = `presentacion-${Date.now()}-${randomBytes(6).toString("hex")}.${ext}`;
+  return saveErpAttachment(buffer, name, mime);
 }

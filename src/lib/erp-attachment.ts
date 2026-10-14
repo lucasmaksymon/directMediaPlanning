@@ -32,6 +32,23 @@ export function erpAttachmentUrl(id: string, filename?: string) {
   return name ? `${url}?name=${encodeURIComponent(name)}` : url;
 }
 
+const URL_PREFIX = "/api/erp/attachments/";
+
+export function isErpAttachmentUrl(url: string | null | undefined) {
+  return Boolean(url?.trim().startsWith(URL_PREFIX));
+}
+
+/** Lee un adjunto a partir de la URL que devuelve saveErpAttachment (para usarlo del lado del servidor). */
+export async function readErpAttachmentByUrl(url: string) {
+  if (!isErpAttachmentUrl(url)) return null;
+  const id = url.trim().slice(URL_PREFIX.length).split("?")[0];
+  try {
+    return await readErpAttachment(decodeURIComponent(id));
+  } catch {
+    return null;
+  }
+}
+
 export async function saveErpAttachment(bytes: Buffer, filename: string, mime: string) {
   const ext = extFor(filename, mime);
   const id = `${randomUUID()}${ext}`;
