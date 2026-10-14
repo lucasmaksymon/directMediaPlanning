@@ -23,21 +23,28 @@ export type OcrMatchOptions = {
   issuedOnly?: boolean;
 };
 
+/** Palabras que comparten muchos proveedores y clientes: no identifican a nadie. */
+const GENERIC_TOKENS = new Set([
+  "srl", "sa", "sas", "sociedad", "argentina", "de", "del", "la", "el", "los", "las", "cia",
+  "publicidad", "publicity", "publicitaria", "media", "medios", "grupo", "group", "via", "publica",
+  "comunicacion", "comunicaciones", "producciones", "servicios",
+]);
+
 function tokens(name: string) {
   return foldName(name)
     .split(" ")
-    .filter((part) => part.length > 2 && !["srl", "sa", "sas", "sociedad", "argentina"].includes(part));
+    .filter((part) => part.length > 1 && !GENERIC_TOKENS.has(part));
 }
 
-function nameScore(query: OcrParty, candidate: { name: string; legalName?: string | null; taxId?: string | null }) {
+export function nameScore(query: OcrParty, candidate: { name: string; legalName?: string | null; taxId?: string | null }) {
   const qCuit = normalizeCuit(query.taxId);
   const cCuit = normalizeCuit(candidate.taxId);
   if (qCuit && cCuit && qCuit === cCuit) return 1;
+  if (qCuit.length === 11 && cCuit.length === 11) return 0;
   const qName = foldName(query.legalName);
   if (!qName) return 0;
   const names = [foldName(candidate.name), foldName(candidate.legalName)].filter(Boolean);
   if (names.some((name) => name === qName)) return 0.92;
-  if (names.some((name) => name.includes(qName) || qName.includes(name))) return 0.78;
   const qTokens = tokens(qName);
   if (!qTokens.length) return 0;
   let best = 0;
@@ -45,6 +52,7 @@ function nameScore(query: OcrParty, candidate: { name: string; legalName?: strin
     const cTokens = tokens(name);
     if (!cTokens.length) continue;
     const hit = qTokens.filter((token) => cTokens.includes(token)).length;
+    if (hit === qTokens.length || hit === cTokens.length) return 0.78;
     best = Math.max(best, hit / Math.max(qTokens.length, cTokens.length));
   }
   return best >= 0.5 ? 0.5 + best * 0.3 : 0;
@@ -253,10 +261,10 @@ export async function matchOcrExtracted(
       label: `Producción ${order.number} · ${order.vendor.name} · ${money(order.amount)}`,
     })),
   ]
+    .filter((order) => vendor && order.vendorId === vendor.id)
     .map((order) => {
-      const partyBoost = vendor && order.vendorId === vendor.id ? 1 : 0.15;
       const score =
-        partyBoost * 0.5 +
+        0.5 +
         amountScore(Number(order.amount), total) * 0.3 +
         dateScore(extracted.issuedAt, order.issuedAt) * 0.2;
       return option(order.id, order.label, score);

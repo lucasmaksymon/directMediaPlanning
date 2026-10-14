@@ -268,10 +268,20 @@ export function parseOcrExtracted(raw: unknown, kindHint: OcrKind): OcrExtracted
 
 function addDerivedWarnings(extracted: OcrExtracted): OcrExtracted {
   const warnings = [...extracted.warnings];
+  const perceptions =
+    extracted.kind === "purchase_invoice"
+      ? (extracted.iibbCaba ?? 0) + (extracted.iibbBsAs ?? 0) + (extracted.vatWithholding ?? 0)
+      : 0;
   const parts =
-    (extracted.amount ?? 0) + (extracted.vat ?? 0) + (extracted.nonTaxable ?? 0) + (extracted.internalTax ?? 0);
+    (extracted.amount ?? 0) +
+    (extracted.vat ?? 0) +
+    (extracted.nonTaxable ?? 0) +
+    (extracted.internalTax ?? 0) +
+    perceptions;
   if (extracted.total != null && extracted.amount != null && Math.abs(parts - extracted.total) > 1.5) {
-    warnings.push(`El total (${extracted.total}) no cierra con neto + IVA (${parts}).`);
+    warnings.push(
+      `El total (${extracted.total}) no cierra con neto + IVA${perceptions ? " + percepciones" : ""} (${Math.round(parts * 100) / 100}). Revisá percepciones u otros impuestos.`,
+    );
   }
   for (const partyRow of [extracted.issuer, extracted.recipient]) {
     const cuit = normalizeCuit(partyRow.taxId);
@@ -305,6 +315,7 @@ Reglas:
 - issuer = quien emite. recipient = destinatario.
 - En factura de venta el cliente es el receptor. En factura de compra el proveedor es el emisor.
 - En recibo de cobranza el cliente es a quien se cobra (no NextMedia).
+- En factura de compra, las percepciones que suman al total van aparte: percepción IIBB CABA → iibbCaba, percepción IIBB Provincia de Buenos Aires (ARBA) → iibbBsAs, percepción de IVA → vatWithholding. Otros impuestos que suman al total → internalTax. Verificá que amount + vat + percepciones + internalTax + nonTaxable = total.
 - payments: solo en recibos. paymentKind: 0 transferencia, 1 cheque, 2 efectivo, 3 ret.IVA, 4 ret.IIBB, 5 ret.IIBB CABA, 6 ret.Ganancias, 7 ret.SUSS.
 - Si un campo no está, usá null. No inventes CUITs ni números.
 - warnings: problemas de lectura o inconsistencias.
