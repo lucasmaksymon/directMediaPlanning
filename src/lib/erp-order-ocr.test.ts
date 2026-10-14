@@ -57,6 +57,25 @@ describe("parseOrderOcr", () => {
     expect(e.warnings).toEqual([]);
   });
 
+  it("toma el mes del período y no el de emisión", () => {
+    const e = parseOrderOcr(
+      { number: "10.2026.0048 C", issuedAt: "2026-09-16", month: 9, periodLabel: "OCTUBRE/NOVIEMBRE", net: 5510000 },
+      "sale_order",
+    );
+    expect(e.month).toBe(10);
+    expect(e.year).toBe(2026);
+  });
+
+  it("pasa al año siguiente si el período arranca en enero y se emitió en diciembre", () => {
+    const e = parseOrderOcr({ issuedAt: "2026-12-20", periodLabel: "ENERO/FEBRERO" }, "sale_order");
+    expect([e.month, e.year]).toEqual([1, 2027]);
+  });
+
+  it("toma el primer mes que aparece en el período, no el primero del calendario", () => {
+    expect(parseOrderOcr({ issuedAt: "2026-11-20", periodLabel: "DICIEMBRE/ENERO" }, "sale_order").month).toBe(12);
+    expect(parseOrderOcr({ issuedAt: "2026-09-29", periodLabel: "DEL 01/12/2026 AL 31/12/2026" }, "sale_order").month).toBe(12);
+  });
+
   it("en producción calcula el IVA cuando la orden dice + iva", () => {
     const e = parseOrderOcr({ number: "10.2026.0057.0002 P", issuedAt: "2026-10-05", net: 785000 }, "production_order");
     expect(e.vat).toBe(164850);

@@ -242,6 +242,23 @@ function monthNumber(value: unknown): number | null {
   return index >= 0 ? index + 1 : null;
 }
 
+/** "OCTUBRE/NOVIEMBRE", "08 DE OCTUBRE AL 08 DE NOVIEMBRE", "DEL 01/12/2026 AL 31/12/2026" → mes de inicio. */
+function periodStartMonth(label: string | null): number | null {
+  if (!label) return null;
+  const s = label.toLowerCase().replace("setiembre", "septiembre");
+  const date = /\b\d{1,2}\/(\d{1,2})(?:\/\d{2,4})?\b/.exec(s);
+  let month = date ? Number(date[1]) : null;
+  let firstAt = date ? date.index : Infinity;
+  for (const [i, name] of MONTHS.entries()) {
+    const at = s.indexOf(name);
+    if (at >= 0 && at < firstAt) {
+      month = i + 1;
+      firstAt = at;
+    }
+  }
+  return month && month >= 1 && month <= 12 ? month : null;
+}
+
 const NEXTMEDIA_CUIT = "30711447675";
 
 function vendorTaxId(value: unknown) {
@@ -380,10 +397,20 @@ export function parseOrderOcr(raw: unknown, kind: OrderOcrKind): OrderOcrExtract
 function withDerivedAmounts(e: OrderOcrExtracted): OrderOcrExtracted {
   const warnings = [...e.warnings];
   const next = { ...e };
-  const periodDate = next.startsAt ?? next.issuedAt;
-  if (periodDate) {
-    next.month ??= Number(periodDate.slice(5, 7));
-    next.year ??= Number(periodDate.slice(0, 4));
+  // El mes de la orden es el de la campaña, no el de emisión: una OC de septiembre suele pautar octubre.
+  const periodMonth =
+    (next.startsAt ? Number(next.startsAt.slice(5, 7)) : null) ?? periodStartMonth(next.periodLabel);
+  if (periodMonth) next.month = periodMonth;
+  if (next.issuedAt) {
+    const issuedMonth = Number(next.issuedAt.slice(5, 7));
+    const issuedYear = Number(next.issuedAt.slice(0, 4));
+    next.month ??= issuedMonth;
+    next.year ??= next.startsAt
+      ? Number(next.startsAt.slice(0, 4))
+      : issuedYear + (next.month < issuedMonth - 6 ? 1 : 0);
+  } else if (next.startsAt) {
+    next.month ??= Number(next.startsAt.slice(5, 7));
+    next.year ??= Number(next.startsAt.slice(0, 4));
   }
 
   if (next.kind === "purchase_order") {
@@ -452,7 +479,8 @@ Reglas:
   (orden que se ajusta o reemplaza) ponelo en observations.
 - Siempre el VALOR del campo, nunca el rótulo (printShop "TALLERES DEL SUR", no "IMPRENTA").
 - vendorTaxId: el CUIT del proveedor solo si figura; el CUIT 30-71144767-5 es de NextMedia, no lo uses.
-- month: número de mes (1 a 12) del período de la campaña.
+- month: número de mes (1 a 12) del PERÍODO de la campaña, no de la fecha de emisión
+  (FECHA 16/09 con PERIODO OCTUBRE → month 10). startsAt: primer día del período si se puede deducir.
 - documentTitle: el título tal cual ("ORDEN DE COMPRA", "ORDEN DE PUBLICIDAD", "ORDEN DE PRODUCCIÓN").
 - client: el anunciante ("Cliente:"). vendor: la "Razón Social" / "Medio" (solo compra y producción).
 - product: el "Producto:" (en compra y producción suele ser la marca o el evento, ej. LOLLAPALOOZA).
