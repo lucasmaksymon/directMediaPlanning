@@ -57,7 +57,6 @@ export default async function ErpOrdenesPagoPage({
         },
         treasury: { orderBy: { createdAt: "asc" } },
       },
-      take: 200,
     }),
     listActiveVendors(),
     prisma.erpPurchaseInvoice.findMany({

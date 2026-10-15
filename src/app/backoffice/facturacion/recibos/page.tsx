@@ -28,7 +28,6 @@ export default async function ErpRecibosPage({
         invoices: { include: { invoice: { select: { docType: true, pos: true, number: true } } } },
         payments: { orderBy: { createdAt: "asc" } },
       },
-      take: 200,
     }),
     listActiveClients(),
     prisma.erpSaleInvoice.findMany({

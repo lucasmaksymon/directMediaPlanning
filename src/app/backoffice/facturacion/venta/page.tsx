@@ -35,9 +35,8 @@ export default async function ErpFacturasVentaPage({
     client: { select: { name: true } },
     saleOrder: { select: { number: true, client: { select: { name: true } } } },
   } as const;
-  const [recent, editInvoice, allOrders, receipts] = await Promise.all([
-    prisma.erpSaleInvoice.findMany({ orderBy: { issuedAt: "desc" }, include, take: 200 }),
-    edit ? prisma.erpSaleInvoice.findUnique({ where: { id: edit }, include }) : null,
+  const [invoices, allOrders, receipts] = await Promise.all([
+    prisma.erpSaleInvoice.findMany({ orderBy: { issuedAt: "desc" }, include }),
     listOpenSaleOrdersForPick(currentHint?.saleOrderId),
     prisma.erpSaleReceipt.findMany({
       orderBy: { issuedAt: "desc" },
@@ -45,8 +44,6 @@ export default async function ErpFacturasVentaPage({
       take: 80,
     }),
   ]);
-  const invoices =
-    editInvoice && !recent.some((f) => f.id === editInvoice.id) ? [editInvoice, ...recent] : recent;
   const current = invoices.find((f) => f.id === edit);
   const orderOptions = allOrders;
 

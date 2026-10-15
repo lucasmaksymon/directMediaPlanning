@@ -12,7 +12,7 @@ import {
 import { SortableContext, horizontalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ArrowDown, ArrowUp, ChevronsUpDown, ListFilter, X } from "lucide-react";
-import { Button, Search, Table, TBody, TD, TFoot, TH, THead, TR } from "@/components/ui";
+import { Button, Pagination, Search, Table, TBody, TD, TFoot, TH, THead, TR } from "@/components/ui";
 import { TableColumnsMenu } from "@/components/erp/TableColumnsMenu";
 import { cn } from "@/lib/cn";
 import { displayDate } from "@/lib/erp";
@@ -128,6 +128,9 @@ function groupSpans<T>(cols: ErpTableColumn<T>[]) {
   return spans;
 }
 
+const PAGE_SIZES = [25, 50, 100] as const;
+const DEFAULT_PAGE_SIZE = 50;
+
 const filterInputClass =
   "h-7 w-full min-w-[4.5rem] rounded-md border border-border bg-background px-1.5 text-[11px] text-foreground outline-none placeholder:text-muted-foreground/70 focus:border-primary";
 
@@ -229,6 +232,15 @@ export function ErpDataTable<T>({
     const dir = prefs.sort.dir === "asc" ? 1 : -1;
     return [...filtered].sort((a, b) => compareTableValues(col.value?.(a), col.value?.(b)) * dir);
   }, [byId, filtered, prefs.sort]);
+
+  const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+  const pageKey = `${query}|${JSON.stringify(colFilters)}|${prefs.sort?.id}:${prefs.sort?.dir}|${pageSize}`;
+  const [pager, setPager] = useState({ key: pageKey, page: 1 });
+  const pageCount = pageSize ? Math.max(1, Math.ceil(sorted.length / pageSize)) : 1;
+  const page = Math.min(pager.key === pageKey ? pager.page : 1, pageCount);
+  const pageRows = pageSize ? sorted.slice((page - 1) * pageSize, page * pageSize) : sorted;
+  const pageFrom = sorted.length ? (pageSize ? (page - 1) * pageSize + 1 : 1) : 0;
+  const pageTo = pageFrom ? pageFrom + pageRows.length - 1 : 0;
 
   const colFilterCount = Object.values(colFilters).filter((v) => v.trim()).length;
   const hasActiveFilters = Boolean(query.trim()) || colFilterCount > 0;
@@ -419,7 +431,7 @@ export function ErpDataTable<T>({
                   </TD>
                 </TR>
               ) : null}
-              {sorted.map((row) => (
+              {pageRows.map((row) => (
                 <TR className={cn("group", rowClassName?.(row))} key={rowKey(row)}>
                   {visible.map((col) => (
                     <TD
@@ -462,6 +474,29 @@ export function ErpDataTable<T>({
           </Table>
         </SortableContext>
       </DndContext>
+      {sorted.length > PAGE_SIZES[0] ? (
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <span className="tabular-nums">
+              {pageFrom}–{pageTo} de {sorted.length}
+            </span>
+            <select
+              aria-label="Filas por página"
+              className="h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground"
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              value={pageSize}
+            >
+              {PAGE_SIZES.map((size) => (
+                <option key={size} value={size}>
+                  {size} por página
+                </option>
+              ))}
+              <option value={0}>Todas</option>
+            </select>
+          </div>
+          <Pagination onPageChange={(p) => setPager({ key: pageKey, page: p })} page={page} pageCount={pageCount} />
+        </div>
+      ) : null}
     </div>
   );
 }

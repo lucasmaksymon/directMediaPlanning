@@ -27,7 +27,6 @@ export default async function ErpChequesPage({
       purchaseReceipt: { include: { vendor: { select: { name: true } } } },
       paymentOrder: { include: { vendor: { select: { name: true } } } },
     },
-    take: 500,
   });
   const current = payments.find((p) => p.id === edit);
   const received = payments.filter((p) => p.saleReceiptId);
