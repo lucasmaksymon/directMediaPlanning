@@ -94,41 +94,54 @@ export function ErpRowActions({
   }
 
   return (
-    <div className="flex items-center justify-end gap-0.5">
-      {editHref ? (
-        <ActionControl href={editHref} label="Editar">
-          <Pencil className={iconClass} />
-        </ActionControl>
-      ) : null}
-      {pdfHref ? (
-        <ActionControl href={pdfHref} label="Abrir PDF" target="_blank">
-          <FileDown className={iconClass} />
-        </ActionControl>
-      ) : null}
-      {confirmAction ? (
-        <ActionControl
-          disabled={pending}
-          label={confirmLabel ?? "Confirmar"}
-          onClick={() => run(confirmAction, confirmPrompt ?? "¿Confirmar?")}
-          tone="accent"
-        >
-          {pending ? <Loader2 className={cn(iconClass, "animate-spin")} /> : <ConfirmIcon className={iconClass} />}
-        </ActionControl>
-      ) : null}
-      {deleteAction ? (
-        <ActionControl
-          disabled={pending}
-          label={deleteLabel}
-          onClick={() => run(deleteAction, deleteConfirm)}
-          tone={actionTone === "success" ? "accent" : "danger"}
-        >
-          {pending ? <Loader2 className={cn(iconClass, "animate-spin")} /> : <Trash2 className={iconClass} />}
-        </ActionControl>
-      ) : null}
+    <div className="flex flex-col items-end gap-1">
+      <div className="flex items-center justify-end gap-0.5">
+        {editHref ? (
+          <ActionControl href={editHref} label="Editar">
+            <Pencil className={iconClass} />
+          </ActionControl>
+        ) : null}
+        {pdfHref ? (
+          <ActionControl href={pdfHref} label="Abrir PDF" target="_blank">
+            <FileDown className={iconClass} />
+          </ActionControl>
+        ) : null}
+        {confirmAction ? (
+          <ActionControl
+            disabled={pending}
+            label={confirmLabel ?? "Confirmar"}
+            onClick={() => run(confirmAction, confirmPrompt ?? "¿Confirmar?")}
+            tone="accent"
+          >
+            {pending ? <Loader2 className={cn(iconClass, "animate-spin")} /> : <ConfirmIcon className={iconClass} />}
+          </ActionControl>
+        ) : null}
+        {deleteAction ? (
+          <ActionControl
+            disabled={pending}
+            label={deleteLabel}
+            onClick={() => run(deleteAction, deleteConfirm)}
+            tone={actionTone === "success" ? "accent" : "danger"}
+          >
+            {pending ? <Loader2 className={cn(iconClass, "animate-spin")} /> : <Trash2 className={iconClass} />}
+          </ActionControl>
+        ) : null}
+      </div>
       {error ? (
-        <span className="max-w-[8rem] truncate text-[10px] text-[var(--error)]" role="alert" title={error}>
-          {error}
-        </span>
+        <div
+          className="flex w-64 max-w-[70vw] items-start gap-1.5 rounded-md border border-[var(--error)]/40 bg-[var(--error-subtle)] px-2 py-1.5 text-left text-[11px] leading-snug whitespace-normal text-[var(--error)]"
+          role="alert"
+        >
+          <span className="min-w-0 flex-1 break-words">{error}</span>
+          <button
+            aria-label="Cerrar"
+            className="shrink-0 rounded px-1 leading-none hover:bg-[var(--error)]/15"
+            onClick={() => setError(null)}
+            type="button"
+          >
+            ×
+          </button>
+        </div>
       ) : null}
     </div>
   );
