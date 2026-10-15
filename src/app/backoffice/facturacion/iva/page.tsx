@@ -20,30 +20,34 @@ export default async function ErpFacturasIvaPage({
 }) {
   const { edit } = await searchParams;
   const now = new Date();
-  const [invoices, vendors, purchaseOrders, productionOrders] = await Promise.all([
+  const select = {
+    id: true,
+    vendorId: true,
+    issuedAt: true,
+    dueAt: true,
+    docType: true,
+    pos: true,
+    number: true,
+    amount: true,
+    vat: true,
+    commission: true,
+    vendor: { select: { name: true } },
+    orderLinks: { select: { purchaseOrderId: true, productionOrderId: true } },
+  } as const;
+  const [recent, editInvoice, vendors, purchaseOrders, productionOrders] = await Promise.all([
     prisma.erpPurchaseInvoice.findMany({
       where: { isVatPurchase: true },
       orderBy: { issuedAt: "desc" },
-      select: {
-        id: true,
-        vendorId: true,
-        issuedAt: true,
-        dueAt: true,
-        docType: true,
-        pos: true,
-        number: true,
-        amount: true,
-        vat: true,
-        commission: true,
-        vendor: { select: { name: true } },
-        orderLinks: { select: { purchaseOrderId: true, productionOrderId: true } },
-      },
+      select,
       take: 200,
     }),
+    edit ? prisma.erpPurchaseInvoice.findFirst({ where: { id: edit, isVatPurchase: true }, select }) : null,
     listActiveVendors(),
     listRecentPurchaseOrdersForPick(),
     listRecentProductionOrdersForPick(),
   ]);
+  const invoices =
+    editInvoice && !recent.some((f) => f.id === editInvoice.id) ? [editInvoice, ...recent] : recent;
   const current = invoices.find((f) => f.id === edit);
   const currentOrderId = current?.orderLinks[0]?.purchaseOrderId ?? current?.orderLinks[0]?.productionOrderId ?? "";
   const openOrders = [

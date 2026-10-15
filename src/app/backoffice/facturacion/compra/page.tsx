@@ -28,20 +28,24 @@ export default async function ErpFacturasCompraPage({
     : null;
   const keepPo = currentHint?.orderLinks[0]?.purchaseOrderId ?? undefined;
   const keepPr = currentHint?.orderLinks[0]?.productionOrderId ?? undefined;
-  const [invoices, vendors, purchaseOrders, productionOrders] = await Promise.all([
+  const include = {
+    vendor: { select: { name: true } },
+    orderLinks: { select: { purchaseOrderId: true, productionOrderId: true } },
+  } as const;
+  const [recent, editInvoice, vendors, purchaseOrders, productionOrders] = await Promise.all([
     prisma.erpPurchaseInvoice.findMany({
       where: { isVatPurchase: false },
       orderBy: { issuedAt: "desc" },
-      include: {
-        vendor: { select: { name: true } },
-        orderLinks: { select: { purchaseOrderId: true, productionOrderId: true } },
-      },
+      include,
       take: 200,
     }),
+    edit ? prisma.erpPurchaseInvoice.findFirst({ where: { id: edit, isVatPurchase: false }, include }) : null,
     listActiveVendors(),
     listOpenPurchaseOrdersForPick(keepPo),
     listOpenProductionOrdersForPick(keepPr),
   ]);
+  const invoices =
+    editInvoice && !recent.some((f) => f.id === editInvoice.id) ? [editInvoice, ...recent] : recent;
   const current = invoices.find((f) => f.id === edit);
   const currentOrderId = current?.orderLinks[0]?.purchaseOrderId ?? current?.orderLinks[0]?.productionOrderId ?? "";
   const allOrders = [
