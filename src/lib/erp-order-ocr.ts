@@ -1,4 +1,4 @@
-import { parseMoney } from "@/lib/erp";
+import { parseMoney, type ErpCashMode } from "@/lib/erp";
 import { ERP_ADJUSTMENT, ERP_VAT_RATE, inferVatRate, purchaseBreakdown } from "@/lib/erp-order-docs";
 
 // El parser corre también en el navegador (borradores), por eso no reutiliza los helpers de erp-ocr.
@@ -588,7 +588,8 @@ type OrderDraftBase = {
   product: string;
   issuedAt: string;
   estado: string;
-  cashPayment: boolean;
+  cashMode: ErpCashMode;
+  cashAmount: string;
   observations: string;
   attachmentUrl: string;
 };

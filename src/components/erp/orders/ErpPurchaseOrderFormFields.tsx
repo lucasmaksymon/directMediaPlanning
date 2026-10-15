@@ -160,7 +160,7 @@ export function ErpPurchaseOrderFormFields({
         <ErpField htmlFor="printSupport" label="Soporte impresión">
           <Input defaultValue={draft.printSupport} id="printSupport" name="printSupport" />
         </ErpField>
-        <ErpSettlementField cashPayment={draft.cashPayment} />
+        <ErpSettlementField cashAmount={draft.cashAmount} cashMode={draft.cashMode} />
         <ErpField htmlFor="locations" label="Ubicaciones / circuito" wide>
           <Textarea defaultValue={draft.locations} id="locations" name="locations" rows={2} />
         </ErpField>

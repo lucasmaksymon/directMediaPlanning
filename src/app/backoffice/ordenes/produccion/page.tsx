@@ -7,7 +7,7 @@ import { OrdenesCompraTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpProductionOrderFormFields } from "@/components/erp/orders/ErpProductionOrderFormFields";
 import { createErpProductionOrder, updateErpProductionOrder } from "@/app/actions/erp-orders";
-import { ERP_VENDOR, erpInputNumber, isoDate } from "@/lib/erp";
+import { ERP_VENDOR, erpCashMode, erpInputNumber, erpSettlementLabel, isoDate } from "@/lib/erp";
 import { ERP_ORDER_ESTADOS } from "@/lib/erp-write";
 import { ERP_VAT_RATE, inferVatRate } from "@/lib/erp-order-docs";
 import { listActiveVendors, listProductionOrdersForTable, listSaleOrdersForPick } from "@/lib/erp-list";
@@ -78,10 +78,11 @@ export default async function ErpOProduccionPage({
               estado: String(current?.estado ?? 1),
               net: current ? erpInputNumber(current.net) : "",
               vat: current ? erpInputNumber(current.vat) : "",
-              vatRate: String(current ? inferVatRate(Number(current.net), Number(current.vat)) : ERP_VAT_RATE),
+              vatRate: String(current ? inferVatRate(Number(current.net) - Number(current.cashAmount), Number(current.vat)) : ERP_VAT_RATE),
               colorProof: current?.colorProof ?? "",
               pickup: current?.pickup ?? "",
-              cashPayment: current?.cashPayment ?? false,
+              cashMode: erpCashMode(Number(current?.net ?? 0), Number(current?.cashAmount ?? 0), current?.cashPayment ?? false),
+              cashAmount: current && Number(current.cashAmount) > 0 ? erpInputNumber(current.cashAmount) : "",
               observations: current?.observations ?? "",
               attachmentUrl: current?.attachmentUrl ?? "",
               items:
@@ -126,6 +127,7 @@ export default async function ErpOProduccionPage({
               amount: Number(o.amount),
               estado: o.estado,
               cashPayment: o.cashPayment,
+              settlement: erpSettlementLabel(o.cashPayment, Number(o.net), Number(o.cashAmount)),
             }))}
           />
         )}

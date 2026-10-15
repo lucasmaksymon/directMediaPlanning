@@ -133,6 +133,7 @@ export async function matchOcrExtracted(
               amount: true,
               net: true,
               vat: true,
+              cashAmount: true,
               issuedAt: true,
               estado: true,
               clientId: true,

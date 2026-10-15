@@ -684,6 +684,8 @@ model ErpSaleOrder {
   amount        Decimal  @db.Decimal(14, 2)
   estado        Int      @default(1)
   cashPayment   Boolean  @default(false)
+  /// Parte del neto que se paga en efectivo (sin factura ni IVA).
+  cashAmount    Decimal  @default(0) @db.Decimal(14, 2)
   attachmentExt String?
   attachmentUrl String?
   createdAt     DateTime @default(now())
@@ -781,6 +783,8 @@ model ErpPurchaseOrder {
   amount        Decimal      @db.Decimal(14, 2)
   estado        Int          @default(1)
   cashPayment   Boolean      @default(false)
+  /// Parte del neto que se paga en efectivo (sin factura ni IVA).
+  cashAmount    Decimal      @default(0) @db.Decimal(14, 2)
   attachmentExt String?
   attachmentUrl String?
   createdAt     DateTime     @default(now())
@@ -849,6 +853,8 @@ model ErpProductionOrder {
   amount        Decimal      @db.Decimal(14, 2)
   estado        Int          @default(1)
   cashPayment   Boolean      @default(false)
+  /// Parte del neto que se paga en efectivo (sin factura ni IVA).
+  cashAmount    Decimal      @default(0) @db.Decimal(14, 2)
   attachmentExt String?
   attachmentUrl String?
   createdAt     DateTime     @default(now())

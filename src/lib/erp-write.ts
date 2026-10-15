@@ -26,7 +26,7 @@ export async function syncSaleOrderEstado(saleOrderId: string) {
   const [order, agg] = await Promise.all([
     prisma.erpSaleOrder.findUniqueOrThrow({
       where: { id: saleOrderId },
-      select: { amount: true, estado: true },
+      select: { amount: true, estado: true, cashAmount: true },
     }),
     prisma.erpSaleInvoice.aggregate({
       where: { saleOrderId },
@@ -34,7 +34,7 @@ export async function syncSaleOrderEstado(saleOrderId: string) {
     }),
   ]);
   const invoiced = Number(agg._sum.amount ?? 0) + Number(agg._sum.vat ?? 0);
-  const estado = nextAutoOrderEstado(invoiced, Number(order.amount), order.estado);
+  const estado = nextAutoOrderEstado(invoiced + Number(order.cashAmount), Number(order.amount), order.estado);
   if (estado !== order.estado) {
     await prisma.erpSaleOrder.update({ where: { id: saleOrderId }, data: { estado } });
   }
@@ -43,14 +43,14 @@ export async function syncSaleOrderEstado(saleOrderId: string) {
 export async function syncPurchaseOrderEstado(purchaseOrderId: string) {
   const order = await prisma.erpPurchaseOrder.findUniqueOrThrow({
     where: { id: purchaseOrderId },
-    select: { amount: true, estado: true },
+    select: { amount: true, estado: true, cashAmount: true },
   });
   const links = await prisma.erpPurchaseInvoiceOrder.findMany({
     where: { purchaseOrderId },
     include: { invoice: { select: { amount: true, vat: true, isCreditNote: true } } },
   });
   const invoiced = links.reduce((acc, l) => acc + invoiceCoverAmount(l.invoice), 0);
-  const estado = nextAutoOrderEstado(invoiced, Number(order.amount), order.estado);
+  const estado = nextAutoOrderEstado(invoiced + Number(order.cashAmount), Number(order.amount), order.estado);
   if (estado !== order.estado) {
     await prisma.erpPurchaseOrder.update({ where: { id: purchaseOrderId }, data: { estado } });
   }
@@ -59,14 +59,14 @@ export async function syncPurchaseOrderEstado(purchaseOrderId: string) {
 export async function syncProductionOrderEstado(productionOrderId: string) {
   const order = await prisma.erpProductionOrder.findUniqueOrThrow({
     where: { id: productionOrderId },
-    select: { amount: true, estado: true },
+    select: { amount: true, estado: true, cashAmount: true },
   });
   const links = await prisma.erpPurchaseInvoiceOrder.findMany({
     where: { productionOrderId },
     include: { invoice: { select: { amount: true, vat: true, isCreditNote: true } } },
   });
   const invoiced = links.reduce((acc, l) => acc + invoiceCoverAmount(l.invoice), 0);
-  const estado = nextAutoOrderEstado(invoiced, Number(order.amount), order.estado);
+  const estado = nextAutoOrderEstado(invoiced + Number(order.cashAmount), Number(order.amount), order.estado);
   if (estado !== order.estado) {
     await prisma.erpProductionOrder.update({ where: { id: productionOrderId }, data: { estado } });
   }

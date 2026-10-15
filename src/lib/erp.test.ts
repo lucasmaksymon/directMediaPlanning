@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   ERP_ORDER,
+  erpCashAmount,
+  erpCashMode,
+  erpSettlementLabel,
   invoiceCoverAmount,
   isSaleOrderOpen,
   nextAutoOrderEstado,
@@ -71,5 +74,30 @@ describe("saleOrderRemaining", () => {
     const order = { net: 100, vat: 21 };
     expect(isSaleOrderOpen(order, { amount: 40, vat: 8.4 })).toBe(true);
     expect(isSaleOrderOpen(order, { amount: 100, vat: 21 })).toBe(false);
+  });
+});
+
+describe("factura + efectivo", () => {
+  it("reparte el neto según la condición", () => {
+    expect(erpCashAmount("invoice", 1000, 300)).toBe(0);
+    expect(erpCashAmount("cash", 1000, 0)).toBe(1000);
+    expect(erpCashAmount("mixed", 1000, 300)).toBe(300);
+    expect(erpCashAmount("mixed", 1000, 5000)).toBe(1000);
+  });
+
+  it("deduce la condición guardada", () => {
+    expect(erpCashMode(1000, 0)).toBe("invoice");
+    expect(erpCashMode(1000, 0, true)).toBe("cash");
+    expect(erpCashMode(1000, 1000)).toBe("cash");
+    expect(erpCashMode(1000, 300)).toBe("mixed");
+    expect(erpSettlementLabel(true, 1000, 300)).toBe("Factura + efectivo");
+  });
+
+  it("lo pendiente de facturar descuenta el efectivo", () => {
+    // neto 1000, 300 en efectivo, IVA 21% sobre 700 = 147
+    const order = { net: 1000, vat: 147, cashAmount: 300 };
+    expect(saleOrderRemaining(order, { amount: 0, vat: 0 })).toEqual({ net: 700, vat: 147, amount: 847 });
+    expect(isSaleOrderOpen(order, { amount: 700, vat: 147 })).toBe(false);
+    expect(isSaleOrderOpen({ net: 1000, vat: 0, cashAmount: 1000 }, { amount: 0, vat: 0 })).toBe(false);
   });
 });

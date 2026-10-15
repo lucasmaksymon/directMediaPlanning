@@ -105,14 +105,21 @@ export function ErpProductionOrderFormFields({
             ))}
           </Select>
         </ErpField>
-        <ErpVatFields net={draft.net} netLabel="Costo neto" vat={draft.vat} vatRate={draft.vatRate} />
+        <ErpVatFields
+          cashAmount={draft.cashAmount}
+          cashMode={draft.cashMode}
+          net={draft.net}
+          netLabel="Costo neto"
+          vat={draft.vat}
+          vatRate={draft.vatRate}
+        />
         <ErpField htmlFor="colorProof" label="Prueba color">
           <Input defaultValue={draft.colorProof} id="colorProof" name="colorProof" />
         </ErpField>
         <ErpField htmlFor="pickup" label="Retiro material" wide>
           <Input defaultValue={draft.pickup} id="pickup" name="pickup" />
         </ErpField>
-        <ErpSettlementField cashPayment={draft.cashPayment} />
+        <ErpSettlementField cashAmount={draft.cashAmount} cashMode={draft.cashMode} />
         <ErpField htmlFor="observations" label="Observaciones" wide>
           <Textarea defaultValue={draft.observations} id="observations" name="observations" rows={3} />
         </ErpField>

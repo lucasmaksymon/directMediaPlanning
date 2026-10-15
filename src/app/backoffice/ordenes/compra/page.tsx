@@ -7,7 +7,7 @@ import { OrdenesCompraTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpPurchaseOrderFormFields } from "@/components/erp/orders/ErpPurchaseOrderFormFields";
 import { createErpPurchaseOrder, updateErpPurchaseOrder } from "@/app/actions/erp-orders";
-import { ERP_VENDOR, erpInputNumber, isoDate } from "@/lib/erp";
+import { ERP_VENDOR, erpCashMode, erpInputNumber, erpSettlementLabel, isoDate } from "@/lib/erp";
 import { ERP_ORDER_ESTADOS } from "@/lib/erp-write";
 import { ERP_VAT_RATE } from "@/lib/erp-order-docs";
 import { listErpElementsForSelect, listErpPlazasForSelect, toErpPlazaSelectOptions } from "@/lib/erp-catalog";
@@ -92,7 +92,8 @@ export default async function ErpOpCompraPage({
               vatRate: current ? erpInputNumber(current.vatRate) : String(ERP_VAT_RATE),
               printShop: current?.printShop ?? "",
               printSupport: current?.printSupport ?? "",
-              cashPayment: current?.cashPayment ?? false,
+              cashMode: erpCashMode(Number(current?.net ?? 0), Number(current?.cashAmount ?? 0), current?.cashPayment ?? false),
+              cashAmount: current && Number(current.cashAmount) > 0 ? erpInputNumber(current.cashAmount) : "",
               locations: current?.locations ?? "",
               observations: current?.observations ?? "",
               attachmentUrl: current?.attachmentUrl ?? "",
@@ -142,6 +143,7 @@ export default async function ErpOpCompraPage({
               amount: Number(o.amount),
               estado: o.estado,
               cashPayment: o.cashPayment,
+              settlement: erpSettlementLabel(o.cashPayment, Number(o.net), Number(o.cashAmount)),
             }))}
           />
         )}

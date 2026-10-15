@@ -6,6 +6,7 @@ import { requireOpsSession } from "@/lib/ops-access";
 import {
   ERP_ORDER,
   ERP_VENDOR,
+  erpCashAmount,
   optionalString,
   parseDateField,
   parseIntField,
@@ -14,7 +15,14 @@ import {
   parseOptionalMoney,
   requiredString,
 } from "@/lib/erp";
-import { erpFail, requiredId, type ErpResult } from "@/lib/erp-write";
+import {
+  erpFail,
+  requiredId,
+  syncProductionOrderEstado,
+  syncPurchaseOrderEstado,
+  syncSaleOrderEstado,
+  type ErpResult,
+} from "@/lib/erp-write";
 import { parseFormLines } from "@/lib/erp-form-lines";
 import {
   ERP_ADJUSTMENT,
@@ -173,6 +181,12 @@ async function resolveVendorId(raw: FormDataEntryValue | null, kind: number, nou
   return created.id;
 }
 
+/** Condición de pago: con factura, efectivo, o una parte de cada una (el efectivo no lleva IVA). */
+function cashFields(formData: FormData, net: number) {
+  const cashAmount = erpCashAmount(String(formData.get("cashMode") ?? ""), net, parseMoney(formData.get("cashAmount")));
+  return { cashAmount, cashPayment: cashAmount > 0 };
+}
+
 async function saleOrderData(formData: FormData) {
   const issuedAt = parseDateField(formData.get("issuedAt"));
   if (!issuedAt) throw new Error("Indicá la fecha.");
@@ -194,7 +208,7 @@ async function saleOrderData(formData: FormData) {
     vat,
     amount: net + vat,
     estado: parseIntField(formData.get("estado"), ERP_ORDER.issued),
-    cashPayment: String(formData.get("cashPayment") ?? "") === "1",
+    ...cashFields(formData, net),
     attachmentUrl: optionalString(formData.get("attachmentUrl")),
   };
 }
@@ -214,7 +228,7 @@ function linkedOrderData(formData: FormData) {
     vat,
     amount: net + vat,
     estado: parseIntField(formData.get("estado"), ERP_ORDER.issued),
-    cashPayment: String(formData.get("cashPayment") ?? "") === "1",
+    ...cashFields(formData, net),
     attachmentUrl: optionalString(formData.get("attachmentUrl")),
   };
 }
@@ -259,9 +273,11 @@ async function purchaseOrderData(
     adjustments,
   });
   const vatRate = parseMoney(formData.get("vatRate"));
-  const vat = purchaseVat(net, vatRate);
+  const cash = cashFields(formData, net);
+  const vat = purchaseVat(net - cash.cashAmount, vatRate);
   return {
     ...base,
+    ...cash,
     vendorId: await resolveVendorId(formData.get("vendorId"), ERP_VENDOR.media, "el proveedor"),
     ...(await purchaseExtraData(formData)),
     grossNet: gross,
@@ -290,9 +306,12 @@ export async function createErpSaleOrder(formData: FormData): Promise<Result> {
   try {
     await requireOpsSession();
     const items = (await withCampaignCatalog(campaignLinesFromForm(formData))).map(dropLineId);
-    await prisma.erpSaleOrder.create({
-      data: { ...(await saleOrderData(formData)), items: items.length ? { create: items } : undefined },
+    const data = await saleOrderData(formData);
+    const created = await prisma.erpSaleOrder.create({
+      data: { ...data, items: items.length ? { create: items } : undefined },
+      select: { id: true },
     });
+    if (data.cashAmount > 0) await syncSaleOrderEstado(created.id);
     refreshOrders();
     return { ok: true };
   } catch (e) {
@@ -306,8 +325,9 @@ export async function updateErpSaleOrder(formData: FormData): Promise<Result> {
     const id = requiredId(formData.get("id"));
     const lines = await withCampaignCatalog(campaignLinesFromForm(formData));
     const keep = lines.map((l) => l.id).filter((lineId): lineId is string => Boolean(lineId));
+    const orderData = await saleOrderData(formData);
     await prisma.$transaction(async (tx) => {
-      await tx.erpSaleOrder.update({ where: { id }, data: await saleOrderData(formData) });
+      await tx.erpSaleOrder.update({ where: { id }, data: orderData });
       await tx.erpCampaignItem.deleteMany({
         where: { saleOrderId: id, ...(keep.length ? { id: { notIn: keep } } : {}) },
       });
@@ -317,6 +337,7 @@ export async function updateErpSaleOrder(formData: FormData): Promise<Result> {
         else await tx.erpCampaignItem.create({ data: { saleOrderId: id, ...data } });
       }
     });
+    if (orderData.cashAmount > 0) await syncSaleOrderEstado(id);
     refreshOrders();
     return { ok: true };
   } catch (e) {
@@ -350,13 +371,16 @@ export async function createErpPurchaseOrder(formData: FormData): Promise<Result
     const adjustmentLines = adjustmentLinesFromForm(formData);
     const items = lines.map(dropLineId);
     const adjustments = adjustmentLines.map(dropLineId);
-    await prisma.erpPurchaseOrder.create({
+    const data = await purchaseOrderData(formData, lines, adjustmentLines);
+    const created = await prisma.erpPurchaseOrder.create({
       data: {
-        ...(await purchaseOrderData(formData, lines, adjustmentLines)),
+        ...data,
         items: items.length ? { create: items } : undefined,
         adjustments: adjustments.length ? { create: adjustments } : undefined,
       },
+      select: { id: true },
     });
+    if (data.cashAmount > 0) await syncPurchaseOrderEstado(created.id);
     refreshOrders();
     return { ok: true };
   } catch (e) {
@@ -394,6 +418,7 @@ export async function updateErpPurchaseOrder(formData: FormData): Promise<Result
         else await tx.erpPurchaseOrderAdjustment.create({ data: { purchaseOrderId: id, ...row } });
       }
     });
+    if (data.cashAmount > 0) await syncPurchaseOrderEstado(id);
     refreshOrders();
     return { ok: true };
   } catch (e) {
@@ -421,7 +446,7 @@ export async function createErpProductionOrder(formData: FormData): Promise<Resu
     const items = productionLinesFromForm(formData).map(dropLineId);
     const deliveries = deliveryLinesFromForm(formData).map(dropLineId);
     const vendorId = await resolveVendorId(formData.get("vendorId"), ERP_VENDOR.producer, "el productor");
-    await prisma.erpProductionOrder.create({
+    const created = await prisma.erpProductionOrder.create({
       data: {
         ...data,
         ...productionExtraData(formData),
@@ -429,7 +454,9 @@ export async function createErpProductionOrder(formData: FormData): Promise<Resu
         items: items.length ? { create: items } : undefined,
         deliveries: deliveries.length ? { create: deliveries } : undefined,
       },
+      select: { id: true },
     });
+    if (data.cashAmount > 0) await syncProductionOrderEstado(created.id);
     refreshOrders();
     return { ok: true };
   } catch (e) {
@@ -473,6 +500,7 @@ export async function updateErpProductionOrder(formData: FormData): Promise<Resu
         else await tx.erpProductionDelivery.create({ data: { productionOrderId: id, ...row } });
       }
     });
+    if (data.cashAmount > 0) await syncProductionOrderEstado(id);
     refreshOrders();
     return { ok: true };
   } catch (e) {

@@ -7,7 +7,7 @@ import { OrdenesVentaTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpSaleOrderFormFields } from "@/components/erp/orders/ErpSaleOrderFormFields";
 import { createErpSaleOrder, updateErpSaleOrder } from "@/app/actions/erp-orders";
-import { erpInputNumber, isoDate } from "@/lib/erp";
+import { erpCashMode, erpInputNumber, erpSettlementLabel, isoDate } from "@/lib/erp";
 import { ERP_VAT_RATE, inferVatRate } from "@/lib/erp-order-docs";
 import { ERP_ORDER_ESTADOS } from "@/lib/erp-write";
 import { listErpElementsForSelect, listErpPlazasForSelect, toErpPlazaSelectOptions } from "@/lib/erp-catalog";
@@ -67,8 +67,9 @@ export default async function ErpOpVentaPage({
               agencyFee: current?.agencyFee != null ? erpInputNumber(current.agencyFee) : "",
               net: current ? erpInputNumber(current.net) : "",
               vat: current ? erpInputNumber(current.vat) : "",
-              vatRate: String(current ? inferVatRate(Number(current.net), Number(current.vat)) : ERP_VAT_RATE),
-              cashPayment: current?.cashPayment ?? false,
+              vatRate: String(current ? inferVatRate(Number(current.net) - Number(current.cashAmount), Number(current.vat)) : ERP_VAT_RATE),
+              cashMode: erpCashMode(Number(current?.net ?? 0), Number(current?.cashAmount ?? 0), current?.cashPayment ?? false),
+              cashAmount: current && Number(current.cashAmount) > 0 ? erpInputNumber(current.cashAmount) : "",
               observations: current?.observations ?? "",
               attachmentUrl: current?.attachmentUrl ?? "",
               items:
@@ -111,6 +112,7 @@ export default async function ErpOpVentaPage({
               amount: Number(o.amount),
               estado: o.estado,
               cashPayment: o.cashPayment,
+              settlement: erpSettlementLabel(o.cashPayment, Number(o.net), Number(o.cashAmount)),
             }))}
           />
         )}

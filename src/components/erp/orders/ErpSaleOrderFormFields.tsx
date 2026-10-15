@@ -105,8 +105,14 @@ export function ErpSaleOrderFormFields({
         <ErpField htmlFor="agencyFee" label="Servicio agencia %">
           <Input defaultValue={draft.agencyFee} id="agencyFee" name="agencyFee" placeholder="Del cliente si vacío" />
         </ErpField>
-        <ErpVatFields net={draft.net} vat={draft.vat} vatRate={draft.vatRate} />
-        <ErpSettlementField cashPayment={draft.cashPayment} />
+        <ErpVatFields
+          cashAmount={draft.cashAmount}
+          cashMode={draft.cashMode}
+          net={draft.net}
+          vat={draft.vat}
+          vatRate={draft.vatRate}
+        />
+        <ErpSettlementField cashAmount={draft.cashAmount} cashMode={draft.cashMode} />
         <ErpField htmlFor="observations" label="Observaciones" wide>
           <Textarea defaultValue={draft.observations} id="observations" name="observations" rows={3} />
         </ErpField>

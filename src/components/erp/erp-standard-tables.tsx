@@ -45,7 +45,6 @@ import {
   erpOrderLabel,
   erpPayPurchaseLabel,
   erpPaySaleLabel,
-  erpSettlementLabel,
   erpRecordLabel,
   erpVendorKindLabel,
   money,
@@ -823,6 +822,7 @@ export function OrdenesVentaTable({
     amount: number;
     estado: number;
     cashPayment: boolean;
+    settlement: string;
   }[];
 }) {
   return (
@@ -853,10 +853,8 @@ export function OrdenesVentaTable({
         {
           id: "settlement",
           label: "Condición",
-          value: (r) => (r.cashPayment ? 1 : 0),
-          cell: (r) => (
-            <Badge variant={r.cashPayment ? "warning" : "info"}>{erpSettlementLabel(r.cashPayment)}</Badge>
-          ),
+          value: (r) => r.settlement,
+          cell: (r) => <Badge variant={r.cashPayment ? "warning" : "info"}>{r.settlement}</Badge>,
         },
         {
           id: "estado",
@@ -953,6 +951,7 @@ export function OrdenesCompraTable({
     amount: number;
     estado: number;
     cashPayment: boolean;
+    settlement: string;
   }[];
 }) {
   const isBuy = kind === "compra";
@@ -988,10 +987,8 @@ export function OrdenesCompraTable({
         {
           id: "settlement",
           label: "Condición",
-          value: (r) => (r.cashPayment ? 1 : 0),
-          cell: (r) => (
-            <Badge variant={r.cashPayment ? "warning" : "info"}>{erpSettlementLabel(r.cashPayment)}</Badge>
-          ),
+          value: (r) => r.settlement,
+          cell: (r) => <Badge variant={r.cashPayment ? "warning" : "info"}>{r.settlement}</Badge>,
         },
         {
           id: "estado",

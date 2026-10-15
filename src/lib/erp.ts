@@ -154,8 +154,26 @@ export function erpOrderLabel(estado: number) {
   return `Estado ${estado}`;
 }
 
-export function erpSettlementLabel(cashPayment: boolean) {
-  return cashPayment ? "Pago efectivo" : "Con factura";
+export const ERP_CASH_MODE = { invoice: "invoice", cash: "cash", mixed: "mixed" } as const;
+export type ErpCashMode = (typeof ERP_CASH_MODE)[keyof typeof ERP_CASH_MODE];
+
+/** Condición de una orden según cuánto del neto va en efectivo. */
+export function erpCashMode(net: number, cashAmount: number, cashPayment = false): ErpCashMode {
+  if (cashAmount <= 0.009) return cashPayment ? ERP_CASH_MODE.cash : ERP_CASH_MODE.invoice;
+  return cashAmount >= net - 0.009 ? ERP_CASH_MODE.cash : ERP_CASH_MODE.mixed;
+}
+
+/** Efectivo según la condición elegida: todo el neto, nada, o el importe tipeado (acotado al neto). */
+export function erpCashAmount(mode: string, net: number, typed: number) {
+  if (mode === ERP_CASH_MODE.cash) return Math.max(0, net);
+  if (mode === ERP_CASH_MODE.mixed) return Math.round(Math.min(Math.max(typed, 0), Math.max(net, 0)) * 100) / 100;
+  return 0;
+}
+
+export function erpSettlementLabel(cashPayment: boolean, net = 0, cashAmount = 0) {
+  const mode = erpCashMode(net, cashAmount, cashPayment);
+  if (mode === ERP_CASH_MODE.mixed) return "Factura + efectivo";
+  return mode === ERP_CASH_MODE.cash ? "Pago efectivo" : "Con factura";
 }
 
 export function erpOrderBadge(estado: number): "success" | "warning" | "default" | "info" {
@@ -301,12 +319,12 @@ function roundMoney(n: number) {
   return Math.round(n * 100) / 100;
 }
 
-/** Lo que falta facturar de una O.P. Se mide contra el total (neto + IVA). */
+/** Lo que falta facturar de una O.P. Se mide contra el total (neto + IVA) sin la parte en efectivo. */
 export function saleOrderRemaining(
-  order: { net: unknown; vat: unknown },
+  order: { net: unknown; vat: unknown; cashAmount?: unknown },
   invoiced: { amount: number; vat: number },
 ): { net: number; vat: number; amount: number } {
-  const orderNet = Number(order.net);
+  const orderNet = Number(order.net) - Number(order.cashAmount ?? 0);
   const orderVat = Number(order.vat);
   const orderAmount = roundMoney(orderNet + orderVat);
   const invoicedGross = roundMoney(Number(invoiced.amount ?? 0) + Number(invoiced.vat ?? 0));
@@ -318,7 +336,7 @@ export function saleOrderRemaining(
 }
 
 export function isSaleOrderOpen(
-  order: { net: unknown; vat: unknown },
+  order: { net: unknown; vat: unknown; cashAmount?: unknown },
   invoiced: { amount: number; vat: number },
 ) {
   return saleOrderRemaining(order, invoiced).amount > 0.009;
