@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui";
 import { ErpDataTable, type ErpTableColumn } from "@/components/erp/ErpDataTable";
 import { ErpRowActions } from "@/components/erp/ErpRowActions";
+import { dateSortValue } from "@/lib/table-prefs";
 import {
   deleteErpCheque,
   deleteErpPaymentOrder,
@@ -359,8 +360,8 @@ export function FacturasVentaTable({
         },
         { id: "client", label: "Cliente", value: (r) => r.client, cell: (r) => r.client },
         { id: "order", label: "Orden", value: (r) => r.order, cell: (r) => r.order },
-        { id: "issuedAt", label: "Fecha", value: (r) => String(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
-        { id: "dueAt", label: "Vence", value: (r) => String(r.dueAt), cell: (r) => displayDate(r.dueAt) },
+        { id: "issuedAt", label: "Fecha", value: (r) => dateSortValue(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
+        { id: "dueAt", label: "Vence", value: (r) => dateSortValue(r.dueAt), cell: (r) => displayDate(r.dueAt) },
         {
           id: "total",
           label: "Total",
@@ -427,7 +428,7 @@ export function FacturasCompraTable({
           cell: (r) => <span className="font-medium">{docRef(r.docType, r.pos, r.number)}</span>,
         },
         { id: "vendor", label: "Proveedor", value: (r) => r.vendor, cell: (r) => r.vendor },
-        { id: "issuedAt", label: "Fecha", value: (r) => String(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
+        { id: "issuedAt", label: "Fecha", value: (r) => dateSortValue(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
         {
           id: "total",
           label: "Importe",
@@ -496,7 +497,7 @@ export function FacturasIvaTable({
           cell: (r) => <span className="font-medium">{docRef(r.docType, r.pos, r.number)}</span>,
         },
         { id: "vendor", label: "Proveedor", value: (r) => r.vendor, cell: (r) => r.vendor },
-        { id: "issuedAt", label: "Fecha", value: (r) => String(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
+        { id: "issuedAt", label: "Fecha", value: (r) => dateSortValue(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
         {
           id: "total",
           label: "Total",
@@ -551,7 +552,7 @@ export function PendientesTable({
         {
           id: "dueAt",
           label: "Vence",
-          value: (r) => String(r.dueAt),
+          value: (r) => dateSortValue(r.dueAt),
           cell: (r) => (
             <span className="flex flex-col leading-none">
               {displayDate(r.dueAt)}
@@ -627,7 +628,7 @@ export function RecibosTable({
       columns={[
         { id: "number", label: "Nº", value: (r) => r.number, cell: (r) => <span className="font-medium">{r.number}</span> },
         { id: "client", label: "Cliente", value: (r) => r.client, cell: (r) => r.client },
-        { id: "issuedAt", label: "Fecha", value: (r) => String(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
+        { id: "issuedAt", label: "Fecha", value: (r) => dateSortValue(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
         {
           id: "amount",
           label: "Importe",
@@ -690,7 +691,7 @@ export function PagosTable({
       columns={[
         { id: "number", label: "Nº", value: (r) => r.number, cell: (r) => <span className="font-medium">{r.number}</span> },
         { id: "vendor", label: "Proveedor", value: (r) => r.vendor, cell: (r) => r.vendor },
-        { id: "issuedAt", label: "Fecha", value: (r) => String(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
+        { id: "issuedAt", label: "Fecha", value: (r) => dateSortValue(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
         {
           id: "amount",
           label: "Importe",
@@ -762,8 +763,8 @@ export function ChequesTable({
       value: (r) => erpCheckOrderLabel(r.checkOrder ?? 0),
       cell: (r) => erpCheckOrderLabel(r.checkOrder ?? 0),
     },
-    { id: "issuedAt", label: "Emisión", value: (r) => (r.issuedAt ? String(r.issuedAt) : null), cell: (r) => displayDate(r.issuedAt) },
-    { id: "paidAt", label: "Pago", value: (r) => (r.paidAt ? String(r.paidAt) : null), cell: (r) => displayDate(r.paidAt) },
+    { id: "issuedAt", label: "Emisión", value: (r) => dateSortValue(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
+    { id: "paidAt", label: "Pago", value: (r) => dateSortValue(r.paidAt), cell: (r) => displayDate(r.paidAt) },
     {
       id: "amount",
       label: "Importe",
@@ -833,7 +834,7 @@ export function OrdenesVentaTable({
           value: (r) => r.year * 100 + r.month,
           cell: (r) => `${ERP_MONTHS[r.month]} ${r.year}`,
         },
-        { id: "issuedAt", label: "Fecha", value: (r) => String(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
+        { id: "issuedAt", label: "Fecha", value: (r) => dateSortValue(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
         { id: "items", label: "Ítems", value: (r) => r.items, cell: (r) => r.items || "—" },
         {
           id: "amount",
@@ -918,7 +919,7 @@ export function CampaignItemsTable({
         {
           id: "periodo",
           label: "Período",
-          value: (r) => (r.startsAt ? String(r.startsAt) : null),
+          value: (r) => dateSortValue(r.startsAt),
           cell: (r) =>
             `${r.startsAt ? displayDate(r.startsAt) : "—"}${r.endsAt ? ` → ${displayDate(r.endsAt)}` : ""}`,
         },
@@ -969,7 +970,7 @@ export function OrdenesCompraTable({
         },
         { id: "product", label: "Producto", value: (r) => r.product, cell: (r) => r.product || "—" },
         { id: "vendor", label: isBuy ? "Proveedor" : "Productor", value: (r) => r.vendor, cell: (r) => r.vendor },
-        { id: "issuedAt", label: "Fecha", value: (r) => String(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
+        { id: "issuedAt", label: "Fecha", value: (r) => dateSortValue(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
         {
           id: "amount",
           label: "Importe",

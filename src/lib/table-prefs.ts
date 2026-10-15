@@ -161,6 +161,13 @@ export function useTablePrefs(storageKey: string, columnIds: readonly string[]) 
   };
 }
 
+/** Valor de orden para columnas de fecha (String(Date) ordena por día de la semana). */
+export function dateSortValue(d: Date | string | null | undefined) {
+  if (d == null || d === "") return null;
+  const t = new Date(d).getTime();
+  return Number.isFinite(t) ? t : null;
+}
+
 export function compareTableValues(a: string | number | null | undefined, b: string | number | null | undefined) {
   if (a == null && b == null) return 0;
   if (a == null || a === "") return 1;
