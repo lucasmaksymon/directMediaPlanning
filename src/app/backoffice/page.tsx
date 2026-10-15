@@ -89,7 +89,7 @@ function DueRow({ row }: { row: DashboardDue }) {
           ) : null}
         </p>
         <p className="truncate text-xs text-muted-foreground">
-          {row.kind === "cobro" ? "Cobro" : "Pago"} · {row.party} · O.P. {row.order}
+          {row.kind === "cobro" ? "Cobro" : row.vatPurchase ? "Pago IVA" : "Pago"} · {row.party} · O.P. {row.order}
         </p>
       </div>
       <div className="shrink-0 text-right">

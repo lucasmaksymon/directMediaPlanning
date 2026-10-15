@@ -519,6 +519,8 @@ export async function loadPendingPayables() {
       vendor: inv.vendor.name,
       order,
       amount: total,
+      isVatPurchase: inv.isVatPurchase,
+      href: `/backoffice/facturacion/${inv.isVatPurchase ? "iva" : "compra"}?edit=${inv.id}`,
     };
   });
 }

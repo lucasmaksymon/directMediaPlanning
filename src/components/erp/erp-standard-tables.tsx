@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Badge } from "@/components/ui";
 import { ErpDataTable, type ErpTableColumn } from "@/components/erp/ErpDataTable";
 import { ErpRowActions } from "@/components/erp/ErpRowActions";
@@ -536,6 +537,8 @@ export function PendientesTable({
     order: string;
     amount: number;
     overdue: boolean;
+    isVatPurchase: boolean;
+    href: string;
   }[];
 }) {
   return (
@@ -562,7 +565,14 @@ export function PendientesTable({
           value: (r) => r.doc,
           cell: (r) => (
             <span className="font-medium">
-              {r.doc}
+              <Link className="hover:underline" href={r.href}>
+                {r.doc}
+              </Link>
+              {r.isVatPurchase ? (
+                <Badge className="ml-2" variant="info">
+                  IVA
+                </Badge>
+              ) : null}
               {r.overdue ? (
                 <Badge className="ml-2" variant="warning">
                   Vencido

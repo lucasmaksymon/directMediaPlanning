@@ -18,6 +18,7 @@ export type DashboardDue = {
   order: string;
   amount: number;
   href: string;
+  vatPurchase?: boolean;
 };
 
 export type DashboardOrder = {
@@ -183,7 +184,8 @@ export async function loadBackofficeDashboard(): Promise<BackofficeDashboard> {
       doc: p.doc,
       order: p.order,
       amount: p.amount,
-      href: `/backoffice/facturacion/compra?edit=${p.id}`,
+      href: p.href,
+      vatPurchase: p.isVatPurchase,
     }));
     const cobroDue: DashboardDue[] = receivablesRows.map((r) => ({
       ...r,
