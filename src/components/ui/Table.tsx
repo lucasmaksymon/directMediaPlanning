@@ -17,20 +17,29 @@ type PinProps = {
   foot?: boolean;
 };
 
-const pinStart =
-  "sticky left-0 z-30 border-r border-border !bg-card group-hover:!bg-muted/40";
-const pinEnd = "sticky right-0 z-30 border-l border-border !bg-card group-hover:!bg-muted/40";
-const pinStartHead = "sticky top-0 left-0 z-40 border-r border-border !bg-card";
-const pinEndHead = "sticky top-0 right-0 z-50 border-l border-border !bg-card text-foreground";
+/* cn no resuelve conflictos de clases: cada celda recibe una sola clase z-*. */
+const pinStart = "sticky left-0 border-r border-border !bg-card group-hover:!bg-muted/40";
+const pinEnd = "sticky right-0 border-l border-border !bg-card group-hover:!bg-muted/40";
+const pinStartHead = "left-0 border-r border-border !bg-card";
+const pinEndHead = "right-0 border-l border-border !bg-card text-foreground";
 const footBg = "!bg-[color-mix(in_srgb,var(--card)_88%,var(--foreground)_12%)]";
-const pinStartFoot = cn("sticky bottom-0 left-0 z-[35] border-r border-t border-border", footBg);
-const pinEndFoot = cn("sticky bottom-0 right-0 z-40 border-l border-t border-border", footBg);
+const pinStartFoot = "left-0 border-r border-border";
+const pinEndFoot = "right-0 border-l border-border";
 const pinStartEdge = "shadow-[8px_0_16px_-10px_rgba(0,0,0,0.45)]";
 const pinEndEdge = "shadow-[-8px_0_16px_-10px_rgba(0,0,0,0.45)]";
-const footCell = cn(
-  "sticky bottom-0 z-[25] border-t border-border font-semibold shadow-[0_-8px_16px_-10px_rgba(0,0,0,0.45)]",
-  footBg,
-);
+const footCell = cn("sticky bottom-0 border-t border-border font-semibold", footBg);
+const footShadow = "shadow-[0_-8px_16px_-10px_rgba(0,0,0,0.45)]";
+
+function headZ(pin: PinSide | undefined) {
+  if (pin === "end") return "z-50";
+  if (pin === "start") return "z-40";
+  return "z-20";
+}
+
+function cellZ(pin: PinSide | undefined, foot: boolean | undefined) {
+  if (foot) return pin === "end" ? "z-40" : pin === "start" ? "z-[35]" : "z-[25]";
+  return pin ? "z-30" : undefined;
+}
 
 function pinStyle(pin: PinSide | undefined, offset: number | undefined, style?: CSSProperties) {
   const next = { ...style };
@@ -88,7 +97,8 @@ export const TH = forwardRef<
   return (
     <th
       className={cn(
-        "sticky top-0 z-20 whitespace-nowrap border-b border-border bg-card px-2.5 py-1.5 text-[11px] font-semibold text-foreground/80",
+        "sticky top-0 whitespace-nowrap border-b border-border bg-card px-2.5 py-1.5 text-[11px] font-semibold text-foreground/80",
+        headZ(pin),
         pin === "start" && pinStartHead,
         pin === "end" && pinEndHead,
         pin === "start" && pinEdge && pinStartEdge,
@@ -116,10 +126,12 @@ export function TD({
       className={cn(
         "whitespace-nowrap px-2.5 py-1.5 text-foreground",
         foot && footCell,
+        cellZ(pin, foot),
         pin === "start" && (foot ? pinStartFoot : pinStart),
         pin === "end" && (foot ? pinEndFoot : pinEnd),
         pin === "start" && pinEdge && pinStartEdge,
         pin === "end" && pinEdge && pinEndEdge,
+        foot && !(pin && pinEdge) && footShadow,
         className,
       )}
       style={pinStyle(pin, pinOffset, style)}
