@@ -43,8 +43,10 @@ function SortableHead({
   pinOffset,
   right,
   sort,
+  stickyTop,
 }: {
   children: string;
+  stickyTop?: number;
   className?: string;
   filtered?: boolean;
   id: string;
@@ -71,7 +73,7 @@ function SortableHead({
         setNodeRef(el);
         measureRef?.(el);
       }}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
+      style={{ transform: CSS.Transform.toString(transform), transition, top: stickyTop }}
       {...attributes}
       {...listeners}
     >
@@ -175,7 +177,9 @@ export function ErpDataTable<T>({
 
   const headRefs = useRef(new Map<string, HTMLTableCellElement>());
   const actionsRef = useRef<HTMLTableCellElement | null>(null);
+  const groupHeadRef = useRef<HTMLTableCellElement | null>(null);
   const [offsets, setOffsets] = useState<Record<string, number>>({});
+  const [headTops, setHeadTops] = useState({ label: 0, filter: 0 });
   const [query, setQuery] = useState("");
   const [colFilters, setColFilters] = useState<Record<string, string>>({});
   const [showFilters, setShowFilters] = useState(false);
@@ -200,13 +204,18 @@ export function ErpDataTable<T>({
         }
         return next;
       });
+      const label = groupHeadRef.current?.getBoundingClientRect().height ?? 0;
+      const labelHeight = Math.max(0, ...[...headRefs.current.values()].map((el) => el.getBoundingClientRect().height));
+      const filter = label + labelHeight;
+      setHeadTops((prev) => (prev.label === label && prev.filter === filter ? prev : { label, filter }));
     }
     measure();
     const ro = new ResizeObserver(measure);
     for (const el of headRefs.current.values()) ro.observe(el);
     if (actionsRef.current) ro.observe(actionsRef.current);
+    if (groupHeadRef.current) ro.observe(groupHeadRef.current);
     return () => ro.disconnect();
-  }, [endIds, layoutKey, startIds]);
+  }, [endIds, hasGroups, layoutKey, showFilters, startIds]);
 
   const filtered = useMemo(() => {
     const q = foldSearch(query.trim());
@@ -335,6 +344,7 @@ export function ErpDataTable<T>({
                       )}
                       colSpan={span.count}
                       key={`${span.group}-${i}`}
+                      ref={i === 0 ? groupHeadRef : undefined}
                       {...pinProps(span.firstId)}
                       pinEdge={
                         prefs.pinOf(span.firstId) === "start"
@@ -362,7 +372,8 @@ export function ErpDataTable<T>({
               <TR className={cn("hover:bg-transparent", showFilters && "[&_th]:border-b-0")}>
                 {visible.map((col) => (
                   <SortableHead
-                    className={cn(hasGroups && "top-5", col.headClass)}
+                    className={col.headClass}
+                    stickyTop={hasGroups ? headTops.label : undefined}
                     filtered={Boolean(colFilters[col.id]?.trim())}
                     id={col.id}
                     key={col.id}
@@ -393,12 +404,9 @@ export function ErpDataTable<T>({
                 <TR className="hover:bg-transparent">
                   {visible.map((col) => (
                     <TH
-                      className={cn(
-                        "border-t-0 py-1 font-normal",
-                        hasGroups ? "top-[3.25rem]" : "top-8",
-                        col.headClass,
-                      )}
+                      className={cn("border-t-0 py-1 font-normal", col.headClass)}
                       key={`filter-${col.id}`}
+                      style={{ top: headTops.filter }}
                       {...pinProps(col.id)}
                     >
                       {col.value ? (
