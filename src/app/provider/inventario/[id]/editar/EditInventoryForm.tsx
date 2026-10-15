@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { updateProviderInventoryUnit, type InventoryUpsertState } from "@/app/actions/provider";
 import { fieldClass, labelClass, btnPrimary, btnSecondary, surfaceCard } from "@/lib/ui-classes";
 import { cn } from "@/lib/cn";
+import { Select } from "@/components/ui";
 
 const FORMAT_OPTIONS = [
   { value: "digital_ooh", label: "Pantalla digital (OOH)" },
@@ -34,11 +35,11 @@ export function EditInventoryForm({ unit }: { unit: InventoryUnit }) {
         </div>
         <div>
           <label className={labelClass} htmlFor="format">Formato *</label>
-          <select className={cn(fieldClass, "mt-1.5")} id="format" name="format" defaultValue={unit.format} required>
+          <Select className="mt-1.5" id="format" name="format" defaultValue={unit.format} required>
             {FORMAT_OPTIONS.map((f) => (
               <option key={f.value} value={f.value}>{f.label}</option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass} htmlFor="locationLabel">Ubicación *</label>

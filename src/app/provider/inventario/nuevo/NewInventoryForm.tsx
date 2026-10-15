@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { createProviderInventoryUnit, type InventoryUpsertState } from "@/app/actions/provider";
 import { fieldClass, labelClass, btnSecondary, surfaceCard } from "@/lib/ui-classes";
 import { cn } from "@/lib/cn";
-import { Alert, Button } from "@/components/ui";
+import { Alert, Button, Select } from "@/components/ui";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
@@ -52,14 +52,14 @@ export function NewInventoryForm() {
           <label className={labelClass} htmlFor="format">
             Tipo de formato *
           </label>
-          <select className={cn(fieldClass, "mt-1.5")} id="format" name="format" required>
+          <Select className="mt-1.5" id="format" name="format" required>
             <option value="">Seleccioná un formato</option>
             {FORMAT_OPTIONS.map((f) => (
               <option key={f.value} value={f.value}>
                 {f.label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div>

@@ -19,6 +19,7 @@ import { ProviderInventoryActions } from "./ProviderInventoryActions";
 import { EmptyState, FilterBar, PageHeader } from "@/components/ui/Patterns";
 import { Badge } from "@/components/ui/Badge";
 import { PagePager } from "@/components/ui/PagePager";
+import { Select } from "@/components/ui/Select";
 import {
   ADMIN_PAGE_SIZE,
   firstSearchParam,
@@ -143,8 +144,9 @@ export default async function ProviderInventarioPage({
             <label className={cn(labelClass, "mb-1 text-[10px] uppercase tracking-wide")} htmlFor="status">
               Estado
             </label>
-            <select
-              className={cn(fieldClass, "nm-select nm-select-compact h-8 py-1.5 text-sm")}
+            <Select
+              className="h-8 py-1.5 text-sm"
+              compact
               defaultValue={status}
               id="status"
               name="status"
@@ -155,7 +157,7 @@ export default async function ProviderInventarioPage({
                   {statusLabels[s]}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="flex items-end gap-2">
             <button className={cn(btnPrimary, "h-8 min-h-8 px-4 text-xs")} type="submit">

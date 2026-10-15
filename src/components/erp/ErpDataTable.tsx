@@ -12,7 +12,7 @@ import {
 import { SortableContext, horizontalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ArrowDown, ArrowUp, ChevronsUpDown, ListFilter, X } from "lucide-react";
-import { Button, Pagination, Search, Table, TBody, TD, TFoot, TH, THead, TR } from "@/components/ui";
+import { Button, Pagination, Search, Table, TBody, TD, TFoot, TH, THead, TR, Select } from "@/components/ui";
 import { TableColumnsMenu } from "@/components/erp/TableColumnsMenu";
 import { cn } from "@/lib/cn";
 import { displayDate } from "@/lib/erp";
@@ -488,9 +488,10 @@ export function ErpDataTable<T>({
             <span className="tabular-nums">
               {pageFrom}–{pageTo} de {sorted.length}
             </span>
-            <select
+            <Select
               aria-label="Filas por página"
-              className="h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground"
+              className="h-8 w-auto py-1 text-xs"
+              compact
               onChange={(e) => setPageSize(Number(e.target.value))}
               value={pageSize}
             >
@@ -500,7 +501,7 @@ export function ErpDataTable<T>({
                 </option>
               ))}
               <option value={0}>Todas</option>
-            </select>
+            </Select>
           </div>
           <Pagination onPageChange={(p) => setPager({ key: pageKey, page: p })} page={page} pageCount={pageCount} />
         </div>

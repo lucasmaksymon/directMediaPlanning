@@ -12,6 +12,7 @@ import { GEO_SUGGESTIONS } from "@/lib/geo-suggestions";
 import { cn } from "@/lib/cn";
 import { btnPrimary, btnSecondary, fieldClass, labelClass } from "@/lib/ui-classes";
 import { EmptyState, FilterBar } from "@/components/ui/Patterns";
+import { Select } from "@/components/ui";
 
 type Props = {
   initialUnits: ExploreUnitDTO[];
@@ -182,8 +183,8 @@ export function ExplorarExplorer({
             <label className={labelCls} htmlFor="proveedor">
               Proveedor
             </label>
-            <select
-              className={cn(inputCls, "nm-select nm-select-compact")}
+            <Select
+              compact
               defaultValue={filters.proveedor}
               id="proveedor"
               name="proveedor"
@@ -194,15 +195,15 @@ export function ExplorarExplorer({
                   {p}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <div className="w-full min-w-0 sm:w-40">
             <label className={labelCls} htmlFor="formato">
               Formato
             </label>
-            <select
-              className={cn(inputCls, "nm-select nm-select-compact")}
+            <Select
+              compact
               defaultValue={filters.formato}
               id="formato"
               name="formato"
@@ -213,7 +214,7 @@ export function ExplorarExplorer({
                   {f.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <div className="w-full min-w-0 sm:w-32">

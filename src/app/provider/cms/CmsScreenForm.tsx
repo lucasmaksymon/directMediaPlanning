@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { createScreen } from "@/app/actions/cms";
 import { fieldClass, labelClass, surfaceCard } from "@/lib/ui-classes";
 import { cn } from "@/lib/cn";
-import { Alert, Button } from "@/components/ui";
+import { Alert, Button, Select } from "@/components/ui";
 
 export function CmsScreenForm({ providerId: _providerId }: { providerId: string }) {
   const [state, action, pending] = useActionState(
@@ -21,12 +21,12 @@ export function CmsScreenForm({ providerId: _providerId }: { providerId: string 
       </div>
       <div>
         <label className={labelClass} htmlFor="platform">Plataforma</label>
-        <select className={cn(fieldClass, "mt-1")} defaultValue="web" id="platform" name="platform">
+        <Select className="mt-1" defaultValue="web" id="platform" name="platform">
           <option value="web">Web</option>
           <option value="android">Android</option>
           <option value="tizen">Tizen</option>
           <option value="other">Otra</option>
-        </select>
+        </Select>
       </div>
       {state?.ok && state.deviceKey && (
         <Alert variant="success">

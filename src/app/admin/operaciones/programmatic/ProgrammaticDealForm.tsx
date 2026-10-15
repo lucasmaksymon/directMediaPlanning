@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { upsertProgrammaticDeal } from "@/app/actions/programmatic";
 import { fieldClass, labelClass, surfaceCard } from "@/lib/ui-classes";
 import { cn } from "@/lib/cn";
-import { Alert, Button } from "@/components/ui";
+import { Alert, Button, Select } from "@/components/ui";
 
 export function ProgrammaticDealForm({ units }: { units: { id: string; name: string }[] }) {
   const [state, action, pending] = useActionState(
@@ -21,21 +21,21 @@ export function ProgrammaticDealForm({ units }: { units: { id: string; name: str
       <h2 className="font-semibold">Nuevo deal SSP</h2>
       <div>
         <label className={labelClass} htmlFor="unitId">Unidad</label>
-        <select className={cn(fieldClass, "mt-1")} id="unitId" name="unitId" required>
+        <Select className="mt-1" id="unitId" name="unitId" required>
           <option value="">Seleccionar…</option>
           {units.map((u) => (
             <option key={u.id} value={u.id}>{u.name}</option>
           ))}
-        </select>
+        </Select>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className={labelClass} htmlFor="dealType">Tipo</label>
-          <select className={cn(fieldClass, "mt-1")} id="dealType" name="dealType" defaultValue="open">
+          <Select className="mt-1" id="dealType" name="dealType" defaultValue="open">
             <option value="open">Open RTB</option>
             <option value="pmp">PMP</option>
             <option value="programmatic_guaranteed">Programmatic Guaranteed</option>
-          </select>
+          </Select>
         </div>
         <div>
           <label className={labelClass} htmlFor="floorPrice">Floor (ARS)</label>

@@ -10,6 +10,7 @@ import { cn } from "@/lib/cn";
 import { EmptyState, FilterBar, PageHeader } from "@/components/ui/Patterns";
 import { PagePager } from "@/components/ui/PagePager";
 import { InventoryCsvForm } from "./InventoryCsvForm";
+import { Select } from "@/components/ui/Select";
 import {
   ADMIN_PAGE_SIZE,
   firstSearchParam,
@@ -119,8 +120,9 @@ export default async function AdminInventoryPage({
             <label className={cn(labelClass, "mb-1 text-[10px] uppercase tracking-wide")} htmlFor="status">
               Estado
             </label>
-            <select
-              className={cn(fieldClass, "nm-select nm-select-compact h-8 py-1.5 text-sm")}
+            <Select
+              className="h-8 py-1.5 text-sm"
+              compact
               defaultValue={status}
               id="status"
               name="status"
@@ -131,14 +133,15 @@ export default async function AdminInventoryPage({
                   {inventoryStatusLabel[s] ?? s}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="w-full min-w-0 sm:w-48">
             <label className={cn(labelClass, "mb-1 text-[10px] uppercase tracking-wide")} htmlFor="proveedor">
               Proveedor
             </label>
-            <select
-              className={cn(fieldClass, "nm-select nm-select-compact h-8 py-1.5 text-sm")}
+            <Select
+              className="h-8 py-1.5 text-sm"
+              compact
               defaultValue={proveedor}
               id="proveedor"
               name="proveedor"
@@ -149,7 +152,7 @@ export default async function AdminInventoryPage({
                   {p.companyName}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="flex items-end gap-2">
             <button className={cn(btnPrimary, "h-8 min-h-8 px-4 text-xs")} type="submit">
