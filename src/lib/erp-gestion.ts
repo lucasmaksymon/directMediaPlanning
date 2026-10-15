@@ -492,7 +492,7 @@ function uniqueIds(ids: string[]) {
 
 export async function loadPendingPayables() {
   const invoices = await prisma.erpPurchaseInvoice.findMany({
-    where: { payStatus: ERP_SETTLE.pending },
+    where: { payStatus: ERP_SETTLE.pending, paymentLinks: { none: {} }, receiptLinks: { none: {} } },
     orderBy: { dueAt: "asc" },
     include: {
       vendor: { select: { name: true } },
@@ -504,6 +504,16 @@ export async function loadPendingPayables() {
       },
     },
   });
+  const paidTwins = invoices.length
+    ? await prisma.erpPurchaseInvoice.findMany({
+        where: {
+          payStatus: ERP_SETTLE.paid,
+          OR: invoices.map((inv) => ({ vendorId: inv.vendorId, pos: inv.pos, number: inv.number })),
+        },
+        select: { vendorId: true, pos: true, number: true },
+      })
+    : [];
+  const paidKeys = new Set(paidTwins.map((t) => `${t.vendorId}|${t.pos}|${t.number}`));
   const now = new Date();
   return invoices.map((inv) => {
     const total = erpPurchaseInvoiceTotal(inv);
@@ -520,6 +530,7 @@ export async function loadPendingPayables() {
       order,
       amount: total,
       isVatPurchase: inv.isVatPurchase,
+      paidDuplicate: paidKeys.has(`${inv.vendorId}|${inv.pos}|${inv.number}`),
       href: `/backoffice/facturacion/${inv.isVatPurchase ? "iva" : "compra"}?edit=${inv.id}`,
     };
   });

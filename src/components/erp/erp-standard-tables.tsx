@@ -539,6 +539,7 @@ export function PendientesTable({
     amount: number;
     overdue: boolean;
     isVatPurchase: boolean;
+    paidDuplicate: boolean;
     href: string;
   }[];
 }) {
@@ -572,6 +573,11 @@ export function PendientesTable({
               {r.isVatPurchase ? (
                 <Badge className="ml-2" variant="info">
                   IVA
+                </Badge>
+              ) : null}
+              {r.paidDuplicate ? (
+                <Badge className="ml-2" title="Hay otra factura con el mismo proveedor y número marcada como pagada." variant="error">
+                  Duplicada
                 </Badge>
               ) : null}
               {r.overdue ? (

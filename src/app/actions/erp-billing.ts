@@ -513,6 +513,24 @@ export async function deleteErpSaleReceipt(id: string): Promise<Result> {
   }
 }
 
+/** Una factura en una orden de pago (o recibo) queda pagada; si ya no está en ninguna, vuelve a pendiente. */
+async function syncPurchasePayStatus(tx: Prisma.TransactionClient, invoiceIds: Iterable<string>) {
+  const ids = [...new Set(invoiceIds)];
+  if (!ids.length) return;
+  const rows = await tx.erpPurchaseInvoice.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, _count: { select: { paymentLinks: true, receiptLinks: true } } },
+  });
+  const paid = rows.filter((r) => r._count.paymentLinks + r._count.receiptLinks > 0).map((r) => r.id);
+  const pending = rows.filter((r) => !paid.includes(r.id)).map((r) => r.id);
+  if (paid.length) {
+    await tx.erpPurchaseInvoice.updateMany({ where: { id: { in: paid } }, data: { payStatus: ERP_SETTLE.paid } });
+  }
+  if (pending.length) {
+    await tx.erpPurchaseInvoice.updateMany({ where: { id: { in: pending } }, data: { payStatus: ERP_SETTLE.pending } });
+  }
+}
+
 async function paymentOrderAmount(
   tx: Prisma.TransactionClient,
   invoiceIds: string[],
@@ -566,6 +584,7 @@ export async function createErpPaymentOrder(formData: FormData): Promise<Result>
           treasury: payments.length ? { create: payments } : undefined,
         },
       });
+      await syncPurchasePayStatus(tx, invoiceIds);
       if (used.size) {
         await tx.erpTreasuryPayment.updateMany({
           where: { id: { in: [...used] } },
@@ -623,12 +642,17 @@ export async function updateErpPaymentOrder(formData: FormData): Promise<Result>
           notes: String(formData.get("notes") ?? "").trim() || null,
         },
       });
+      const previousInvoices = await tx.erpPaymentOrderInvoice.findMany({
+        where: { paymentOrderId: id },
+        select: { invoiceId: true },
+      });
       await tx.erpPaymentOrderInvoice.deleteMany({ where: { paymentOrderId: id } });
       if (invoiceIds.length) {
         await tx.erpPaymentOrderInvoice.createMany({
           data: invoiceIds.map((invoiceId) => ({ paymentOrderId: id, invoiceId })),
         });
       }
+      await syncPurchasePayStatus(tx, [...invoiceIds, ...previousInvoices.map((row) => row.invoiceId)]);
       await tx.erpTreasuryPayment.deleteMany({
         where: { paymentOrderId: id, ...(keep.length ? { id: { notIn: keep } } : {}) },
       });
@@ -663,12 +687,20 @@ export async function deleteErpPaymentOrder(id: string): Promise<Result> {
       select: { endorsedFromId: true },
     });
     await prisma.$transaction(async (tx) => {
+      const linked = await tx.erpPaymentOrderInvoice.findMany({
+        where: { paymentOrderId: id },
+        select: { invoiceId: true },
+      });
       await tx.erpTreasuryPayment.deleteMany({ where: { paymentOrderId: id } });
       await releaseEndorsedSources(
         tx,
         sources.map((row) => row.endorsedFromId),
       );
       await tx.erpPaymentOrder.delete({ where: { id } });
+      await syncPurchasePayStatus(
+        tx,
+        linked.map((row) => row.invoiceId),
+      );
     });
     refreshBilling();
     return { ok: true };
