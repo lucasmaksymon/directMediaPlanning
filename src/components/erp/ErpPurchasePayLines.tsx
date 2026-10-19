@@ -11,6 +11,7 @@ import {
   ERP_PAY_PURCHASE,
   ERP_PAY_PURCHASE_KIND,
   ERP_PAY_PURCHASE_STATUS,
+  ERP_PAY_STATUS,
   selectOptions,
 } from "@/lib/erp";
 
@@ -50,7 +51,7 @@ const EMPTY: LineValues = {
   checkType: "0",
   checkMode: "0",
   amount: "",
-  estado: "0",
+  estado: String(ERP_PAY_STATUS.done),
   attachmentUrl: "",
 };
 

@@ -5,6 +5,7 @@ import { adminPage, adminPageBody } from "@/lib/ui-classes";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { OrdenesCompraTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
+import { ErpPeriodFilter, parseErpPeriod } from "@/components/erp/ErpPeriodFilter";
 import { ErpPurchaseOrderFormFields } from "@/components/erp/orders/ErpPurchaseOrderFormFields";
 import { createErpPurchaseOrder, updateErpPurchaseOrder } from "@/app/actions/erp-orders";
 import { ERP_VENDOR, erpCashMode, erpInputNumber, erpSettlementLabel, isoDate } from "@/lib/erp";
@@ -18,12 +19,14 @@ export const metadata = { title: productTitle("O.P. Compra") };
 export default async function ErpOpCompraPage({
   searchParams,
 }: {
-  searchParams: Promise<{ edit?: string }>;
+  searchParams: Promise<{ edit?: string; mes?: string; anio?: string }>;
 }) {
-  const { edit } = await searchParams;
+  const params = await searchParams;
+  const { edit } = params;
+  const period = parseErpPeriod(params);
   const now = new Date();
   const [orders, current, saleOrders, vendors, elements, plazas] = await Promise.all([
-    listPurchaseOrdersForTable(),
+    listPurchaseOrdersForTable(period),
     edit
       ? prisma.erpPurchaseOrder.findUnique({
           where: { id: edit },
@@ -127,6 +130,7 @@ export default async function ErpOpCompraPage({
           />
         </ErpForm>
 
+        <ErpPeriodFilter basePath="/backoffice/ordenes/compra" period={period} />
         {orders.length === 0 ? (
           <EmptyState description="No hay órdenes de compra." title="Sin O.P. compra" />
         ) : (

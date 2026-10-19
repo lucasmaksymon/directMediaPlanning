@@ -3,6 +3,7 @@ import {
   ERP_ORDER,
   erpCashAmount,
   erpCashMode,
+  erpInvoiceRef,
   erpSettlementLabel,
   invoiceCoverAmount,
   isSaleOrderOpen,
@@ -11,6 +12,13 @@ import {
   saleOrderPickLabel,
   saleOrderRemaining,
 } from "./erp";
+
+describe("erpInvoiceRef", () => {
+  it("arma el comprobante con punto de venta y número como en Facturación", () => {
+    expect(erpInvoiceRef("A", 3, 523)).toBe("A 0003-00000523");
+    expect(erpInvoiceRef("nc", 4, 12)).toBe("NC 0004-00000012");
+  });
+});
 
 describe("invoiceCoverAmount", () => {
   it("suma factura e IVA", () => {

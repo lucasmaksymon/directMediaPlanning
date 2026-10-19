@@ -1,8 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { ERP_COLLECT, ERP_ORDER, ERP_PAY, ERP_SETTLE } from "@/lib/erp";
+import { ERP_COLLECT, ERP_ORDER, ERP_PAY, ERP_SETTLE, erpInvoiceRef } from "@/lib/erp";
 import { loadPendingPayables, saleLineTotal } from "@/lib/erp-gestion";
-import { buildMonthlyReport } from "@/lib/erp-informe";
-
 function n(v: { toString(): string } | number | null | undefined) {
   if (v == null) return 0;
   return typeof v === "number" ? v : Number(v.toString());
@@ -78,15 +76,55 @@ const empty: BackofficeDashboard = {
   recentOrders: [],
 };
 
+/** Venta y compra netas de las órdenes del período (no de lo facturado). */
+async function loadMonthlyOrderTotals(month: number, year: number) {
+  const [orders, expense] = await Promise.all([
+    prisma.erpSaleOrder.findMany({
+      where: { month, year },
+      select: {
+        net: true,
+        client: { select: { name: true } },
+        purchaseOrders: { select: { net: true } },
+        productionOrders: { select: { net: true } },
+      },
+    }),
+    prisma.erpExpense.findUnique({ where: { month_year: { month, year } } }),
+  ]);
+
+  const byClient = new Map<string, { venta: number; compra: number }>();
+  let venta = 0;
+  let compra = 0;
+  for (const order of orders) {
+    const orderVenta = n(order.net);
+    const orderCompra =
+      order.purchaseOrders.reduce((s, po) => s + n(po.net), 0) +
+      order.productionOrders.reduce((s, po) => s + n(po.net), 0);
+    venta += orderVenta;
+    compra += orderCompra;
+    const client = byClient.get(order.client.name) ?? { venta: 0, compra: 0 };
+    client.venta += orderVenta;
+    client.compra += orderCompra;
+    byClient.set(order.client.name, client);
+  }
+
+  const gastos = expense ? n(expense.fixed) + n(expense.bank) + n(expense.vat) + n(expense.commissions) : 0;
+  const topClients = [...byClient]
+    .map(([name, c]) => ({ name, venta: c.venta, ganancia: c.venta - c.compra }))
+    .sort((a, b) => Math.abs(b.ganancia) - Math.abs(a.ganancia))
+    .slice(0, 6);
+
+  return { venta, compra, gastos, topClients };
+}
+
 export async function loadBackofficeDashboard(): Promise<BackofficeDashboard> {
   const now = new Date();
   const month = now.getMonth() + 1;
   const year = now.getFullYear();
 
   try {
-    const [report, payables, saleInvoices, openOrders, openOrderCount, openSum, cheques, campaigns, recentOrders] =
+    const [totals, payables, saleInvoices, openOrders, openOrderCount, openSum, cheques, campaigns, recentOrders] =
       await Promise.all([
-        buildMonthlyReport(month, year),
+        loadMonthlyOrderTotals(month, year),
         loadPendingPayables(),
         prisma.erpSaleInvoice.findMany({
           where: { collectStatus: ERP_COLLECT.pending },
@@ -135,24 +173,10 @@ export async function loadBackofficeDashboard(): Promise<BackofficeDashboard> {
         }),
       ]);
 
-    const monthRow = report.find((r) => r.kind === "monthTotal");
-    const expenseRow = report.find((r) => r.kind === "expenses");
-    const venta = monthRow?.ventaTotal ?? 0;
-    const compra = (monthRow?.compraTotal ?? 0) + (monthRow?.totalCompraIva ?? 0);
-    const ganancia = monthRow?.gananciaBruta ?? 0;
-    const gastos = expenseRow?.compraTotal ?? 0;
-    const resultado = expenseRow?.gananciaBruta ?? ganancia - gastos;
-    const margen = monthRow?.porcentaje ?? null;
-
-    const topClients = report
-      .filter((r) => r.kind === "clientTotal")
-      .map((r) => ({
-        name: r.client.replace(/^Total\s+/, ""),
-        ganancia: r.gananciaBruta,
-        venta: r.ventaTotal,
-      }))
-      .sort((a, b) => Math.abs(b.ganancia) - Math.abs(a.ganancia))
-      .slice(0, 6);
+    const { venta, compra, gastos, topClients } = totals;
+    const ganancia = venta - compra;
+    const resultado = ganancia - gastos;
+    const margen = venta !== 0 ? (ganancia * 100) / venta : null;
 
     const receivablesRows = saleInvoices.map((inv) => {
       const amount = saleLineTotal({
@@ -168,7 +192,7 @@ export async function loadBackofficeDashboard(): Promise<BackofficeDashboard> {
         dueAt: inv.dueAt,
         overdue: inv.dueAt < now,
         party: inv.client.name,
-        doc: `${inv.docType} ${inv.pos}-${inv.number}`,
+        doc: erpInvoiceRef(inv.docType, inv.pos, inv.number),
         order: inv.saleOrder.number,
         amount,
         href: `/backoffice/facturacion/venta?edit=${inv.id}`,

@@ -2,25 +2,33 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { Autocomplete, EmptyState, Input, PageHeader } from "@/components/ui";
+import { Autocomplete, EmptyState, Input, PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui";
 import { ChequesTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
 import { ErpAttach } from "@/components/erp/ErpAttach";
 import { createErpIssuedCheque, updateErpCheque } from "@/app/actions/erp-billing";
-import { ERP_PAY, ERP_PAY_SALE_STATUS, erpInputNumber, isoDate, selectOptions } from "@/lib/erp";
+import {
+  ERP_PAY,
+  ERP_PAY_PURCHASE_STATUS,
+  ERP_PAY_SALE_STATUS,
+  ERP_PAY_STATUS,
+  erpInputNumber,
+  isoDate,
+  selectOptions,
+} from "@/lib/erp";
 
 export const metadata = { title: productTitle("Cheques") };
 
 export default async function ErpChequesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ edit?: string }>;
+  searchParams: Promise<{ edit?: string; tab?: string }>;
 }) {
-  const { edit } = await searchParams;
+  const { edit, tab } = await searchParams;
   const now = new Date();
   const payments = await prisma.erpTreasuryPayment.findMany({
-    where: { paymentKind: { in: [ERP_PAY.cheque, ERP_PAY.transfer] } },
+    where: { paymentKind: ERP_PAY.cheque },
     orderBy: { createdAt: "desc" },
     include: {
       saleReceipt: { include: { client: { select: { name: true } } } },
@@ -34,15 +42,17 @@ export default async function ErpChequesPage({
   const endorsedIds = new Set(
     payments.map((p) => p.endorsedFromId).filter((id): id is string => Boolean(id)),
   );
+  const editingReceived = Boolean(current?.saleReceiptId);
+  const activeTab = current ? (editingReceived ? "received" : "issued") : tab === "issued" ? "issued" : "received";
 
   return (
     <div className={cn(adminPage, "gap-4")}>
       <PageHeader
-        description="E-cheq y transferencias. Recibidos cuelgan del recibo de venta; emitidos de la OP al proveedor."
+        description="E-cheq y cheques físicos. Recibidos cuelgan del recibo de venta; emitidos de la OP al proveedor."
         eyebrow="Facturación"
         title="Cheques"
       />
-      <div className={cn(adminPageBody, "gap-8 overflow-y-auto")}>
+      <div className={cn(adminPageBody, "gap-3")}>
         <ErpForm
           action={current ? updateErpCheque : createErpIssuedCheque}
           cancelHref={current ? "/backoffice/facturacion/cheques" : undefined}
@@ -66,10 +76,10 @@ export default async function ErpChequesPage({
           </ErpField>
           <ErpField htmlFor="estado" label="Estado">
             <Autocomplete
-              defaultValue={String(current?.estado ?? 0)}
+              defaultValue={String(current?.estado ?? ERP_PAY_STATUS.done)}
               id="estado"
               name="estado"
-              options={selectOptions(ERP_PAY_SALE_STATUS)}
+              options={selectOptions(editingReceived ? ERP_PAY_SALE_STATUS : ERP_PAY_PURCHASE_STATUS)}
               placeholder="Estado…"
             />
           </ErpField>
@@ -78,52 +88,53 @@ export default async function ErpChequesPage({
           </ErpField>
         </ErpForm>
 
-        <section className="space-y-3">
-          <h2 className="nm-section-title">Recibidos</h2>
-          {received.length === 0 ? (
-            <EmptyState description="Se generan al cargar un recibo con cheque." title="Sin cheques recibidos" />
-          ) : (
-            <ChequesTable
-              storageKey="erp.table.cheques-recibidos.v2"
-              rows={received.map((p) => ({
-                id: p.id,
-                number: p.number,
-                paymentKind: p.paymentKind,
-                party: p.saleReceipt?.client.name ?? "—",
-                issuedAt: p.issuedAt,
-                paidAt: p.paidAt,
-                amount: Number(p.amount),
-                estado: p.estado,
-                checkOrder: p.checkOrder,
-                endorsed: endorsedIds.has(p.id),
-                kind: "received" as const,
-              }))}
-            />
-          )}
-        </section>
-
-        <section className="space-y-3">
-          <h2 className="nm-section-title">Emitidos</h2>
-          {issued.length === 0 ? (
-            <EmptyState description="Cargá un cheque emitido arriba." title="Sin cheques emitidos" />
-          ) : (
-            <ChequesTable
-              storageKey="erp.table.cheques-emitidos.v2"
-              rows={issued.map((p) => ({
-                id: p.id,
-                number: p.number,
-                paymentKind: p.paymentKind,
-                party: p.purchaseReceipt?.vendor.name ?? p.paymentOrder?.vendor.name ?? "—",
-                issuedAt: p.issuedAt,
-                paidAt: p.paidAt,
-                amount: Number(p.amount),
-                estado: p.estado,
-                checkOrder: p.checkOrder,
-                kind: "issued" as const,
-              }))}
-            />
-          )}
-        </section>
+        <Tabs className="flex min-h-0 flex-1 flex-col" defaultValue={activeTab} key={activeTab}>
+          <TabsList className="shrink-0 self-start">
+            <TabsTrigger value="received">Recibidos ({received.length})</TabsTrigger>
+            <TabsTrigger value="issued">Emitidos ({issued.length})</TabsTrigger>
+          </TabsList>
+          <TabsContent className="mt-3 flex min-h-0 flex-1 flex-col" value="received">
+            {received.length === 0 ? (
+              <EmptyState description="Se generan al cargar un recibo con cheque." title="Sin cheques recibidos" />
+            ) : (
+              <ChequesTable
+                storageKey="erp.table.cheques-recibidos.v3"
+                rows={received.map((p) => ({
+                  id: p.id,
+                  number: p.number,
+                  party: p.saleReceipt?.client.name ?? "—",
+                  issuedAt: p.issuedAt,
+                  paidAt: p.paidAt,
+                  amount: Number(p.amount),
+                  estado: p.estado,
+                  checkOrder: p.checkOrder,
+                  endorsed: endorsedIds.has(p.id),
+                  kind: "received" as const,
+                }))}
+              />
+            )}
+          </TabsContent>
+          <TabsContent className="mt-3 flex min-h-0 flex-1 flex-col" value="issued">
+            {issued.length === 0 ? (
+              <EmptyState description="Cargá un cheque emitido arriba." title="Sin cheques emitidos" />
+            ) : (
+              <ChequesTable
+                storageKey="erp.table.cheques-emitidos.v3"
+                rows={issued.map((p) => ({
+                  id: p.id,
+                  number: p.number,
+                  party: p.purchaseReceipt?.vendor.name ?? p.paymentOrder?.vendor.name ?? "—",
+                  issuedAt: p.issuedAt,
+                  paidAt: p.paidAt,
+                  amount: Number(p.amount),
+                  estado: p.estado,
+                  checkOrder: p.checkOrder,
+                  kind: "issued" as const,
+                }))}
+              />
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

@@ -37,10 +37,10 @@ import {
   displayDate,
   ERP_COLLECT,
   ERP_MONTHS,
-  ERP_PAY,
   ERP_SETTLE,
   erpCheckOrderLabel,
   erpChequeStatusLabel,
+  erpInvoiceRef,
   erpOrderBadge,
   erpOrderLabel,
   erpPayPurchaseLabel,
@@ -51,7 +51,7 @@ import {
 } from "@/lib/erp";
 
 function docRef(docType: string, pos: number, number: number) {
-  return `${docType} ${String(pos).padStart(4, "0")}-${String(number).padStart(8, "0")}`;
+  return erpInvoiceRef(docType, pos, number);
 }
 
 function moneySum<T>(rows: T[], pick: (row: T) => number) {
@@ -610,6 +610,139 @@ export function PendientesTable({
   );
 }
 
+export function PorCobrarTable({
+  rows,
+}: {
+  rows: {
+    id: string;
+    dueAt: string | Date;
+    issuedAt: string | Date;
+    doc: string;
+    client: string;
+    order: string;
+    amount: number;
+    overdue: boolean;
+    href: string;
+  }[];
+}) {
+  return (
+    <ErpDataTable
+      storageKey="erp.table.por-cobrar.v1"
+      rows={rows}
+      rowKey={(r) => r.id}
+      rowClassName={(r) => (r.overdue ? "text-[var(--error)]" : undefined)}
+      columns={[
+        {
+          id: "doc",
+          label: "Factura",
+          value: (r) => r.doc,
+          cell: (r) => (
+            <span className="font-medium">
+              <Link className="hover:underline" href={r.href}>
+                {r.doc}
+              </Link>
+              {r.overdue ? (
+                <Badge className="ml-2" variant="warning">
+                  Vencido
+                </Badge>
+              ) : null}
+            </span>
+          ),
+        },
+        { id: "client", label: "Cliente", value: (r) => r.client, cell: (r) => r.client },
+        { id: "issuedAt", label: "Fecha", value: (r) => dateSortValue(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
+        { id: "dueAt", label: "Vence", value: (r) => dateSortValue(r.dueAt), cell: (r) => displayDate(r.dueAt) },
+        { id: "order", label: "Orden", value: (r) => r.order, cell: (r) => r.order },
+        {
+          id: "amount",
+          label: "Importe",
+          align: "right",
+          value: (r) => r.amount,
+          cell: (r) => money(r.amount),
+          foot: (rows) => moneySum(rows, (r) => r.amount),
+        },
+      ]}
+      actions={(r) => (
+        <ErpRowActions
+          confirmAction={setErpSaleCollectStatus.bind(null, r.id, ERP_COLLECT.collected)}
+          confirmLabel="Cobrada"
+          confirmPrompt="¿Marcar esta factura como cobrada?"
+          editHref={r.href}
+        />
+      )}
+    />
+  );
+}
+
+export function AFacturarTable({
+  rows,
+}: {
+  rows: {
+    id: string;
+    number: string;
+    client: string;
+    product: string | null;
+    month: number;
+    year: number;
+    net: number;
+    amount: number;
+    remaining: number;
+    href: string;
+  }[];
+}) {
+  return (
+    <ErpDataTable
+      storageKey="erp.table.a-facturar.v1"
+      rows={rows}
+      rowKey={(r) => r.id}
+      columns={[
+        {
+          id: "number",
+          label: "Orden",
+          value: (r) => r.number,
+          cell: (r) => (
+            <Link className="font-medium hover:underline" href={r.href}>
+              {r.number}
+            </Link>
+          ),
+        },
+        { id: "client", label: "Cliente", value: (r) => r.client, cell: (r) => r.client },
+        { id: "product", label: "Producto", value: (r) => r.product, cell: (r) => r.product || "—" },
+        {
+          id: "periodo",
+          label: "Período",
+          value: (r) => r.year * 100 + r.month,
+          cell: (r) => `${ERP_MONTHS[r.month] ?? r.month} ${r.year}`,
+        },
+        {
+          id: "net",
+          label: "Neto",
+          align: "right",
+          value: (r) => r.net,
+          cell: (r) => money(r.net),
+          foot: (rows) => moneySum(rows, (r) => r.net),
+        },
+        {
+          id: "amount",
+          label: "Total",
+          align: "right",
+          value: (r) => r.amount,
+          cell: (r) => money(r.amount),
+          foot: (rows) => moneySum(rows, (r) => r.amount),
+        },
+        {
+          id: "remaining",
+          label: "Falta facturar",
+          align: "right",
+          value: (r) => r.remaining,
+          cell: (r) => money(r.remaining),
+          foot: (rows) => moneySum(rows, (r) => r.remaining),
+        },
+      ]}
+    />
+  );
+}
+
 export function RecibosTable({
   rows,
 }: {
@@ -733,7 +866,6 @@ export function PagosTable({
 type ChequeRow = {
   id: string;
   number: string | number | null;
-  paymentKind: number;
   party: string;
   issuedAt: string | Date | null;
   paidAt: string | Date | null;
@@ -744,23 +876,56 @@ type ChequeRow = {
   kind: "received" | "issued";
 };
 
+type TransferRow = {
+  id: string;
+  number: string | null;
+  party: string;
+  doc: string;
+  issuedAt: string | Date | null;
+  paidAt: string | Date | null;
+  amount: number;
+};
+
+export function TransferenciasTable({ rows, kind }: { rows: TransferRow[]; kind: "received" | "issued" }) {
+  return (
+    <ErpDataTable
+      storageKey={`erp.table.transferencias-${kind}.v1`}
+      rows={rows}
+      rowKey={(r) => r.id}
+      columns={[
+        { id: "issuedAt", label: "Fecha", value: (r) => dateSortValue(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
+        { id: "party", label: kind === "issued" ? "Proveedor" : "Cliente", value: (r) => r.party, cell: (r) => r.party },
+        { id: "doc", label: kind === "issued" ? "Comprobante" : "Recibo", value: (r) => r.doc, cell: (r) => r.doc },
+        { id: "number", label: "Referencia", value: (r) => r.number, cell: (r) => r.number || "—" },
+        {
+          id: "amount",
+          label: "Importe",
+          align: "right",
+          value: (r) => r.amount,
+          cell: (r) => money(r.amount),
+          foot: (rows) => moneySum(rows, (r) => r.amount),
+        },
+        {
+          id: "estado",
+          label: "Estado",
+          value: () => (kind === "issued" ? "Pagado" : "Cobrado"),
+          cell: () => <Badge variant="success">{kind === "issued" ? "Pagado" : "Cobrado"}</Badge>,
+        },
+      ]}
+    />
+  );
+}
+
 export function ChequesTable({
   rows,
   storageKey,
 }: {
   rows: ChequeRow[];
   storageKey: string;
-  showEstado?: boolean;
 }) {
   const issued = rows[0]?.kind === "issued";
   const columns: ErpTableColumn<ChequeRow>[] = [
     { id: "number", label: "Nº", value: (r) => r.number, cell: (r) => <span className="font-medium">{r.number ?? "—"}</span> },
-    {
-      id: "tipo",
-      label: "Tipo",
-      value: (r) => r.paymentKind,
-      cell: (r) => (r.paymentKind === ERP_PAY.transfer ? "Transfer" : "Cheque"),
-    },
     { id: "party", label: issued ? "Proveedor" : "Cliente", value: (r) => r.party, cell: (r) => r.party },
     {
       id: "orden",

@@ -2,7 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { Autocomplete, EmptyState, Input, PageHeader } from "@/components/ui";
+import { EmptyState, Input, PageHeader } from "@/components/ui";
+import { ErpVendorInvoicePicker } from "@/components/erp/ErpVendorInvoicePicker";
 import { PagosTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
@@ -10,10 +11,11 @@ import { ErpPurchasePayLines } from "@/components/erp/ErpPurchasePayLines";
 import { createErpPaymentOrder, updateErpPaymentOrder } from "@/app/actions/erp-billing";
 import { ErpPayMethodSelect } from "@/components/erp/ErpPayMethodSelect";
 import {
-  ERP_CHECK_DEFERRED,
   ERP_PAY,
   ERP_PAY_STATUS,
+  ERP_SETTLE,
   erpInputNumber,
+  erpInvoiceRef,
   erpPaymentOrderNumber,
   erpPurchaseInvoiceTotal,
   isoDate,
@@ -60,15 +62,19 @@ export default async function ErpOrdenesPagoPage({
     }),
     listActiveVendors(),
     prisma.erpPurchaseInvoice.findMany({
+      where: {
+        OR: [
+          { payStatus: ERP_SETTLE.pending },
+          ...(edit ? [{ paymentLinks: { some: { paymentOrderId: edit } } }] : []),
+        ],
+      },
       orderBy: { issuedAt: "desc" },
       include: { vendor: { select: { name: true } } },
-      take: 100,
     }),
     prisma.erpTreasuryPayment.findMany({
       where: {
         paymentKind: ERP_PAY.cheque,
         saleReceiptId: { not: null },
-        checkOrder: { not: ERP_CHECK_DEFERRED },
         estado: ERP_PAY_STATUS.pending,
       },
       include: chequeInclude,
@@ -109,59 +115,46 @@ export default async function ErpOrdenesPagoPage({
           title={current ? "Editar orden de pago" : "Nueva orden de pago"}
         >
           {current ? <input name="id" type="hidden" value={current.id} /> : null}
-          <ErpField htmlFor="vendorId" label="Proveedor">
-            <Autocomplete
-              defaultValue={current?.vendorId}
-              id="vendorId"
-              name="vendorId"
-              options={vendors.map((v) => ({ value: v.id, label: v.name }))}
-              placeholder="Buscar proveedor…"
-              required
-            />
-          </ErpField>
-          <ErpField htmlFor="number" label="Número">
-            <Input
-              defaultValue={current ? Number(erpPaymentOrderNumber(current.id, current.number)) : undefined}
-              id="number"
-              name="number"
-              required
-              type="number"
-            />
-          </ErpField>
-          <ErpField htmlFor="issuedAt" label="Fecha">
-            <Input defaultValue={isoDate(current?.issuedAt ?? now)} id="issuedAt" name="issuedAt" type="date" />
-          </ErpField>
-          <ErpField htmlFor="amount" label="Importe">
-            <Input
-              defaultValue={erpInputNumber(
-                current?.invoices.length
-                  ? current.invoices.reduce((sum, link) => sum + erpPurchaseInvoiceTotal(link.invoice), 0)
-                  : current?.amount,
-              )}
-              id="amount"
-              name="amount"
-            />
-          </ErpField>
-          <ErpField htmlFor="balance" label="Saldo">
-            <Input defaultValue={erpInputNumber(current?.balance)} id="balance" name="balance" />
-          </ErpField>
-          <ErpField htmlFor="notes" label="Medio de pago" wide>
-            <ErpPayMethodSelect defaultValue={current?.notes} />
-          </ErpField>
-          <ErpField htmlFor="invoiceId" label="Facturas de compra" wide>
-            <Autocomplete
-              defaultValue={[...selectedInvoices]}
-              emptyLabel="Sin facturas"
-              id="invoiceId"
-              multiple
-              name="invoiceId"
-              options={invoices.map((f) => ({
-                value: f.id,
-                label: `${f.vendor.name} · ${f.docType} ${f.pos}-${f.number} · ${money(erpPurchaseInvoiceTotal(f))}`,
-              }))}
-              placeholder="Buscar factura…"
-            />
-          </ErpField>
+          <ErpVendorInvoicePicker
+            defaultInvoiceIds={[...selectedInvoices]}
+            defaultVendorId={current?.vendorId}
+            invoices={invoices.map((f) => ({
+              value: f.id,
+              vendorId: f.vendorId,
+              label: `${f.vendor.name} · ${erpInvoiceRef(f.docType, f.pos, f.number)} · ${money(erpPurchaseInvoiceTotal(f))}`,
+            }))}
+            vendors={vendors.map((v) => ({ value: v.id, label: v.name }))}
+          >
+            <ErpField htmlFor="number" label="Número">
+              <Input
+                defaultValue={current ? Number(erpPaymentOrderNumber(current.id, current.number)) : undefined}
+                id="number"
+                name="number"
+                required
+                type="number"
+              />
+            </ErpField>
+            <ErpField htmlFor="issuedAt" label="Fecha">
+              <Input defaultValue={isoDate(current?.issuedAt ?? now)} id="issuedAt" name="issuedAt" type="date" />
+            </ErpField>
+            <ErpField htmlFor="amount" label="Importe">
+              <Input
+                defaultValue={erpInputNumber(
+                  current?.invoices.length
+                    ? current.invoices.reduce((sum, link) => sum + erpPurchaseInvoiceTotal(link.invoice), 0)
+                    : current?.amount,
+                )}
+                id="amount"
+                name="amount"
+              />
+            </ErpField>
+            <ErpField htmlFor="balance" label="Saldo">
+              <Input defaultValue={erpInputNumber(current?.balance)} id="balance" name="balance" />
+            </ErpField>
+            <ErpField htmlFor="notes" label="Medio de pago" wide>
+              <ErpPayMethodSelect defaultValue={current?.notes} />
+            </ErpField>
+          </ErpVendorInvoicePicker>
           <ErpPurchasePayLines
             cheques={cheques.map((c) => ({
               id: c.id,
@@ -209,7 +202,11 @@ export default async function ErpOrdenesPagoPage({
                 : Number(o.amount),
               notes: o.notes,
               payKinds: o.treasury.map((p) => p.paymentKind),
-              invoices: o.invoices.map((link) => link.invoice),
+              invoices: o.invoices.map(({ invoice }) => ({
+                docType: invoice.docType,
+                pos: invoice.pos,
+                number: invoice.number,
+              })),
             }))}
           />
         )}

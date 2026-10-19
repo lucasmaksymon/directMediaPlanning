@@ -36,10 +36,22 @@ const productionPickSelect = {
   saleOrder: { select: { number: true } },
 } as const;
 
-export function listSaleOrdersForTable() {
+export type ErpPeriodFilter = { month?: number; year?: number };
+
+function periodWhere(period?: ErpPeriodFilter) {
+  if (!period?.month && !period?.year) return undefined;
+  return {
+    ...(period.month ? { month: period.month } : {}),
+    ...(period.year ? { year: period.year } : {}),
+  };
+}
+
+export function listSaleOrdersForTable(period?: ErpPeriodFilter) {
+  const where = periodWhere(period);
   return prisma.erpSaleOrder.findMany({
+    where,
     orderBy: { issuedAt: "desc" },
-    take: ERP_LIST_TAKE,
+    take: where ? undefined : ERP_LIST_TAKE,
     select: {
       id: true,
       number: true,
@@ -58,10 +70,12 @@ export function listSaleOrdersForTable() {
   });
 }
 
-export function listPurchaseOrdersForTable() {
+export function listPurchaseOrdersForTable(period?: ErpPeriodFilter) {
+  const saleOrder = periodWhere(period);
   return prisma.erpPurchaseOrder.findMany({
+    where: saleOrder ? { saleOrder } : undefined,
     orderBy: { issuedAt: "desc" },
-    take: ERP_LIST_TAKE,
+    take: saleOrder ? undefined : ERP_LIST_TAKE,
     select: {
       id: true,
       number: true,
@@ -78,10 +92,12 @@ export function listPurchaseOrdersForTable() {
   });
 }
 
-export function listProductionOrdersForTable() {
+export function listProductionOrdersForTable(period?: ErpPeriodFilter) {
+  const saleOrder = periodWhere(period);
   return prisma.erpProductionOrder.findMany({
+    where: saleOrder ? { saleOrder } : undefined,
     orderBy: { issuedAt: "desc" },
-    take: ERP_LIST_TAKE,
+    take: saleOrder ? undefined : ERP_LIST_TAKE,
     select: {
       id: true,
       number: true,

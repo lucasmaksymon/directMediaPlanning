@@ -5,6 +5,7 @@ import { adminPage, adminPageBody } from "@/lib/ui-classes";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { OrdenesVentaTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
+import { ErpPeriodFilter, parseErpPeriod } from "@/components/erp/ErpPeriodFilter";
 import { ErpSaleOrderFormFields } from "@/components/erp/orders/ErpSaleOrderFormFields";
 import { createErpSaleOrder, updateErpSaleOrder } from "@/app/actions/erp-orders";
 import { erpCashMode, erpInputNumber, erpSettlementLabel, isoDate } from "@/lib/erp";
@@ -18,12 +19,14 @@ export const metadata = { title: productTitle("O.P. Venta") };
 export default async function ErpOpVentaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ edit?: string }>;
+  searchParams: Promise<{ edit?: string; mes?: string; anio?: string }>;
 }) {
-  const { edit } = await searchParams;
+  const params = await searchParams;
+  const { edit } = params;
+  const period = parseErpPeriod(params);
   const now = new Date();
   const [orders, current, clients, plazas, elements] = await Promise.all([
-    listSaleOrdersForTable(),
+    listSaleOrdersForTable(period),
     edit
       ? prisma.erpSaleOrder.findUnique({ where: { id: edit }, include: { items: true } })
       : Promise.resolve(null),
@@ -96,6 +99,7 @@ export default async function ErpOpVentaPage({
           />
         </ErpForm>
 
+        <ErpPeriodFilter basePath="/backoffice/ordenes/venta" period={period} />
         {orders.length === 0 ? (
           <EmptyState description="No hay órdenes de venta." title="Sin O.P. venta" />
         ) : (

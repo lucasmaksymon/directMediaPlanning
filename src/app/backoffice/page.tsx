@@ -132,8 +132,8 @@ export default async function BackofficeHomePage() {
       />
 
       <StatRow className="shrink-0">
-        <Stat hint={monthLabel} label="Venta" value={money(data.venta)} />
-        <Stat hint="Compra + IVA" label="Compra" value={money(data.compra)} />
+        <Stat hint={`Órdenes ${monthLabel} · neto`} label="Venta" value={money(data.venta)} />
+        <Stat hint="Órdenes de compra y producción · neto" label="Compra" value={money(data.compra)} />
         <Stat accent hint={data.margen == null ? undefined : `${data.margen.toFixed(1)}% sobre venta`} label="Ganancia bruta" value={money(data.ganancia)} />
         <Stat hint={data.gastos ? "Cargados" : "Sin cargar"} label="Gastos" value={money(data.gastos)} />
         <Stat
@@ -149,7 +149,7 @@ export default async function BackofficeHomePage() {
         <ActionCard
           amount={data.toInvoice.amount}
           count={data.toInvoice.count}
-          href="/backoffice/gestion?cobro=to_invoice"
+          href="/backoffice/facturacion/a-facturar"
           hint="Órdenes emitidas sin cerrar"
           label="A facturar"
           urgent={data.toInvoice.count > 0}
@@ -157,7 +157,7 @@ export default async function BackofficeHomePage() {
         <ActionCard
           amount={data.receivables.amount}
           count={data.receivables.count}
-          href="/backoffice/gestion?cobro=pending"
+          href="/backoffice/facturacion/por-cobrar"
           hint={
             data.receivables.overdueCount
               ? `${data.receivables.overdueCount} vencidas · ${money(data.receivables.overdueAmount)}`
@@ -182,7 +182,7 @@ export default async function BackofficeHomePage() {
           amount={data.cheques.amount}
           count={data.cheques.count}
           href="/backoffice/facturacion/cheques"
-          hint="E-cheq y transferencias abiertas"
+          hint="E-cheq y cheques sin cobrar o pagar"
           label="Cheques pendientes"
         />
       </div>

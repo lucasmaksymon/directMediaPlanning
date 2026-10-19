@@ -5,7 +5,6 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { requireOpsSession } from "@/lib/ops-access";
 import {
-  ERP_CHECK_DEFERRED,
   ERP_COLLECT,
   ERP_PAY,
   ERP_PAY_PURCHASE_CHEQUE,
@@ -98,9 +97,6 @@ async function hydratePurchasePayLine(tx: Db, line: PayLine, previousSourceId: s
   const source = await tx.erpTreasuryPayment.findUnique({ where: { id: sourceId } });
   if (!source?.saleReceiptId || source.paymentKind !== ERP_PAY.cheque) {
     throw new Error("El cheque ya ha sido endosado o no existe");
-  }
-  if (source.checkOrder === ERP_CHECK_DEFERRED) {
-    throw new Error("No se puede endosar un cheque diferido.");
   }
   if (source.estado !== ERP_PAY_STATUS.pending && source.id !== previousSourceId) {
     throw new Error("El cheque ya ha sido endosado o no existe");
@@ -724,7 +720,7 @@ export async function createErpIssuedCheque(formData: FormData): Promise<Result>
         checkOrder: parseIntField(formData.get("checkOrder"), 0),
         checkType: parseIntField(formData.get("checkType"), 0),
         checkMode: parseIntField(formData.get("checkMode"), 0),
-        estado: parseIntField(formData.get("estado"), 0),
+        estado: parseIntField(formData.get("estado"), ERP_PAY_STATUS.done),
         attachmentUrl: optionalString(String(formData.get("attachmentUrl") ?? "")),
       },
     });

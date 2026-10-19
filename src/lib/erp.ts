@@ -67,9 +67,6 @@ export const ERP_PAY_PURCHASE_KIND = {
 
 export const ERP_PAY_STATUS = { pending: 0, done: 1, voided: 2 } as const;
 
-/** ordenCheque=2 diferido: el legado no deja endosarlo. */
-export const ERP_CHECK_DEFERRED = 2;
-
 export function erpPaySaleLabel(kind: number) {
   return ERP_PAY_SALE[kind] ?? `Pago ${kind}`;
 }
@@ -401,6 +398,12 @@ export function erpPaymentOrderNumber(id: string, number: number) {
 /** Comprobante como en el PDF viejo: A-0001-0001 */
 export function erpPurchaseDocRefOld(docType: string, pos: number, number: number) {
   return `${docType}-${String(pos).padStart(4, "0")}-${String(number).padStart(4, "0")}`;
+}
+
+/** Mismo rótulo que Facturación: A 0003-00000523. El tipo es el del comprobante, sin inventar NC. */
+export function erpInvoiceRef(docType: string, pos: number, number: number) {
+  const type = docType.trim().toUpperCase() || "A";
+  return `${type} ${String(pos).padStart(4, "0")}-${String(number).padStart(8, "0")}`;
 }
 
 export function erpPurchaseInvoiceTotal(inv: {

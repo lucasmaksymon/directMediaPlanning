@@ -1,5 +1,14 @@
 import { prisma } from "@/lib/prisma";
-import { ERP_COLLECT, ERP_SETTLE, ERP_VENDOR, erpPurchaseInvoiceTotal } from "@/lib/erp";
+import {
+  ERP_COLLECT,
+  ERP_ORDER,
+  ERP_SETTLE,
+  ERP_VENDOR,
+  erpInvoiceRef,
+  erpPurchaseInvoiceTotal,
+  saleOrderInvoiceCover,
+  saleOrderRemaining,
+} from "@/lib/erp";
 
 export type GestionFilter = {
   month?: number;
@@ -9,221 +18,44 @@ export type GestionFilter = {
   pay?: "all" | "pending" | "paid";
 };
 
-export type GestionRow = {
+export type GestionSaleStatus = "A facturar" | "Pendiente" | "Cobrado";
+export type GestionPayStatus = "—" | "Sin facturar" | "Pendiente" | "Pagado";
+
+export type GestionDetailLine = {
+  id: string;
+  kind: "Venta" | "Compra" | "Compra IVA" | "Producción";
+  order: string;
+  party: string;
+  doc: string | null;
+  issuedAt: Date | null;
+  net: number;
+  total: number;
+  status: "Cobrado" | "Pagado" | "Pendiente" | "Sin factura";
+  href: string;
+};
+
+export type GestionOrderRow = {
   id: string;
   number: string;
   month: number;
   year: number;
   issuedAt: Date;
   client: string;
-  legalName: string | null;
-  items: { element: string; location: string | null; quantity: number }[];
-  purchaseNet: number;
-  purchasePending: number;
-  productionNet: number;
+  product: string | null;
+  elements: string;
   saleNet: number;
-  saleVat: number;
-  saleCollected: number;
-  saleStatus: "A facturar" | "Pendiente" | "Cobrado";
-  payStatus: "—" | "Pendiente" | "Pagado";
+  purchaseNet: number;
+  ganancia: number;
+  gananciaPct: number | null;
+  invoiced: number;
+  saleStatus: GestionSaleStatus;
+  payStatus: GestionPayStatus;
+  details: GestionDetailLine[];
 };
 
 function n(v: { toString(): string } | number | null | undefined) {
   if (v == null) return 0;
   return typeof v === "number" ? v : Number(v.toString());
-}
-
-export async function loadGestion(filter: GestionFilter): Promise<GestionRow[]> {
-  const year = filter.year ?? new Date().getFullYear();
-  const orders = await prisma.erpSaleOrder.findMany({
-    where: {
-      year,
-      ...(filter.month ? { month: filter.month } : {}),
-      ...(filter.q
-        ? {
-            OR: [
-              { number: { contains: filter.q, mode: "insensitive" } },
-              { client: { name: { contains: filter.q, mode: "insensitive" } } },
-            ],
-          }
-        : {}),
-    },
-    orderBy: [{ month: "asc" }, { number: "asc" }],
-    include: {
-      client: { select: { name: true, legalName: true } },
-      items: { orderBy: { createdAt: "asc" } },
-      invoices: true,
-      purchaseOrders: {
-        include: {
-          invoiceLinks: { include: { invoice: true } },
-        },
-      },
-      productionOrders: {
-        include: {
-          invoiceLinks: { include: { invoice: true } },
-        },
-      },
-    },
-  });
-
-  const rows: GestionRow[] = [];
-  for (const order of orders) {
-    let purchaseNet = 0;
-    let purchasePending = 0;
-    let hasPurchase = false;
-    for (const po of order.purchaseOrders) {
-      for (const link of po.invoiceLinks) {
-        if (link.invoice.isVatPurchase) continue;
-        if (link.vendorKind === ERP_VENDOR.producer) continue;
-        hasPurchase = true;
-        purchaseNet += n(link.invoice.amount);
-        if (link.invoice.payStatus !== ERP_SETTLE.paid) {
-          purchasePending += n(link.invoice.amount) + n(link.invoice.vat);
-        }
-      }
-    }
-
-    let productionNet = 0;
-    for (const prod of order.productionOrders) {
-      for (const link of prod.invoiceLinks) {
-        productionNet += n(link.invoice.amount);
-        hasPurchase = true;
-        if (link.invoice.payStatus !== ERP_SETTLE.paid) {
-          purchasePending += n(link.invoice.amount) + n(link.invoice.vat);
-        }
-      }
-    }
-
-    let saleNet = 0;
-    let saleVat = 0;
-    let saleCollected = 0;
-    let allCollected = order.invoices.length > 0;
-    for (const inv of order.invoices) {
-      saleNet += n(inv.amount);
-      saleVat += n(inv.vat);
-      saleCollected += n(inv.collected);
-      if (inv.collectStatus !== ERP_COLLECT.collected) allCollected = false;
-    }
-
-    const saleStatus: GestionRow["saleStatus"] = !order.invoices.length
-      ? "A facturar"
-      : allCollected
-        ? "Cobrado"
-        : "Pendiente";
-    const payStatus: GestionRow["payStatus"] = !hasPurchase
-      ? "—"
-      : purchasePending > 0.009
-        ? "Pendiente"
-        : "Pagado";
-
-    if (filter.sale === "to_invoice" && saleStatus !== "A facturar") continue;
-    if (filter.sale === "pending" && saleStatus !== "Pendiente") continue;
-    if (filter.sale === "collected" && saleStatus !== "Cobrado") continue;
-    if (filter.pay === "pending" && payStatus !== "Pendiente") continue;
-    if (filter.pay === "paid" && payStatus !== "Pagado") continue;
-
-    rows.push({
-      id: order.id,
-      number: order.number,
-      month: order.month,
-      year: order.year,
-      issuedAt: order.issuedAt,
-      client: order.client.name,
-      legalName: order.client.legalName,
-      items: order.items.map((i) => ({
-        element: i.element,
-        location: i.location,
-        quantity: n(i.quantity),
-      })),
-      purchaseNet,
-      purchasePending,
-      productionNet,
-      saleNet,
-      saleVat,
-      saleCollected,
-      saleStatus,
-      payStatus,
-    });
-  }
-  return rows;
-}
-
-export type GestionPurchaseBlock = {
-  id: string;
-  doc: string;
-  vendor: string;
-  issuedAt: Date;
-  net: number;
-  vat: number;
-  iibb: number;
-  percVat: number;
-  diegoFee: number;
-  total: number;
-  payStatus: number;
-};
-
-export type GestionProductionBlock = {
-  id: string;
-  doc: string;
-  vendor: string;
-  issuedAt: Date;
-  net: number;
-  vat: number;
-  total: number;
-  payStatus: number;
-};
-
-export type GestionSaleBlock = {
-  id: string;
-  doc: string;
-  issuedAt: Date;
-  net: number;
-  vat: number;
-  retVat: number;
-  retSuss: number;
-  retGan: number;
-  retIibb: number;
-  total: number;
-  collected: number;
-  collectStatus: number;
-  receiptRef: string | null;
-};
-
-export type GestionLineRow = {
-  id: string;
-  orderId: string;
-  number: string;
-  month: number;
-  year: number;
-  client: string;
-  legalName: string | null;
-  element: string | null;
-  location: string | null;
-  quantity: number;
-  startsAt: Date | null;
-  endsAt: Date | null;
-  purchase: GestionPurchaseBlock | null;
-  production: GestionProductionBlock | null;
-  sale: GestionSaleBlock | null;
-  /** Venta neta de retenciones − compra − producción (misma idea que el Excel / informe). */
-  ganancia: number | null;
-  gananciaPct: number | null;
-};
-
-/** TOTAL compra Excel col. 20: neto + IVA + IIBB + perc. IVA + com. Diego. */
-export function purchaseLineTotal(p: {
-  net: number;
-  vat: number;
-  iibb: number;
-  percVat: number;
-  diegoFee: number;
-}) {
-  return p.net + p.vat + p.iibb + p.percVat + p.diegoFee;
-}
-
-/** TOTAL producción Excel col. 31: neto + IVA. */
-export function productionLineTotal(p: { net: number; vat: number }) {
-  return p.net + p.vat;
 }
 
 /** TOTAL venta Excel col. 44: neto + IVA − retenciones. */
@@ -238,179 +70,186 @@ export function saleLineTotal(s: {
   return s.net + s.vat - s.retVat - s.retSuss - s.retGan - s.retIibb;
 }
 
-function invDoc(inv: { isCreditNote?: boolean; docType: string; pos: number; number: number }) {
-  return `${inv.isCreditNote ? "NC" : inv.docType} ${inv.pos}-${inv.number}`;
-}
+const purchaseInvoiceSelect = {
+  id: true,
+  docType: true,
+  pos: true,
+  number: true,
+  issuedAt: true,
+  amount: true,
+  vat: true,
+  vatWithholding: true,
+  iibbCaba: true,
+  iibbBsAs: true,
+  internalTax: true,
+  nonTaxable: true,
+  isVatPurchase: true,
+  payStatus: true,
+} as const;
 
-export async function loadGestionLines(filter: GestionFilter): Promise<GestionLineRow[]> {
+/**
+ * GESTIÓN en vivo: una fila por O.P. de venta del período, con sus facturas de venta
+ * y las órdenes de compra / producción (con o sin factura) como detalle.
+ */
+export async function loadGestionOrders(filter: GestionFilter): Promise<GestionOrderRow[]> {
   const year = filter.year ?? new Date().getFullYear();
-  const invoiceSelect = {
-    id: true,
-    docType: true,
-    pos: true,
-    number: true,
-    isCreditNote: true,
-    issuedAt: true,
-    amount: true,
-    vat: true,
-    iibbCaba: true,
-    iibbBsAs: true,
-    vatWithholding: true,
-    diegoFee: true,
-    payStatus: true,
-    vendor: { select: { name: true } },
-  } as const;
-  const saleInvoiceSelect = {
-    id: true,
-    docType: true,
-    pos: true,
-    number: true,
-    issuedAt: true,
-    amount: true,
-    vat: true,
-    retVat: true,
-    retSuss: true,
-    retGan: true,
-    retIibb: true,
-    collected: true,
-    collectStatus: true,
-    receiptRef: true,
-  } as const;
-  const lines = await prisma.erpGestionLine.findMany({
+  const orders = await prisma.erpSaleOrder.findMany({
     where: {
-      saleOrder: {
-        year,
-        ...(filter.month ? { month: filter.month } : {}),
-        ...(filter.q
-          ? {
-              OR: [
-                { number: { contains: filter.q, mode: "insensitive" } },
-                { client: { name: { contains: filter.q, mode: "insensitive" } } },
-                { items: { some: { element: { contains: filter.q, mode: "insensitive" } } } },
-              ],
-            }
-          : {}),
-      },
-      ...(filter.sale === "to_invoice" ? { saleInvoiceId: null } : {}),
-      ...(filter.sale === "pending" ? { saleInvoice: { collectStatus: ERP_COLLECT.pending } } : {}),
-      ...(filter.sale === "collected" ? { saleInvoice: { collectStatus: ERP_COLLECT.collected } } : {}),
-      ...(filter.pay === "pending"
+      year,
+      ...(filter.month ? { month: filter.month } : {}),
+      ...(filter.q
         ? {
             OR: [
-              { purchaseInvoice: { payStatus: { not: ERP_SETTLE.paid } } },
-              { productionInvoice: { payStatus: { not: ERP_SETTLE.paid } } },
-            ],
-          }
-        : {}),
-      ...(filter.pay === "paid"
-        ? {
-            AND: [
-              { OR: [{ purchaseInvoiceId: { not: null } }, { productionInvoiceId: { not: null } }] },
-              { OR: [{ purchaseInvoiceId: null }, { purchaseInvoice: { payStatus: ERP_SETTLE.paid } }] },
-              { OR: [{ productionInvoiceId: null }, { productionInvoice: { payStatus: ERP_SETTLE.paid } }] },
+              { number: { contains: filter.q, mode: "insensitive" } },
+              { product: { contains: filter.q, mode: "insensitive" } },
+              { client: { name: { contains: filter.q, mode: "insensitive" } } },
+              { items: { some: { element: { contains: filter.q, mode: "insensitive" } } } },
             ],
           }
         : {}),
     },
-    orderBy: [{ saleOrder: { month: "asc" } }, { saleOrder: { number: "asc" } }, { sort: "asc" }],
-    select: {
-      id: true,
-      element: true,
-      location: true,
-      quantity: true,
-      startsAt: true,
-      endsAt: true,
-      saleOrder: { select: { id: true, number: true, month: true, year: true, client: { select: { name: true, legalName: true } } } },
-      purchaseInvoice: { select: invoiceSelect },
-      productionInvoice: { select: invoiceSelect },
-      saleInvoice: { select: saleInvoiceSelect },
+    orderBy: [{ month: "asc" }, { number: "asc" }],
+    include: {
+      client: { select: { name: true } },
+      items: { select: { element: true }, orderBy: { createdAt: "asc" } },
+      invoices: { orderBy: [{ issuedAt: "asc" }, { number: "asc" }] },
+      purchaseOrders: {
+        orderBy: { number: "asc" },
+        include: {
+          vendor: { select: { name: true } },
+          invoiceLinks: { include: { invoice: { select: purchaseInvoiceSelect } } },
+        },
+      },
+      productionOrders: {
+        orderBy: { number: "asc" },
+        include: {
+          vendor: { select: { name: true } },
+          invoiceLinks: { include: { invoice: { select: purchaseInvoiceSelect } } },
+        },
+      },
     },
   });
 
-  const rows: GestionLineRow[] = [];
-  for (const line of lines) {
-    const purchase = line.purchaseInvoice;
-    const production = line.productionInvoice;
-    const sale = line.saleInvoice;
+  const rows: GestionOrderRow[] = [];
+  for (const order of orders) {
+    const details: GestionDetailLine[] = [];
 
-    const purchaseBlock: GestionPurchaseBlock | null = purchase
-      ? (() => {
-          const block = {
-            id: purchase.id,
-            doc: invDoc(purchase),
-            vendor: purchase.vendor.name,
-            issuedAt: purchase.issuedAt,
-            net: n(purchase.amount),
-            vat: n(purchase.vat),
-            iibb: n(purchase.iibbCaba) + n(purchase.iibbBsAs),
-            percVat: n(purchase.vatWithholding),
-            diegoFee: n(purchase.diegoFee),
-            payStatus: purchase.payStatus,
-          };
-          return { ...block, total: purchaseLineTotal(block) };
-        })()
-      : null;
+    let invoiced = 0;
+    let allCollected = order.invoices.length > 0;
+    for (const inv of order.invoices) {
+      const total = saleLineTotal({
+        net: n(inv.amount),
+        vat: n(inv.vat),
+        retVat: n(inv.retVat),
+        retSuss: n(inv.retSuss),
+        retGan: n(inv.retGan),
+        retIibb: n(inv.retIibb),
+      });
+      invoiced += total;
+      const collected = inv.collectStatus === ERP_COLLECT.collected;
+      if (!collected) allCollected = false;
+      details.push({
+        id: `sale-${inv.id}`,
+        kind: "Venta",
+        order: order.number,
+        party: order.client.name,
+        doc: erpInvoiceRef(inv.docType, inv.pos, inv.number),
+        issuedAt: inv.issuedAt,
+        net: n(inv.amount),
+        total,
+        status: collected ? "Cobrado" : "Pendiente",
+        href: `/backoffice/facturacion/venta?edit=${inv.id}`,
+      });
+    }
 
-    const productionBlock: GestionProductionBlock | null = production
-      ? (() => {
-          const block = {
-            id: production.id,
-            doc: invDoc(production),
-            vendor: production.vendor.name,
-            issuedAt: production.issuedAt,
-            net: n(production.amount),
-            vat: n(production.vat),
-            payStatus: production.payStatus,
-          };
-          return { ...block, total: productionLineTotal(block) };
-        })()
-      : null;
+    let hasSupplierOrders = false;
+    let hasSupplierInvoices = false;
+    let anyPending = false;
+    const supplierOrders = [
+      ...order.purchaseOrders.map((po) => ({ po, kind: "Compra" as const, skip: ERP_VENDOR.producer, path: "compra" })),
+      ...order.productionOrders.map((po) => ({ po, kind: "Producción" as const, skip: ERP_VENDOR.media, path: "produccion" })),
+    ];
+    for (const { po, kind, skip, path } of supplierOrders) {
+      hasSupplierOrders = true;
+      const links = po.invoiceLinks.filter((l) => l.vendorKind !== skip);
+      if (links.length === 0) {
+        anyPending = true;
+        details.push({
+          id: `${path}-${po.id}`,
+          kind,
+          order: po.number,
+          party: po.vendor.name,
+          doc: null,
+          issuedAt: po.issuedAt,
+          net: n(po.net),
+          total: n(po.amount),
+          status: "Sin factura",
+          href: `/backoffice/ordenes/${path}?edit=${po.id}`,
+        });
+        continue;
+      }
+      for (const link of links) {
+        const inv = link.invoice;
+        hasSupplierInvoices = true;
+        const paid = inv.payStatus === ERP_SETTLE.paid;
+        if (!paid) anyPending = true;
+        details.push({
+          id: `${path}-${po.id}-${inv.id}`,
+          kind: inv.isVatPurchase ? "Compra IVA" : kind,
+          order: po.number,
+          party: po.vendor.name,
+          doc: erpInvoiceRef(inv.docType, inv.pos, inv.number),
+          issuedAt: inv.issuedAt,
+          net: n(inv.amount),
+          total: erpPurchaseInvoiceTotal(inv),
+          status: paid ? "Pagado" : "Pendiente",
+          href: `/backoffice/facturacion/${inv.isVatPurchase ? "iva" : "compra"}?edit=${inv.id}`,
+        });
+      }
+    }
 
-    const saleBlock: GestionSaleBlock | null = sale
-      ? (() => {
-          const block = {
-            id: sale.id,
-            doc: `${sale.docType} ${sale.pos}-${sale.number}`,
-            issuedAt: sale.issuedAt,
-            net: n(sale.amount),
-            vat: n(sale.vat),
-            retVat: n(sale.retVat),
-            retSuss: n(sale.retSuss),
-            retGan: n(sale.retGan),
-            retIibb: n(sale.retIibb),
-            collected: n(sale.collected),
-            collectStatus: sale.collectStatus,
-            receiptRef: sale.receiptRef,
-          };
-          return { ...block, total: saleLineTotal(block) };
-        })()
-      : null;
+    const saleStatus: GestionSaleStatus = !order.invoices.length
+      ? "A facturar"
+      : allCollected
+        ? "Cobrado"
+        : "Pendiente";
+    const payStatus: GestionPayStatus = !hasSupplierOrders
+      ? "—"
+      : !hasSupplierInvoices
+        ? "Sin facturar"
+        : anyPending
+          ? "Pendiente"
+          : "Pagado";
 
-    const hasMoney = Boolean(purchaseBlock || productionBlock || saleBlock);
-    const ganancia = hasMoney
-      ? (saleBlock?.total ?? 0) - (purchaseBlock?.total ?? 0) - (productionBlock?.total ?? 0)
-      : null;
-    const gananciaPct =
-      ganancia != null && saleBlock && saleBlock.total !== 0 ? (ganancia * 100) / saleBlock.total : null;
+    if (filter.sale === "to_invoice" && saleStatus !== "A facturar") continue;
+    if (filter.sale === "pending" && saleStatus !== "Pendiente") continue;
+    if (filter.sale === "collected" && saleStatus !== "Cobrado") continue;
+    if (filter.pay === "pending" && payStatus !== "Pendiente" && payStatus !== "Sin facturar") continue;
+    if (filter.pay === "paid" && payStatus !== "Pagado") continue;
+
+    const saleNet = n(order.net);
+    const purchaseNet =
+      order.purchaseOrders.reduce((s, po) => s + n(po.net), 0) +
+      order.productionOrders.reduce((s, po) => s + n(po.net), 0);
+    const ganancia = saleNet - purchaseNet;
 
     rows.push({
-      id: line.id,
-      orderId: line.saleOrder.id,
-      number: line.saleOrder.number,
-      month: line.saleOrder.month,
-      year: line.saleOrder.year,
-      client: line.saleOrder.client.name,
-      legalName: line.saleOrder.client.legalName,
-      element: line.element,
-      location: line.location,
-      quantity: n(line.quantity),
-      startsAt: line.startsAt,
-      endsAt: line.endsAt,
-      purchase: purchaseBlock,
-      production: productionBlock,
-      sale: saleBlock,
+      id: order.id,
+      number: order.number,
+      month: order.month,
+      year: order.year,
+      issuedAt: order.issuedAt,
+      client: order.client.name,
+      product: order.product,
+      elements: [...new Set(order.items.map((i) => i.element))].join(", "),
+      saleNet,
+      purchaseNet,
       ganancia,
-      gananciaPct,
+      gananciaPct: saleNet !== 0 ? (ganancia * 100) / saleNet : null,
+      invoiced,
+      saleStatus,
+      payStatus,
+      details,
     });
   }
   return rows;
@@ -525,7 +364,7 @@ export async function loadPendingPayables() {
       issuedAt: inv.issuedAt,
       dueAt: inv.dueAt,
       overdue: inv.dueAt < now,
-      doc: `${inv.isCreditNote ? "NC" : inv.docType} ${inv.pos}-${inv.number}`,
+      doc: erpInvoiceRef(inv.docType, inv.pos, inv.number),
       vendor: inv.vendor.name,
       order,
       amount: total,
@@ -534,6 +373,60 @@ export async function loadPendingPayables() {
       href: `/backoffice/facturacion/${inv.isVatPurchase ? "iva" : "compra"}?edit=${inv.id}`,
     };
   });
+}
+
+export async function loadPendingReceivables() {
+  const invoices = await prisma.erpSaleInvoice.findMany({
+    where: { collectStatus: ERP_COLLECT.pending },
+    orderBy: { dueAt: "asc" },
+    include: {
+      client: { select: { name: true } },
+      saleOrder: { select: { number: true } },
+    },
+  });
+  const now = new Date();
+  return invoices.map((inv) => ({
+    id: inv.id,
+    issuedAt: inv.issuedAt,
+    dueAt: inv.dueAt,
+    overdue: inv.dueAt < now,
+    doc: erpInvoiceRef(inv.docType, inv.pos, inv.number),
+    client: inv.client.name,
+    order: inv.saleOrder.number,
+    amount: saleLineTotal({
+      net: n(inv.amount),
+      vat: n(inv.vat),
+      retVat: n(inv.retVat),
+      retSuss: n(inv.retSuss),
+      retGan: n(inv.retGan),
+      retIibb: n(inv.retIibb),
+    }),
+    href: `/backoffice/facturacion/venta?edit=${inv.id}`,
+  }));
+}
+
+/** O.P. de venta sin cerrar: lo que falta facturar (total sin la parte en efectivo). */
+export async function loadOrdersToInvoice() {
+  const orders = await prisma.erpSaleOrder.findMany({
+    where: { estado: { not: ERP_ORDER.invoiced } },
+    orderBy: [{ year: "asc" }, { month: "asc" }, { number: "asc" }],
+    include: {
+      client: { select: { name: true } },
+      invoices: { select: { amount: true, vat: true } },
+    },
+  });
+  return orders.map((o) => ({
+    id: o.id,
+    number: o.number,
+    client: o.client.name,
+    product: o.product,
+    month: o.month,
+    year: o.year,
+    net: n(o.net),
+    amount: n(o.amount),
+    remaining: saleOrderRemaining(o, saleOrderInvoiceCover(o.invoices)).amount,
+    href: `/backoffice/ordenes/venta?edit=${o.id}`,
+  }));
 }
 
 /** Asigna la factura a la primera fila GESTIÓN de la orden que aún no tiene venta. */

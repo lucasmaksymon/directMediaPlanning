@@ -8,7 +8,7 @@ import { ErpForm } from "@/components/erp/ErpForm";
 import { createErpSaleReceipt, updateErpSaleReceipt } from "@/app/actions/erp-billing";
 import { ErpSaleReceiptFormFields } from "@/components/erp/ocr/ErpSaleReceiptFormFields";
 import { ErpOcrImportClient } from "@/components/erp/ocr/ErpOcrImportClient";
-import { erpInputNumber, isoDate, isoDateOrEmpty, money } from "@/lib/erp";
+import { erpInputNumber, erpInvoiceRef, isoDate, isoDateOrEmpty, money } from "@/lib/erp";
 import { listActiveClients } from "@/lib/erp-list";
 
 export const metadata = { title: productTitle("Recibos de venta") };
@@ -98,7 +98,7 @@ export default async function ErpRecibosPage({
             }
             invoices={invoices.map((f) => ({
               value: f.id,
-              label: `${f.client.name} · ${f.docType} ${f.pos}-${f.number} · ${money(Number(f.amount) + Number(f.vat))}`,
+              label: `${f.client.name} · ${erpInvoiceRef(f.docType, f.pos, f.number)} · ${money(Number(f.amount) + Number(f.vat))}`,
             }))}
             now={isoDate(now)}
           />
@@ -107,7 +107,7 @@ export default async function ErpRecibosPage({
           clients={clients.map((c) => ({ value: c.id, label: c.name }))}
           invoices={invoices.map((f) => ({
             value: f.id,
-            label: `${f.client.name} · ${f.docType} ${f.pos}-${f.number} · ${money(Number(f.amount) + Number(f.vat))}`,
+            label: `${f.client.name} · ${erpInvoiceRef(f.docType, f.pos, f.number)} · ${money(Number(f.amount) + Number(f.vat))}`,
           }))}
           kind="sale_receipt"
         />

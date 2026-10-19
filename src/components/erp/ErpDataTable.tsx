@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -139,6 +139,7 @@ const filterInputClass =
 export function ErpDataTable<T>({
   actions,
   columns,
+  expandedRow,
   fill = "page",
   rowClassName,
   rowKey,
@@ -148,6 +149,8 @@ export function ErpDataTable<T>({
 }: {
   actions?: (row: T) => ReactNode;
   columns: ErpTableColumn<T>[];
+  /** Contenido de una fila extra a lo ancho debajo de la fila; null = cerrada. */
+  expandedRow?: (row: T) => ReactNode;
   fill?: boolean | "page";
   rowClassName?: (row: T) => string | undefined;
   rowKey: (row: T) => string;
@@ -439,28 +442,43 @@ export function ErpDataTable<T>({
                   </TD>
                 </TR>
               ) : null}
-              {pageRows.map((row) => (
-                <TR className={cn("group", rowClassName?.(row))} key={rowKey(row)}>
-                  {visible.map((col) => (
-                    <TD
-                      className={cn(
-                        col.align === "right" && "text-right tabular-nums",
-                        col.wrap && "whitespace-normal",
-                        col.cellClass,
-                      )}
-                      key={col.id}
-                      {...pinProps(col.id)}
-                    >
-                      {col.cell(row)}
-                    </TD>
-                  ))}
-                  {hasActions ? (
-                    <TD pin="end" pinEdge={endIds.length === 0}>
-                      {actions?.(row)}
-                    </TD>
-                  ) : null}
-                </TR>
-              ))}
+              {pageRows.map((row) => {
+                const expanded = expandedRow?.(row);
+                return (
+                  <Fragment key={rowKey(row)}>
+                    <TR className={cn("group", rowClassName?.(row))}>
+                      {visible.map((col) => (
+                        <TD
+                          className={cn(
+                            col.align === "right" && "text-right tabular-nums",
+                            col.wrap && "whitespace-normal",
+                            col.cellClass,
+                          )}
+                          key={col.id}
+                          {...pinProps(col.id)}
+                        >
+                          {col.cell(row)}
+                        </TD>
+                      ))}
+                      {hasActions ? (
+                        <TD pin="end" pinEdge={endIds.length === 0}>
+                          {actions?.(row)}
+                        </TD>
+                      ) : null}
+                    </TR>
+                    {expanded ? (
+                      <TR className="hover:bg-transparent">
+                        <TD
+                          className="bg-muted/30 p-0 whitespace-normal"
+                          colSpan={visible.length + (hasActions ? 1 : 0)}
+                        >
+                          {expanded}
+                        </TD>
+                      </TR>
+                    ) : null}
+                  </Fragment>
+                );
+              })}
             </TBody>
             {hasFooter && sorted.length > 0 ? (
               <TFoot>

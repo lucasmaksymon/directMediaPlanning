@@ -4,7 +4,9 @@ export const ERP_HUB_MODULES = [
     description: "La hoja GESTIÓN del Excel: campañas, cobros y pagos en un solo lugar.",
     items: [
       { href: "/backoffice/gestion", label: "Gestión", desc: "Órdenes, ítems, compra, venta y estados" },
-      { href: "/backoffice/facturacion/pendientes", label: "Pagos pendientes", desc: "Vencimientos a proveedores" },
+      { href: "/backoffice/facturacion/a-facturar", label: "A facturar", desc: "Órdenes sin facturar" },
+      { href: "/backoffice/facturacion/por-cobrar", label: "Por cobrar", desc: "Vencimientos de clientes" },
+      { href: "/backoffice/facturacion/pendientes", label: "Por pagar", desc: "Vencimientos a proveedores" },
     ],
   },
   {
@@ -26,6 +28,7 @@ export const ERP_HUB_MODULES = [
       { href: "/backoffice/facturacion/recibos", label: "Recibos de venta", desc: "Cobra facturas" },
       { href: "/backoffice/facturacion/pagos", label: "Órdenes de pago", desc: "Paga al proveedor" },
       { href: "/backoffice/facturacion/cheques", label: "Cheques", desc: "Recibidos y emitidos" },
+      { href: "/backoffice/facturacion/transferencias", label: "Transferencias", desc: "Recibidas y emitidas" },
     ],
   },
   {

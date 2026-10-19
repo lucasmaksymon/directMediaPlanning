@@ -51,6 +51,15 @@ function at(v: unknown, fallback?: Date) {
   return d;
 }
 
+/**
+ * pagos.estado del legado: 0 pendiente, 1 endosado/entregado, 2 cobrado/acreditado
+ * (transferencias y retenciones vienen todas en 2). En NextPlanning 2 es anulado.
+ */
+function legacyPayStatus(raw: unknown) {
+  const estado = int(raw);
+  return estado === 2 ? 1 : estado;
+}
+
 function id(prefix: string, raw: unknown) {
   return `${prefix}-${int(raw)}`;
 }
@@ -511,7 +520,7 @@ async function main() {
       checkType: int(p.tipoCheque),
       checkMode: int(p.modoCheque),
       amount: num(p.importe),
-      estado: int(p.estado),
+      estado: legacyPayStatus(p.estado),
       endorsedFromId: int(p.idPago) ? id("adm-pag", p.idPago) : null,
     });
   }

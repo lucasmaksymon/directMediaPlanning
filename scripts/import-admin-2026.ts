@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { PrismaClient } from "@prisma/client";
+import { ERP_PAY, ERP_PAY_PURCHASE_KIND } from "../src/lib/erp";
 
 function databaseUrl() {
   const raw = process.env.DATABASE_URL?.trim();
@@ -555,7 +556,7 @@ async function main() {
           data: {
             purchaseReceiptId: purchaseReceipt.id,
             paymentOrderId: po.id,
-            paymentKind: line.kind === "transfer" ? 2 : 1,
+            paymentKind: line.kind === "transfer" ? ERP_PAY_PURCHASE_KIND.transfer : ERP_PAY_PURCHASE_KIND.cheque,
             number: line.number ?? (line.kind === "transfer" ? `TR-OP${lot.number}` : `ECH-OP${lot.number}`),
             notes: lot.notes ?? null,
             issuedAt: line.issuedAt ? at(line.issuedAt) : at(lot.issuedAt),
@@ -657,7 +658,7 @@ async function main() {
       await prisma.erpTreasuryPayment.create({
         data: {
           saleReceiptId: rec.id,
-          paymentKind: 1,
+          paymentKind: ERP_PAY.cheque,
           number: `ECH-X${rec.number}`,
           issuedAt: rec.issuedAt,
           paidAt: rec.issuedAt,
@@ -670,7 +671,7 @@ async function main() {
       await prisma.erpTreasuryPayment.create({
         data: {
           saleReceiptId: rec.id,
-          paymentKind: 2,
+          paymentKind: ERP_PAY.transfer,
           number: `TR-X${rec.number}`,
           issuedAt: rec.issuedAt,
           paidAt: rec.issuedAt,

@@ -4,8 +4,8 @@ import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
 import { EmptyState, Input, PageHeader, Select } from "@/components/ui";
 import { ErpGestionTable } from "@/components/erp/ErpGestionTable";
-import { loadGestionLines } from "@/lib/erp-gestion";
-import { ERP_COLLECT, ERP_MONTHS, ERP_SETTLE, money } from "@/lib/erp";
+import { loadGestionOrders } from "@/lib/erp-gestion";
+import { ERP_MONTHS, money } from "@/lib/erp";
 
 export const metadata = { title: productTitle("Gestión") };
 
@@ -18,7 +18,7 @@ export default async function ErpGestionPage({
   const now = new Date();
   const year = Number(params.anio) || now.getFullYear();
   const month = params.mes ? Number(params.mes) : 0;
-  const rows = await loadGestionLines({
+  const rows = await loadGestionOrders({
     year,
     month: month || undefined,
     q: params.q?.trim() || undefined,
@@ -26,20 +26,16 @@ export default async function ErpGestionPage({
     pay: (params.pago as "all" | "pending" | "paid") || "all",
   });
 
-  const toInvoice = rows.filter((r) => !r.sale).length;
-  const pendingSale = rows.filter((r) => r.sale && r.sale.collectStatus !== ERP_COLLECT.collected).length;
-  const pendingPay = rows.filter(
-    (r) =>
-      (r.purchase && r.purchase.payStatus !== ERP_SETTLE.paid) ||
-      (r.production && r.production.payStatus !== ERP_SETTLE.paid),
-  ).length;
-  const gananciaTotal = rows.reduce((sum, r) => sum + (r.ganancia ?? 0), 0);
+  const toInvoice = rows.filter((r) => r.saleStatus === "A facturar").length;
+  const pendingSale = rows.filter((r) => r.saleStatus === "Pendiente").length;
+  const pendingPay = rows.filter((r) => r.payStatus === "Pendiente" || r.payStatus === "Sin facturar").length;
+  const gananciaTotal = rows.reduce((sum, r) => sum + r.ganancia, 0);
 
   return (
     <div className={cn(adminPage)}>
       <PageHeader
         className="shrink-0"
-        description="Misma planilla que el Excel GESTIÓN 2026: campaña, compra (IVA, IIBB, perc. IVA), producción, venta (retenciones) y ganancia bruta."
+        description="Una fila por O.P. de venta del período. Desplegá la orden para ver sus facturas de venta y las órdenes de compra y producción con su factura y estado."
         eyebrow="Administración"
         title="Gestión"
       />
@@ -61,7 +57,7 @@ export default async function ErpGestionPage({
             <Input defaultValue={year} name="anio" type="number" />
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-muted-foreground">Cliente / orden / ítem</span>
+            <span className="text-muted-foreground">Cliente / orden / producto / elemento</span>
             <Input defaultValue={params.q ?? ""} name="q" placeholder="MIMO, CPM, 12…" />
           </label>
           <label className="space-y-1 text-sm">
@@ -77,7 +73,7 @@ export default async function ErpGestionPage({
             <span className="text-muted-foreground">Pago</span>
             <Select defaultValue={params.pago ?? "all"} name="pago">
               <option value="all">Todos</option>
-              <option value="pending">Pendiente</option>
+              <option value="pending">Pendiente / sin facturar</option>
               <option value="paid">Pagado</option>
             </Select>
           </label>
@@ -93,13 +89,13 @@ export default async function ErpGestionPage({
         </form>
 
         <p className="shrink-0 text-xs text-muted-foreground">
-          {rows.length} filas · {toInvoice} a facturar · {pendingSale} cobro pendiente · {pendingPay} pago
-          pendiente · ganancia bruta {money(gananciaTotal)}
+          {rows.length} órdenes · {toInvoice} a facturar · {pendingSale} cobro pendiente · {pendingPay} pago
+          pendiente · ganancia neta {money(gananciaTotal)}
         </p>
 
         {rows.length === 0 ? (
           <EmptyState
-            description="No hay filas con estos filtros. Importá el Excel 2026 o cargá una O.P. de venta."
+            description="No hay órdenes de venta con estos filtros."
             title="Sin campañas"
           />
         ) : (
