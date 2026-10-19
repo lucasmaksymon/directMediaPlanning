@@ -30,6 +30,7 @@ describe("fixSwappedDueIso", () => {
   it("deja un vencimiento creíble", () => {
     expect(fixSwappedDueIso("2026-09-30", "2026-11-29", 60)).toBeNull();
     expect(fixSwappedDueIso("2026-10-01", "2026-11-05", 60)).toBeNull();
+    expect(fixSwappedDueIso("2025-11-12", "2025-11-12", 30)).toBeNull();
   });
 
   it("corrige un vencimiento anterior a la factura", () => {

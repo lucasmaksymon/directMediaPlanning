@@ -303,7 +303,7 @@ export function fixSwappedDueIso(issuedIso: string, dueIso: string, paymentDays:
   const issued = isoToTime(issuedIso);
   const due = isoToTime(dueIso);
   const swappedIso = swapIsoDayMonth(dueIso);
-  if (issued == null || due == null || !swappedIso) return null;
+  if (issued == null || due == null || !swappedIso || due === issued) return null;
   const swapped = isoToTime(swappedIso);
   if (swapped == null || swapped < issued) return null;
   if (due < issued) return swappedIso;
