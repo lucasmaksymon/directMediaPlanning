@@ -5,6 +5,8 @@ import {
   erpCashMode,
   erpInvoiceRef,
   erpSettlementLabel,
+  fixSwappedDueIso,
+  fixSwappedIssuedIso,
   invoiceCoverAmount,
   isSaleOrderOpen,
   nextAutoOrderEstado,
@@ -17,6 +19,37 @@ describe("erpInvoiceRef", () => {
   it("arma el comprobante con punto de venta y número como en Facturación", () => {
     expect(erpInvoiceRef("A", 3, 523)).toBe("A 0003-00000523");
     expect(erpInvoiceRef("nc", 4, 12)).toBe("NC 0004-00000012");
+  });
+});
+
+describe("fixSwappedDueIso", () => {
+  it("corrige 12/10 leído como 10/12 (caso Wallstreet)", () => {
+    expect(fixSwappedDueIso("2026-08-12", "2026-12-10", 60)).toBe("2026-10-12");
+  });
+
+  it("deja un vencimiento creíble", () => {
+    expect(fixSwappedDueIso("2026-09-30", "2026-11-29", 60)).toBeNull();
+    expect(fixSwappedDueIso("2026-10-01", "2026-11-05", 60)).toBeNull();
+  });
+
+  it("corrige un vencimiento anterior a la factura", () => {
+    expect(fixSwappedDueIso("2026-08-12", "2026-02-10", 60)).toBe("2026-10-02");
+  });
+
+  it("no toca días mayores a 12", () => {
+    expect(fixSwappedDueIso("2026-08-12", "2026-12-13", 60)).toBeNull();
+  });
+});
+
+describe("fixSwappedIssuedIso", () => {
+  const today = new Date("2026-10-19T12:00:00Z");
+
+  it("corrige una emisión futura", () => {
+    expect(fixSwappedIssuedIso("2026-12-08", today)).toBe("2026-08-12");
+  });
+
+  it("deja una emisión pasada", () => {
+    expect(fixSwappedIssuedIso("2026-08-12", today)).toBeNull();
   });
 });
 

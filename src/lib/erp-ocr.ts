@@ -1,5 +1,12 @@
 import { openai } from "@/lib/openai";
-import { ERP_DOC_TYPES, ERP_ISSUER, ERP_PAY, parseMoney } from "@/lib/erp";
+import {
+  ERP_DOC_TYPES,
+  ERP_ISSUER,
+  ERP_PAY,
+  fixSwappedDueIso,
+  fixSwappedIssuedIso,
+  parseMoney,
+} from "@/lib/erp";
 
 export const OCR_KINDS = ["sale_invoice", "purchase_invoice", "sale_receipt"] as const;
 export type OcrKind = (typeof OCR_KINDS)[number];
@@ -20,6 +27,11 @@ export type OcrPaymentLine = {
   checkOrder: number;
   checkType: number;
   checkMode: number;
+};
+
+export type OcrInvoiceRef = {
+  pos: number | null;
+  number: number | null;
 };
 
 export type OcrExtracted = {
@@ -48,6 +60,8 @@ export type OcrExtracted = {
   collected: number | null;
   balance: number | null;
   payments: OcrPaymentLine[];
+  /** Facturas citadas en un recibo. El number del recibo no va acá. */
+  referencedInvoices: OcrInvoiceRef[];
   cae: string | null;
   warnings: string[];
   fieldConfidence: Record<string, number>;
@@ -201,6 +215,28 @@ function normalizeDocType(raw: unknown, isCreditNote: boolean): string | null {
   return letter ? letter.slice(0, 2) : null;
 }
 
+function invoiceRefs(raw: unknown): OcrInvoiceRef[] {
+  if (!Array.isArray(raw)) return [];
+  const refs: OcrInvoiceRef[] = [];
+  for (const item of raw) {
+    if (typeof item === "string") {
+      const parsed = parsePosNumber(item);
+      if (parsed.number != null) refs.push(parsed);
+      continue;
+    }
+    const row = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+    let pos = int(row.pos ?? row.punto);
+    let number = int(row.number ?? row.numero);
+    if (number == null) {
+      const parsed = parsePosNumber(row.fullNumber ?? row.comprobante ?? row.number);
+      pos ??= parsed.pos;
+      number ??= parsed.number;
+    }
+    if (number != null) refs.push({ pos, number });
+  }
+  return refs;
+}
+
 function parsePosNumber(raw: unknown): { pos: number | null; number: number | null } {
   const s = String(raw ?? "").trim();
   const pair = /(\d{1,5})\s*[-/]\s*(\d{1,8})/.exec(s);
@@ -245,6 +281,7 @@ export function parseOcrExtracted(raw: unknown, kindHint: OcrKind): OcrExtracted
     collected: num(row.collected ?? row.cobrado),
     balance: num(row.balance ?? row.saldo),
     payments: payments(row.payments),
+    referencedInvoices: invoiceRefs(row.referencedInvoices ?? row.facturas),
     cae: text(row.cae),
     warnings: Array.isArray(row.warnings) ? row.warnings.map((w) => String(w)).filter(Boolean) : [],
     fieldConfidence:
@@ -263,7 +300,48 @@ export function parseOcrExtracted(raw: unknown, kindHint: OcrKind): OcrExtracted
   if (kindHint === "sale_receipt" && extracted.balance == null && extracted.amount != null) {
     extracted.balance = 0;
   }
-  return addDerivedWarnings(extracted);
+  return addDerivedWarnings(fixSwappedDates(extracted));
+}
+
+function showIso(iso: string) {
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+/** La IA a veces invierte día y mes; corrige lo que es imposible (emisión futura, vence antes de emitirse). */
+function fixSwappedDates(extracted: OcrExtracted): OcrExtracted {
+  const warnings = [...extracted.warnings];
+  let { issuedAt, dueAt } = extracted;
+  if (issuedAt) {
+    const fixed = fixSwappedIssuedIso(issuedAt, new Date());
+    if (fixed) {
+      warnings.push(`La fecha ${showIso(issuedAt)} quedaba en el futuro; se tomó ${showIso(fixed)}. Revisala.`);
+      issuedAt = fixed;
+    }
+  }
+  if (issuedAt && dueAt) {
+    const fixed = fixSwappedDueIso(issuedAt, dueAt, 0);
+    if (fixed && dueAt < issuedAt) {
+      warnings.push(`El vencimiento ${showIso(dueAt)} era anterior a la factura; se tomó ${showIso(fixed)}. Revisalo.`);
+      dueAt = fixed;
+    }
+  }
+  return { ...extracted, issuedAt, dueAt, warnings };
+}
+
+/** Vencimiento lejos del plazo habitual que, con día y mes invertidos, cae justo en el plazo. */
+export function fixOcrDueByTerms(extracted: OcrExtracted, paymentDays: number): OcrExtracted {
+  if (!extracted.issuedAt || !extracted.dueAt) return extracted;
+  const fixed = fixSwappedDueIso(extracted.issuedAt, extracted.dueAt, paymentDays);
+  if (!fixed) return extracted;
+  return {
+    ...extracted,
+    dueAt: fixed,
+    warnings: [
+      ...extracted.warnings,
+      `El vencimiento ${showIso(extracted.dueAt)} parecía tener día y mes invertidos; se tomó ${showIso(fixed)} (plazo ${paymentDays} días). Revisalo.`,
+    ],
+  };
 }
 
 function addDerivedWarnings(extracted: OcrExtracted): OcrExtracted {
@@ -308,10 +386,12 @@ Nombre de archivo: ${filename}
 Nuestra empresa suele figurar como ${ERP_ISSUER.legalName} / CUIT ${ERP_ISSUER.tax}.
 
 Reglas:
-- Fechas en YYYY-MM-DD.
+- Fechas exactamente como figuran impresas, en formato argentino DD/MM/AAAA (día primero). No las conviertas ni reordenes: 12/10/2026 es el 12 de octubre.
 - Importes como números (1234.56), no strings. Neto en amount, IVA en vat, total en total.
 - El número de factura suele ser Punto-Número (00003-00000616 → pos 3, number 616).
-- docType: A, B, C, E o NC. Recibos de cobranza suelen ser X; igual devolvê number.
+- docType: A, B, C, E o NC. Recibos de cobranza suelen ser X.
+- En un recibo, number es el número del recibo (Recibo N°). No uses el número de una factura que figure en el detalle. Si el recibo no tiene punto de venta, pos es null.
+- referencedInvoices: solo en recibos. Cada factura que el recibo dice cobrar, como { "pos": 3, "number": 617 }. Esos números no van en number.
 - issuer = quien emite. recipient = destinatario.
 - En factura de venta el cliente es el receptor. En factura de compra el proveedor es el emisor.
 - En recibo de cobranza el cliente es a quien se cobra (no NextMedia).
@@ -327,7 +407,7 @@ JSON:
   "docType": "A",
   "pos": 1,
   "number": 1,
-  "issuedAt": "2026-01-15",
+  "issuedAt": "15/01/2026",
   "dueAt": null,
   "isCreditNote": false,
   "detail": null,
@@ -348,6 +428,7 @@ JSON:
   "collected": 0,
   "balance": 0,
   "payments": [],
+  "referencedInvoices": [],
   "cae": null,
   "warnings": [],
   "fieldConfidence": {}

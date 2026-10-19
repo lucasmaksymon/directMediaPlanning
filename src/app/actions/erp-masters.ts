@@ -434,12 +434,14 @@ export async function upsertErpExpense(formData: FormData): Promise<Result> {
         bank: parseMoney(formData.get("bank")),
         vat: parseMoney(formData.get("vat")),
         commissions: parseMoney(formData.get("commissions")),
+        extra: parseMoney(formData.get("extra")),
       },
       update: {
         fixed: parseMoney(formData.get("fixed")),
         bank: parseMoney(formData.get("bank")),
         vat: parseMoney(formData.get("vat")),
         commissions: parseMoney(formData.get("commissions")),
+        extra: parseMoney(formData.get("extra")),
       },
     });
     revalidatePath("/backoffice/gastos");

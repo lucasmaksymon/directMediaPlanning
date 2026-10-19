@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
-import { adminPage, adminPageBody } from "@/lib/ui-classes";
+import { adminPage, adminPageBody, surfaceCard } from "@/lib/ui-classes";
 import { PageHeader, Select } from "@/components/ui";
 import { InformeTable } from "@/components/erp/erp-standard-tables";
-import { buildMonthlyReport } from "@/lib/erp-informe";
-import { ERP_MONTHS } from "@/lib/erp";
+import { buildMonthlyReport, type InformeExpenses } from "@/lib/erp-informe";
+import { ERP_MONTHS, money } from "@/lib/erp";
 
 export const metadata = { title: productTitle("Informe mensual") };
 
@@ -18,13 +18,14 @@ export default async function ErpInformePage({
   const now = new Date();
   const month = Number(params.mes) || now.getMonth() + 1;
   const year = Number(params.anio) || now.getFullYear();
-  const rows = await buildMonthlyReport(month, year);
+  const report = await buildMonthlyReport(month, year);
+  const rows = report.rows;
   const years = [now.getFullYear() + 1, now.getFullYear(), now.getFullYear() - 1, now.getFullYear() - 2];
 
   return (
     <div className={cn(adminPage, "gap-4")}>
       <PageHeader
-        description="Misma fórmula que el legado: ganancia bruta = venta neta de retenciones − compra − compra IVA. Las órdenes en rojo no están facturadas."
+        description="Ganancia neta = venta − retenciones − compra − percepciones. Compra IVA y el resto de gastos se restan abajo. Las órdenes en rojo no están facturadas."
         eyebrow="Administración"
         title="Informe mensual"
       />
@@ -78,16 +79,53 @@ export default async function ErpInformePage({
               client: r.client,
               order: r.order,
               uninvoiced: r.uninvoiced,
-              compraTotal: r.compraTotal,
-              ventaTotal: r.ventaTotal,
-              totalCompraIva: r.totalCompraIva,
-              comision: r.comision,
-              gananciaBruta: r.gananciaBruta,
+              compra: r.compra,
+              retenciones: r.retenciones,
+              venta: r.venta,
+              percepciones: r.percepciones,
+              gananciaNeta: r.gananciaNeta,
               porcentaje: r.porcentaje,
             }))}
           />
         )}
+        <InformeExpensesBlock expenses={report.expenses} />
       </div>
     </div>
+  );
+}
+
+function InformeExpensesBlock({ expenses }: { expenses: InformeExpenses }) {
+  const lines = [
+    ["Fijos", expenses.fixed],
+    ["Banco", expenses.bank],
+    ["IVA", expenses.vat],
+    ["Compra IVA", expenses.vatPurchase],
+    ["Gastos extra Ana", expenses.extra],
+  ] as const;
+  return (
+    <section className={cn(surfaceCard(), "p-4")}>
+      <h2 className="text-sm font-semibold">Gastos del mes</h2>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Compra IVA es la comisión de las facturas de compra IVA del mes. El resultado resta todos estos gastos de la ganancia neta.
+      </p>
+      <dl className="mt-3 grid gap-2 sm:grid-cols-3 lg:grid-cols-7">
+        {lines.map(([label, value]) => (
+          <div key={label}>
+            <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</dt>
+            <dd className="tabular-nums">{money(value)}</dd>
+          </div>
+        ))}
+        <div>
+          <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Total gastos</dt>
+          <dd className="tabular-nums font-medium">{money(expenses.total)}</dd>
+        </div>
+        <div>
+          <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Resultado</dt>
+          <dd className={cn("tabular-nums font-semibold", expenses.resultado < 0 && "text-[var(--error)]")}>
+            {money(expenses.resultado)}
+          </dd>
+        </div>
+      </dl>
+    </section>
   );
 }

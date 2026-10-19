@@ -24,7 +24,7 @@ export default async function ErpGastosPage({
   return (
     <div className={cn(adminPage, "gap-4")}>
       <PageHeader
-        description="Fijos, banco, IVA y comisiones del mes. Entran restando en el informe mensual."
+        description="Fijos, banco, IVA, comisiones y gastos extra Ana. Entran restando en el informe mensual, aparte de la comisión de compra IVA."
         eyebrow="Administración"
         title="Gastos"
       />
@@ -61,6 +61,9 @@ export default async function ErpGastosPage({
           <ErpField htmlFor="commissions" label="Comisiones">
             <Input defaultValue={erpInputNumber(current?.commissions)} id="commissions" name="commissions" />
           </ErpField>
+          <ErpField htmlFor="extra" label="Gastos extra Ana">
+            <Input defaultValue={erpInputNumber(current?.extra)} id="extra" name="extra" />
+          </ErpField>
         </ErpForm>
 
         {expenses.length === 0 ? (
@@ -75,6 +78,7 @@ export default async function ErpGastosPage({
               bank: Number(e.bank),
               vat: Number(e.vat),
               commissions: Number(e.commissions),
+              extra: Number(e.extra),
             }))}
           />
         )}

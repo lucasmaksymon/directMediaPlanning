@@ -133,6 +133,7 @@ function refreshBilling() {
   revalidatePath("/backoffice/facturacion/compra");
   revalidatePath("/backoffice/facturacion/iva");
   revalidatePath("/backoffice/facturacion/recibos");
+  revalidatePath("/backoffice/facturacion/por-cobrar");
   revalidatePath("/backoffice/facturacion/pagos");
   revalidatePath("/backoffice/facturacion/cheques");
   revalidatePath("/backoffice/informe");
@@ -293,26 +294,30 @@ export async function deleteErpSaleInvoice(id: string): Promise<Result> {
 
 async function purchaseInvoicePayload(formData: FormData) {
   const vendorId = requiredString(formData.get("vendorId"), "el proveedor");
-  const orderId = requiredString(formData.get("orderId"), "la orden");
+  const orderId = String(formData.get("orderId") ?? "").trim();
   const isVatPurchase = String(formData.get("isVatPurchase") ?? "") === "1";
   const issuedAt = parseDateField(formData.get("issuedAt"));
   if (!issuedAt) throw new Error("Indicá la fecha.");
+  if (!isVatPurchase && !orderId) throw new Error("Completá la orden.");
 
   const vendor = await prisma.erpVendor.findUniqueOrThrow({
     where: { id: vendorId },
     select: { kind: true, paymentDays: true },
   });
-  const purchase = await prisma.erpPurchaseOrder.findUnique({
-    where: { id: orderId },
-    select: { id: true },
-  });
-  const production = purchase
-    ? null
-    : await prisma.erpProductionOrder.findUnique({
+  const purchase = orderId
+    ? await prisma.erpPurchaseOrder.findUnique({
         where: { id: orderId },
         select: { id: true },
-      });
-  if (!purchase && !production) throw new Error("No encontramos esa orden.");
+      })
+    : null;
+  const production =
+    orderId && !purchase
+      ? await prisma.erpProductionOrder.findUnique({
+          where: { id: orderId },
+          select: { id: true },
+        })
+      : null;
+  if (orderId && !purchase && !production) throw new Error("No encontramos esa orden.");
 
   const docType = requiredString(formData.get("docType"), "el tipo").toUpperCase();
 
@@ -352,13 +357,17 @@ export async function createErpPurchaseInvoice(formData: FormData): Promise<Resu
     const invoice = await prisma.erpPurchaseInvoice.create({
       data: {
         ...payload.data,
-        orderLinks: {
-          create: {
-            purchaseOrderId: payload.purchase?.id ?? null,
-            productionOrderId: payload.production?.id ?? null,
-            vendorKind: payload.vendor.kind,
-          },
-        },
+        ...(payload.purchase || payload.production
+          ? {
+              orderLinks: {
+                create: {
+                  purchaseOrderId: payload.purchase?.id ?? null,
+                  productionOrderId: payload.production?.id ?? null,
+                  vendorKind: payload.vendor.kind,
+                },
+              },
+            }
+          : {}),
       },
     });
     await syncLinkedPurchaseOrders(invoice.id);
@@ -381,14 +390,18 @@ export async function updateErpPurchaseInvoice(formData: FormData): Promise<Resu
     await prisma.$transaction([
       prisma.erpPurchaseInvoice.update({ where: { id }, data: payload.data }),
       prisma.erpPurchaseInvoiceOrder.deleteMany({ where: { invoiceId: id } }),
-      prisma.erpPurchaseInvoiceOrder.create({
-        data: {
-          invoiceId: id,
-          purchaseOrderId: payload.purchase?.id ?? null,
-          productionOrderId: payload.production?.id ?? null,
-          vendorKind: payload.vendor.kind,
-        },
-      }),
+      ...(payload.purchase || payload.production
+        ? [
+            prisma.erpPurchaseInvoiceOrder.create({
+              data: {
+                invoiceId: id,
+                purchaseOrderId: payload.purchase?.id ?? null,
+                productionOrderId: payload.production?.id ?? null,
+                vendorKind: payload.vendor.kind,
+              },
+            }),
+          ]
+        : []),
     ]);
     await syncLinkedPurchaseOrders(id);
     for (const link of prevLinks) {
@@ -435,17 +448,20 @@ export async function createErpSaleReceipt(formData: FormData): Promise<Result> 
     if (!issuedAt) throw new Error("Indicá la fecha.");
     const invoiceIds = formData.getAll("invoiceId").map(String).filter(Boolean);
     const payments = receiptPaymentsFromForm(formData).map(paymentCreateData);
-    await prisma.erpSaleReceipt.create({
-      data: {
-        clientId,
-        issuedAt,
-        number: parseIntField(formData.get("number")),
-        amount: parseMoney(formData.get("amount")),
-        balance: parseMoney(formData.get("balance")),
-        attachmentUrl: String(formData.get("attachmentUrl") ?? "").trim() || null,
-        invoices: { create: invoiceIds.map((invoiceId) => ({ invoiceId })) },
-        payments: payments.length ? { create: payments } : undefined,
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.erpSaleReceipt.create({
+        data: {
+          clientId,
+          issuedAt,
+          number: parseIntField(formData.get("number")),
+          amount: parseMoney(formData.get("amount")),
+          balance: parseMoney(formData.get("balance")),
+          attachmentUrl: String(formData.get("attachmentUrl") ?? "").trim() || null,
+          invoices: { create: invoiceIds.map((invoiceId) => ({ invoiceId })) },
+          payments: payments.length ? { create: payments } : undefined,
+        },
+      });
+      await syncSaleCollectStatus(tx, invoiceIds);
     });
     refreshBilling();
     return { ok: true };
@@ -464,6 +480,10 @@ export async function updateErpSaleReceipt(formData: FormData): Promise<Result> 
     const lines = receiptPaymentsFromForm(formData);
     const keep = lines.map((l) => l.id).filter((lineId): lineId is string => Boolean(lineId));
     await prisma.$transaction(async (tx) => {
+      const previous = await tx.erpSaleReceiptInvoice.findMany({
+        where: { receiptId: id },
+        select: { invoiceId: true },
+      });
       await tx.erpSaleReceipt.update({
         where: { id },
         data: {
@@ -489,6 +509,7 @@ export async function updateErpSaleReceipt(formData: FormData): Promise<Result> 
         if (lineId) await tx.erpTreasuryPayment.update({ where: { id: lineId }, data: row });
         else await tx.erpTreasuryPayment.create({ data: { saleReceiptId: id, ...row } });
       }
+      await syncSaleCollectStatus(tx, [...invoiceIds, ...previous.map((row) => row.invoiceId)]);
     });
     refreshBilling();
     return { ok: true };
@@ -500,12 +521,46 @@ export async function updateErpSaleReceipt(formData: FormData): Promise<Result> 
 export async function deleteErpSaleReceipt(id: string): Promise<Result> {
   try {
     await requireOpsSession();
-    await prisma.erpTreasuryPayment.deleteMany({ where: { saleReceiptId: id } });
-    await prisma.erpSaleReceipt.delete({ where: { id } });
+    const linked = await prisma.erpSaleReceiptInvoice.findMany({
+      where: { receiptId: id },
+      select: { invoiceId: true },
+    });
+    await prisma.$transaction(async (tx) => {
+      await tx.erpTreasuryPayment.deleteMany({ where: { saleReceiptId: id } });
+      await tx.erpSaleReceipt.delete({ where: { id } });
+      await syncSaleCollectStatus(
+        tx,
+        linked.map((row) => row.invoiceId),
+      );
+    });
     refreshBilling();
     return { ok: true };
   } catch (e) {
     return erpFail(e);
+  }
+}
+
+/** Una factura con recibo queda cobrada; si se le quita el último recibo, vuelve a pendiente. */
+async function syncSaleCollectStatus(tx: Prisma.TransactionClient, invoiceIds: Iterable<string>) {
+  const ids = [...new Set(invoiceIds)].filter(Boolean);
+  if (!ids.length) return;
+  const rows = await tx.erpSaleInvoice.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, _count: { select: { receiptLinks: true } } },
+  });
+  const collected = rows.filter((row) => row._count.receiptLinks > 0).map((row) => row.id);
+  const pending = rows.filter((row) => row._count.receiptLinks === 0).map((row) => row.id);
+  if (collected.length) {
+    await tx.erpSaleInvoice.updateMany({
+      where: { id: { in: collected } },
+      data: { collectStatus: ERP_COLLECT.collected },
+    });
+  }
+  if (pending.length) {
+    await tx.erpSaleInvoice.updateMany({
+      where: { id: { in: pending } },
+      data: { collectStatus: ERP_COLLECT.pending },
+    });
   }
 }
 

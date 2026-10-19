@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import {
   ERP_COLLECT,
   ERP_ORDER,
+  ERP_PAY,
   ERP_SETTLE,
   ERP_VENDOR,
   erpInvoiceRef,
@@ -47,6 +48,9 @@ export type GestionOrderRow = {
   purchaseNet: number;
   ganancia: number;
   gananciaPct: number | null;
+  /** null si ninguna factura de la orden está cobrada. */
+  retenciones: number | null;
+  gananciaNeta: number;
   invoiced: number;
   saleStatus: GestionSaleStatus;
   payStatus: GestionPayStatus;
@@ -56,6 +60,19 @@ export type GestionOrderRow = {
 function n(v: { toString(): string } | number | null | undefined) {
   if (v == null) return 0;
   return typeof v === "number" ? v : Number(v.toString());
+}
+
+const WITHHOLDING_KINDS = new Set<number>([
+  ERP_PAY.retVat,
+  ERP_PAY.retIibb,
+  ERP_PAY.retIibbAlt,
+  ERP_PAY.retGan,
+  ERP_PAY.retSuss,
+]);
+
+/** Retención de un pago de recibo. Transferencia, cheque y efectivo no cuentan. */
+export function receiptWithholding(paymentKind: number, amount: number) {
+  return WITHHOLDING_KINDS.has(paymentKind) ? amount : 0;
 }
 
 /** TOTAL venta Excel col. 44: neto + IVA − retenciones. */
@@ -92,6 +109,7 @@ const purchaseInvoiceSelect = {
  * y las órdenes de compra / producción (con o sin factura) como detalle.
  */
 export async function loadGestionOrders(filter: GestionFilter): Promise<GestionOrderRow[]> {
+  await reconcileSaleCollectStatus();
   const year = filter.year ?? new Date().getFullYear();
   const orders = await prisma.erpSaleOrder.findMany({
     where: {
@@ -112,7 +130,17 @@ export async function loadGestionOrders(filter: GestionFilter): Promise<GestionO
     include: {
       client: { select: { name: true } },
       items: { select: { element: true }, orderBy: { createdAt: "asc" } },
-      invoices: { orderBy: [{ issuedAt: "asc" }, { number: "asc" }] },
+      invoices: {
+        orderBy: [{ issuedAt: "asc" }, { number: "asc" }],
+        include: {
+          receiptLinks: {
+            select: {
+              receiptId: true,
+              receipt: { select: { payments: { select: { paymentKind: true, amount: true } } } },
+            },
+          },
+        },
+      },
       purchaseOrders: {
         orderBy: { number: "asc" },
         include: {
@@ -136,6 +164,9 @@ export async function loadGestionOrders(filter: GestionFilter): Promise<GestionO
 
     let invoiced = 0;
     let allCollected = order.invoices.length > 0;
+    let anyCollected = false;
+    let retencionesSum = 0;
+    const seenWithholding = new Set<string>();
     for (const inv of order.invoices) {
       const total = saleLineTotal({
         net: n(inv.amount),
@@ -148,6 +179,19 @@ export async function loadGestionOrders(filter: GestionFilter): Promise<GestionO
       invoiced += total;
       const collected = inv.collectStatus === ERP_COLLECT.collected;
       if (!collected) allCollected = false;
+      else {
+        anyCollected = true;
+        for (const link of inv.receiptLinks) {
+          for (const pay of link.receipt.payments) {
+            const amount = receiptWithholding(pay.paymentKind, n(pay.amount));
+            if (!amount) continue;
+            const key = `${link.receiptId}:${pay.paymentKind}`;
+            if (seenWithholding.has(key)) continue;
+            seenWithholding.add(key);
+            retencionesSum += amount;
+          }
+        }
+      }
       details.push({
         id: `sale-${inv.id}`,
         kind: "Venta",
@@ -165,6 +209,8 @@ export async function loadGestionOrders(filter: GestionFilter): Promise<GestionO
     let hasSupplierOrders = false;
     let hasSupplierInvoices = false;
     let anyPending = false;
+    let percepciones = 0;
+    const seenPurchase = new Set<string>();
     const supplierOrders = [
       ...order.purchaseOrders.map((po) => ({ po, kind: "Compra" as const, skip: ERP_VENDOR.producer, path: "compra" })),
       ...order.productionOrders.map((po) => ({ po, kind: "Producción" as const, skip: ERP_VENDOR.media, path: "produccion" })),
@@ -191,6 +237,10 @@ export async function loadGestionOrders(filter: GestionFilter): Promise<GestionO
       for (const link of links) {
         const inv = link.invoice;
         hasSupplierInvoices = true;
+        if (!inv.isVatPurchase && !seenPurchase.has(inv.id)) {
+          seenPurchase.add(inv.id);
+          percepciones += n(inv.vatWithholding) + n(inv.iibbCaba) + n(inv.iibbBsAs);
+        }
         const paid = inv.payStatus === ERP_SETTLE.paid;
         if (!paid) anyPending = true;
         details.push({
@@ -232,6 +282,8 @@ export async function loadGestionOrders(filter: GestionFilter): Promise<GestionO
       order.purchaseOrders.reduce((s, po) => s + n(po.net), 0) +
       order.productionOrders.reduce((s, po) => s + n(po.net), 0);
     const ganancia = saleNet - purchaseNet;
+    const retenciones = anyCollected ? retencionesSum : null;
+    const gananciaNeta = ganancia - (retenciones ?? 0) - percepciones;
 
     rows.push({
       id: order.id,
@@ -246,6 +298,8 @@ export async function loadGestionOrders(filter: GestionFilter): Promise<GestionO
       purchaseNet,
       ganancia,
       gananciaPct: saleNet !== 0 ? (ganancia * 100) / saleNet : null,
+      retenciones,
+      gananciaNeta,
       invoiced,
       saleStatus,
       payStatus,
@@ -375,7 +429,16 @@ export async function loadPendingPayables() {
   });
 }
 
+/** Facturas que ya tienen recibo y siguen pendientes pasan a cobradas. */
+export async function reconcileSaleCollectStatus() {
+  await prisma.erpSaleInvoice.updateMany({
+    where: { collectStatus: ERP_COLLECT.pending, receiptLinks: { some: {} } },
+    data: { collectStatus: ERP_COLLECT.collected },
+  });
+}
+
 export async function loadPendingReceivables() {
+  await reconcileSaleCollectStatus();
   const invoices = await prisma.erpSaleInvoice.findMany({
     where: { collectStatus: ERP_COLLECT.pending },
     orderBy: { dueAt: "asc" },

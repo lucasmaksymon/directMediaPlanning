@@ -15,6 +15,9 @@ export const ERP_COLLECT = { pending: 0, collected: 1 } as const;
 /** Pago de factura de compra (Excel: PENDIENTE / PAGADO). */
 export const ERP_SETTLE = { pending: 0, paid: 1 } as const;
 
+/** Comisión habitual de una factura de compra IVA, sobre importe + IVA. */
+export const VAT_PURCHASE_COMMISSION_PCT = 10.5;
+
 /** tipoPago de pagos de recibo de venta (ADMINISTRACION). */
 export const ERP_PAY = {
   transfer: 0,
@@ -273,6 +276,52 @@ export function erpInputNumber(v: unknown) {
 
 export function isoDate(d: Date) {
   return d.toISOString().slice(0, 10);
+}
+
+const DAY_MS = 86400000;
+
+function isoToTime(iso: string) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+}
+
+/** "2026-12-10" → "2026-10-12". Null si no es una fecha que admita la inversión. */
+export function swapIsoDayMonth(iso: string): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return null;
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  if (day > 12 || day === month) return null;
+  return `${m[1]}-${m[3]}-${m[2]}`;
+}
+
+/**
+ * Vencimiento con día y mes invertidos (12/10 leído como 10/12).
+ * Devuelve la fecha corregida o null si el vencimiento es creíble.
+ */
+export function fixSwappedDueIso(issuedIso: string, dueIso: string, paymentDays: number): string | null {
+  const issued = isoToTime(issuedIso);
+  const due = isoToTime(dueIso);
+  const swappedIso = swapIsoDayMonth(dueIso);
+  if (issued == null || due == null || !swappedIso) return null;
+  const swapped = isoToTime(swappedIso);
+  if (swapped == null || swapped < issued) return null;
+  if (due < issued) return swappedIso;
+  const expected = issued + paymentDays * DAY_MS;
+  const off = Math.abs(due - expected) / DAY_MS;
+  const offSwapped = Math.abs(swapped - expected) / DAY_MS;
+  return off > 15 && offSwapped <= 10 ? swappedIso : null;
+}
+
+/** Emisión futura que, invertida, cae en el pasado (12/08 leído como 08/12). */
+export function fixSwappedIssuedIso(issuedIso: string, today: Date): string | null {
+  const issued = isoToTime(issuedIso);
+  const swappedIso = swapIsoDayMonth(issuedIso);
+  if (issued == null || !swappedIso) return null;
+  const now = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  const swapped = isoToTime(swappedIso);
+  if (issued <= now + DAY_MS || swapped == null || swapped > now) return null;
+  return swappedIso;
 }
 
 export function isoDateOrEmpty(d: Date | string | null | undefined) {

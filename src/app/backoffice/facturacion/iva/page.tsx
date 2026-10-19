@@ -6,6 +6,7 @@ import { Autocomplete, EmptyState, Input, PageHeader } from "@/components/ui";
 import { FacturasIvaTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
 import { ErpField } from "@/components/erp/ErpField";
+import { ErpVatCommissionFields } from "@/components/erp/ErpVatCommissionFields";
 import { createErpPurchaseInvoice, updateErpPurchaseInvoice } from "@/app/actions/erp-billing";
 import { ErpDocTypeSelect } from "@/components/erp/ErpDocTypeSelect";
 import { erpInputNumber, isoDate } from "@/lib/erp";
@@ -60,7 +61,7 @@ export default async function ErpFacturasIvaPage({
   return (
     <div className={cn(adminPage, "gap-4")}>
       <PageHeader
-        description="Factura de compra IVA (compraIva=1) con comisión. Entra aparte en el informe mensual."
+        description="La comisión (10,5% del total, más un recargo si hace falta) entra como gasto del mes. No se resta de la orden."
         eyebrow="Facturación"
         title="Facturas de compra IVA"
       />
@@ -91,8 +92,7 @@ export default async function ErpFacturasIvaPage({
               id="orderId"
               name="orderId"
               options={openOrders.map((o) => ({ value: o.id, label: o.label }))}
-              placeholder="Buscar orden…"
-              required
+              placeholder="Opcional"
             />
           </ErpField>
           <ErpField htmlFor="issuedAt" label="Fecha">
@@ -107,15 +107,11 @@ export default async function ErpFacturasIvaPage({
           <ErpField htmlFor="number" label="Número">
             <Input defaultValue={current?.number} id="number" name="number" required type="number" />
           </ErpField>
-          <ErpField htmlFor="amount" label="Importe">
-            <Input defaultValue={erpInputNumber(current?.amount)} id="amount" name="amount" />
-          </ErpField>
-          <ErpField htmlFor="vat" label="IVA">
-            <Input defaultValue={erpInputNumber(current?.vat)} id="vat" name="vat" />
-          </ErpField>
-          <ErpField htmlFor="commission" label="Comisión">
-            <Input defaultValue={erpInputNumber(current?.commission)} id="commission" name="commission" />
-          </ErpField>
+          <ErpVatCommissionFields
+            amount={erpInputNumber(current?.amount)}
+            commission={erpInputNumber(current?.commission)}
+            vat={erpInputNumber(current?.vat)}
+          />
         </ErpForm>
 
         {invoices.length === 0 ? (

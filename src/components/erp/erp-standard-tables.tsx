@@ -259,7 +259,16 @@ export function ProveedoresTable({
 export function GastosTable({
   rows,
 }: {
-  rows: { id: string; month: number; year: number; fixed: number; bank: number; vat: number; commissions: number }[];
+  rows: {
+    id: string;
+    month: number;
+    year: number;
+    fixed: number;
+    bank: number;
+    vat: number;
+    commissions: number;
+    extra: number;
+  }[];
 }) {
   return (
     <ErpDataTable
@@ -310,12 +319,22 @@ export function GastosTable({
           foot: (rows) => moneySum(rows, (r) => r.commissions),
         },
         {
+          id: "extra",
+          label: "Gastos extra Ana",
+          align: "right",
+          value: (r) => r.extra,
+          cell: (r) => money(r.extra),
+          foot: (rows) => moneySum(rows, (r) => r.extra),
+        },
+        {
           id: "total",
           label: "Total",
           align: "right",
-          value: (r) => r.fixed + r.bank + r.vat + r.commissions,
-          cell: (r) => <span className="font-medium">{money(r.fixed + r.bank + r.vat + r.commissions)}</span>,
-          foot: (rows) => moneySum(rows, (r) => r.fixed + r.bank + r.vat + r.commissions),
+          value: (r) => r.fixed + r.bank + r.vat + r.commissions + r.extra,
+          cell: (r) => (
+            <span className="font-medium">{money(r.fixed + r.bank + r.vat + r.commissions + r.extra)}</span>
+          ),
+          foot: (rows) => moneySum(rows, (r) => r.fixed + r.bank + r.vat + r.commissions + r.extra),
         },
       ]}
       actions={(r) => (
@@ -1277,17 +1296,17 @@ export function InformeTable({
     client: string;
     order: string;
     uninvoiced: boolean;
-    compraTotal: number;
-    ventaTotal: number;
-    totalCompraIva: number;
-    comision: number;
-    gananciaBruta: number;
+    compra: number;
+    retenciones: number;
+    venta: number;
+    percepciones: number;
+    gananciaNeta: number;
     porcentaje: number | null;
   }[];
 }) {
   return (
     <ErpDataTable
-      storageKey="erp.table.informe.v1"
+      storageKey="erp.table.informe.v2"
       rows={rows}
       rowKey={(r) => r.key}
       rowClassName={(r) => (r.kind !== "order" ? "font-semibold" : undefined)}
@@ -1299,34 +1318,28 @@ export function InformeTable({
           value: (r) => r.order,
           cell: (r) => <span className={r.uninvoiced ? "text-[var(--error)]" : undefined}>{r.order}</span>,
         },
-        { id: "compra", label: "Compra", align: "right", value: (r) => r.compraTotal, cell: (r) => money(r.compraTotal) },
+        { id: "compra", label: "Compra", align: "right", value: (r) => r.compra, cell: (r) => money(r.compra) },
         {
-          id: "venta",
-          label: "Venta",
+          id: "retenciones",
+          label: "Retenciones",
           align: "right",
-          value: (r) => r.ventaTotal,
-          cell: (r) => (r.kind === "expenses" ? "—" : money(r.ventaTotal)),
+          value: (r) => r.retenciones,
+          cell: (r) => money(r.retenciones),
         },
+        { id: "venta", label: "Venta", align: "right", value: (r) => r.venta, cell: (r) => money(r.venta) },
         {
-          id: "iva",
-          label: "Compra IVA",
+          id: "percepciones",
+          label: "Percepciones",
           align: "right",
-          value: (r) => r.totalCompraIva,
-          cell: (r) => (r.kind === "expenses" ? "—" : money(r.totalCompraIva)),
-        },
-        {
-          id: "comision",
-          label: "Comisión",
-          align: "right",
-          value: (r) => r.comision,
-          cell: (r) => (r.kind === "expenses" ? "—" : money(r.comision)),
+          value: (r) => r.percepciones,
+          cell: (r) => money(r.percepciones),
         },
         {
           id: "ganancia",
-          label: "Ganancia",
+          label: "Ganancia neta",
           align: "right",
-          value: (r) => r.gananciaBruta,
-          cell: (r) => <span className="font-medium">{money(r.gananciaBruta)}</span>,
+          value: (r) => r.gananciaNeta,
+          cell: (r) => <span className="font-medium">{money(r.gananciaNeta)}</span>,
         },
         {
           id: "pct",

@@ -22,7 +22,8 @@
     "backfill:impacto": "npx tsx scripts/backfill-impacto.ts",
     "enrich:specs": "npx tsx scripts/enrich-inventory-specs.ts",
     "geocode:inventory": "npx tsx scripts/geocode-inventory.ts",
-    "sync:erp-catalog": "npx tsx scripts/sync-erp-catalog.ts"
+    "sync:erp-catalog": "npx tsx scripts/sync-erp-catalog.ts",
+    "fix:swapped-dates": "npx tsx scripts/fix-swapped-dates.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

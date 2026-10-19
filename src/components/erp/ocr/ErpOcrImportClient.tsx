@@ -66,6 +66,7 @@ function emptyDraft(): OcrFormDraft {
       collected: null,
       balance: null,
       payments: [],
+      referencedInvoices: [],
       cae: null,
       warnings: [],
       fieldConfidence: {},

@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, surfaceCard } from "@/lib/ui-classes";
@@ -52,12 +50,14 @@ function Panel({
   linkLabel,
   children,
   empty,
+  emptyLabel = "Nada pendiente.",
 }: {
   title: string;
   href?: string;
   linkLabel?: string;
   children: ReactNode;
   empty?: boolean;
+  emptyLabel?: string;
 }) {
   return (
     <section className={cn(surfaceCard(), "flex shrink-0 flex-col p-4")}>
@@ -69,7 +69,7 @@ function Panel({
           </Link>
         ) : null}
       </div>
-      {empty ? <p className="text-sm text-muted-foreground">Nada pendiente.</p> : children}
+      {empty ? <p className="text-sm text-muted-foreground">{emptyLabel}</p> : children}
     </section>
   );
 }
@@ -102,12 +102,20 @@ function DueRow({ row }: { row: DashboardDue }) {
   );
 }
 
-export default async function BackofficeHomePage() {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "admin") redirect("/");
+/** "+12% vs septiembre"; sin dato si el mes anterior no tuvo movimiento. */
+function versus(current: number, previous: number, label: string) {
+  if (previous === 0) return current === 0 ? undefined : `Sin datos de ${label}`;
+  const pct = ((current - previous) * 100) / Math.abs(previous);
+  const sign = pct > 0 ? "+" : "";
+  return `${sign}${pct.toFixed(0)}% vs ${label}`;
+}
 
+export default async function BackofficeHomePage() {
   const data = await loadBackofficeDashboard();
   const monthLabel = `${ERP_MONTHS[data.month]} ${data.year}`;
+  const prevLabel = ERP_MONTHS[data.previous.month].toLowerCase();
+  const margin = data.margen == null ? null : `${data.margen.toFixed(1)}% sobre venta`;
+  const gananciaVs = versus(data.ganancia, data.previous.ganancia, prevLabel);
 
   return (
     <div className={cn(adminPage, "gap-5 overflow-y-auto")}>
@@ -126,22 +134,30 @@ export default async function BackofficeHomePage() {
             </Link>
           </div>
         }
-        description={`Qué hay que facturar, cobrar y pagar. Resultado de ${monthLabel}.`}
+        description={`Qué hay que facturar, cobrar y pagar. Órdenes de ${monthLabel}.`}
         eyebrow="Administración"
         title="Inicio"
       />
 
-      <StatRow className="shrink-0">
-        <Stat hint={`Órdenes ${monthLabel} · neto`} label="Venta" value={money(data.venta)} />
-        <Stat hint="Órdenes de compra y producción · neto" label="Compra" value={money(data.compra)} />
-        <Stat accent hint={data.margen == null ? undefined : `${data.margen.toFixed(1)}% sobre venta`} label="Ganancia bruta" value={money(data.ganancia)} />
-        <Stat hint={data.gastos ? "Cargados" : "Sin cargar"} label="Gastos" value={money(data.gastos)} />
+      {data.failed ? (
+        <p className={cn(surfaceCard(), "shrink-0 border-[var(--error)]/40 p-3 text-sm text-[var(--error)]")}>
+          No se pudieron cargar los datos del inicio. Recargá la página; si sigue, revisá la conexión a la base.
+        </p>
+      ) : null}
+
+      <StatRow className="shrink-0 lg:grid-cols-3">
         <Stat
-          accent={data.resultado >= 0}
-          hint="Ganancia − gastos"
-          label="Resultado"
-          urgent={data.resultado < 0}
-          value={money(data.resultado)}
+          hint={versus(data.venta, data.previous.venta, prevLabel) ?? "Órdenes del mes · neto"}
+          label={`Venta neta · ${monthLabel}`}
+          value={money(data.venta)}
+        />
+        <Stat hint="Órdenes de compra y producción · neto" label="Compra neta" value={money(data.compra)} />
+        <Stat
+          accent
+          hint={[margin, gananciaVs].filter(Boolean).join(" · ") || undefined}
+          label="Ganancia neta de órdenes"
+          urgent={data.ganancia < 0}
+          value={money(data.ganancia)}
         />
       </StatRow>
 
@@ -150,7 +166,7 @@ export default async function BackofficeHomePage() {
           amount={data.toInvoice.amount}
           count={data.toInvoice.count}
           href="/backoffice/facturacion/a-facturar"
-          hint="Órdenes emitidas sin cerrar"
+          hint="Falta facturar, con IVA y sin efectivo"
           label="A facturar"
           urgent={data.toInvoice.count > 0}
         />
@@ -182,7 +198,11 @@ export default async function BackofficeHomePage() {
           amount={data.cheques.amount}
           count={data.cheques.count}
           href="/backoffice/facturacion/cheques"
-          hint="E-cheq y cheques sin cobrar o pagar"
+          hint={
+            data.cheques.count
+              ? `${data.cheques.receivedCount} recibidos · ${data.cheques.issuedCount} emitidos`
+              : "Sin cheques pendientes"
+          }
           label="Cheques pendientes"
         />
       </div>
@@ -190,8 +210,12 @@ export default async function BackofficeHomePage() {
       <div className="grid shrink-0 gap-3 lg:grid-cols-2">
         <Panel
           empty={data.agenda.length === 0}
-          href="/backoffice/facturacion/pendientes"
-          linkLabel="Pagos"
+          href={
+            data.receivables.overdueCount >= data.payables.overdueCount
+              ? "/backoffice/facturacion/por-cobrar?vencido=1"
+              : "/backoffice/facturacion/pendientes?vencido=1"
+          }
+          linkLabel="Vencidos"
           title="Próximos vencimientos"
         >
           <ul className="divide-y divide-divide">
@@ -203,7 +227,7 @@ export default async function BackofficeHomePage() {
 
         <Panel
           empty={data.toInvoice.rows.length === 0}
-          href="/backoffice/ordenes/venta"
+          href="/backoffice/facturacion/a-facturar"
           title="Órdenes sin facturar"
         >
           <ul className="divide-y divide-divide">
@@ -225,6 +249,7 @@ export default async function BackofficeHomePage() {
 
         <Panel
           empty={data.campaigns.length === 0}
+          emptyLabel="No hay campañas al aire hoy."
           href="/backoffice/gestion"
           title="Al aire ahora"
         >
@@ -249,6 +274,7 @@ export default async function BackofficeHomePage() {
 
         <Panel
           empty={data.topClients.length === 0}
+          emptyLabel="Todavía no hay órdenes este mes."
           href={`/backoffice/informe?mes=${data.month}&anio=${data.year}`}
           linkLabel="Informe"
           title={`Clientes · ${monthLabel}`}

@@ -176,6 +176,27 @@ export function ErpGestionTable({ rows }: { rows: GestionOrderRow[] }) {
       },
       { id: "saleStatus", label: "Cobro", value: (r) => r.saleStatus, cell: (r) => <StatusBadge status={r.saleStatus} /> },
       { id: "payStatus", label: "Pago", value: (r) => r.payStatus, cell: (r) => <StatusBadge status={r.payStatus} /> },
+      {
+        id: "retenciones",
+        label: "Retenciones",
+        align: "right",
+        value: (r) => r.retenciones,
+        cell: (r) => (r.retenciones == null ? "—" : money(r.retenciones)),
+        foot: (list) => {
+          const values = list.map((r) => r.retenciones).filter((v): v is number => v != null);
+          return values.length ? money(values.reduce((acc, v) => acc + v, 0)) : "—";
+        },
+      },
+      {
+        id: "gananciaNeta",
+        label: "Ganancia neta",
+        align: "right",
+        value: (r) => r.gananciaNeta,
+        cell: (r) => (
+          <span className={cn("font-semibold", r.gananciaNeta < 0 && "text-[var(--error)]")}>{money(r.gananciaNeta)}</span>
+        ),
+        foot: (list) => sum(list, (r) => r.gananciaNeta),
+      },
     ];
   }, [open]);
 

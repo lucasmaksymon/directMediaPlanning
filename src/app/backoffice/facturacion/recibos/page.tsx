@@ -8,7 +8,8 @@ import { ErpForm } from "@/components/erp/ErpForm";
 import { createErpSaleReceipt, updateErpSaleReceipt } from "@/app/actions/erp-billing";
 import { ErpSaleReceiptFormFields } from "@/components/erp/ocr/ErpSaleReceiptFormFields";
 import { ErpOcrImportClient } from "@/components/erp/ocr/ErpOcrImportClient";
-import { erpInputNumber, erpInvoiceRef, isoDate, isoDateOrEmpty, money } from "@/lib/erp";
+import { ERP_COLLECT, erpInputNumber, erpInvoiceRef, isoDate, isoDateOrEmpty, money } from "@/lib/erp";
+import { reconcileSaleCollectStatus } from "@/lib/erp-gestion";
 import { listActiveClients } from "@/lib/erp-list";
 
 export const metadata = { title: productTitle("Recibos de venta") };
@@ -20,6 +21,7 @@ export default async function ErpRecibosPage({
 }) {
   const { edit } = await searchParams;
   const now = new Date();
+  await reconcileSaleCollectStatus();
   const [receipts, clients, invoices] = await Promise.all([
     prisma.erpSaleReceipt.findMany({
       orderBy: { issuedAt: "desc" },
@@ -31,6 +33,12 @@ export default async function ErpRecibosPage({
     }),
     listActiveClients(),
     prisma.erpSaleInvoice.findMany({
+      where: {
+        OR: [
+          { collectStatus: ERP_COLLECT.pending },
+          ...(edit ? [{ receiptLinks: { some: { receiptId: edit } } }] : []),
+        ],
+      },
       orderBy: { issuedAt: "desc" },
       select: {
         id: true,
@@ -42,7 +50,7 @@ export default async function ErpRecibosPage({
         clientId: true,
         client: { select: { name: true } },
       },
-      take: 150,
+      take: 400,
     }),
   ]);
   const current = receipts.find((r) => r.id === edit);

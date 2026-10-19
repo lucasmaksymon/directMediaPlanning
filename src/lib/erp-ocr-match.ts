@@ -9,6 +9,7 @@ import {
   saleOrderRemaining,
 } from "@/lib/erp";
 import {
+  fixOcrDueByTerms,
   foldName,
   isOurCompany,
   normalizeCuit,
@@ -101,6 +102,12 @@ function docLabel(docType: string | null, pos: number | null, number: number | n
   return `${type} ${p}-${n}`;
 }
 
+function invoiceRefLabel(pos: number | null, number: number) {
+  const n = String(number).padStart(8, "0");
+  if (pos == null) return n;
+  return `${String(pos).padStart(4, "0")}-${n}`;
+}
+
 export async function matchOcrExtracted(
   extracted: OcrExtracted,
   kind: OcrKind,
@@ -109,6 +116,7 @@ export async function matchOcrExtracted(
   const party = partyForKind(extracted, kind);
   const total = invoiceTotal(extracted);
   const orderFilter = opts.issuedOnly ? { estado: ERP_ORDER.issued } : { estado: { in: [ERP_ORDER.issued, ERP_ORDER.invoiced] } };
+  const receiptRefs = extracted.referencedInvoices.filter((ref) => ref.number != null);
 
   const [clients, vendors, saleOrders, purchaseOrders, productionOrders, saleInvoices, purchaseInvoices, receipts] =
     await Promise.all([
@@ -116,13 +124,19 @@ export async function matchOcrExtracted(
         ? Promise.resolve([])
         : prisma.erpClient.findMany({
             where: { estado: 1 },
-            select: { id: true, name: true, legalName: true, taxId: true },
+            select: {
+              id: true,
+              name: true,
+              legalName: true,
+              taxId: true,
+              company: { select: { paymentDays: true } },
+            },
           }),
       kind === "sale_invoice" || kind === "sale_receipt"
         ? Promise.resolve([])
         : prisma.erpVendor.findMany({
             where: { estado: 1 },
-            select: { id: true, name: true, taxId: true },
+            select: { id: true, name: true, taxId: true, paymentDays: true },
           }),
       kind === "sale_invoice"
         ? prisma.erpSaleOrder.findMany({
@@ -168,11 +182,33 @@ export async function matchOcrExtracted(
             },
           })
         : Promise.resolve([]),
-      kind === "sale_invoice" || kind === "sale_receipt"
+      kind === "sale_invoice"
         ? prisma.erpSaleInvoice.findMany({
             where: {
               ...(extracted.number != null ? { number: extracted.number } : {}),
               ...(extracted.pos != null ? { pos: extracted.pos } : {}),
+            },
+            select: {
+              id: true,
+              docType: true,
+              pos: true,
+              number: true,
+              amount: true,
+              vat: true,
+              issuedAt: true,
+              collectStatus: true,
+              clientId: true,
+              client: { select: { name: true, taxId: true } },
+            },
+            take: 400,
+          })
+        : kind === "sale_receipt" && receiptRefs.length
+        ? prisma.erpSaleInvoice.findMany({
+            where: {
+              OR: receiptRefs.map((ref) => ({
+                number: ref.number as number,
+                ...(ref.pos != null ? { pos: ref.pos } : {}),
+              })),
             },
             select: {
               id: true,
@@ -235,6 +271,14 @@ export async function matchOcrExtracted(
   const client = best(clientOptions);
   const vendor = best(vendorOptions);
 
+  const paymentDays =
+    kind === "purchase_invoice"
+      ? vendors.find((row) => row.id === vendor?.id)?.paymentDays
+      : kind === "sale_invoice"
+        ? clients.find((row) => row.id === client?.id)?.company.paymentDays
+        : undefined;
+  if (paymentDays != null) extracted = fixOcrDueByTerms(extracted, paymentDays);
+
   const saleOrderOptions = saleOrders
     .filter((order) => isSaleOrderOpen(order, saleOrderInvoiceCover(order.invoices)))
     .map((order) => {
@@ -272,26 +316,32 @@ export async function matchOcrExtracted(
     })
     .sort((a, b) => b.score - a.score);
 
-  const invoiceOptions =
-    kind === "sale_receipt" && client
-      ? saleInvoices
-          .filter((invoice) => invoice.clientId === client.id)
-          .map((invoice) => {
-            const pending = invoice.collectStatus !== ERP_COLLECT.collected ? 0.2 : 0;
-            const score =
-              0.55 +
-              pending +
-              amountScore(Number(invoice.amount) + Number(invoice.vat), total) * 0.2 +
-              dateScore(extracted.issuedAt, invoice.issuedAt) * 0.05;
-            return option(
-              invoice.id,
-              `${invoice.client.name} · ${docLabel(invoice.docType, invoice.pos, invoice.number)} · ${money(Number(invoice.amount) + Number(invoice.vat))}`,
-              score,
-            );
-          })
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 5)
-      : [];
+  const missingInvoiceRefs: string[] = [];
+  const invoiceOptions: OcrMatchOption[] = [];
+  if (kind === "sale_receipt") {
+    for (const ref of receiptRefs) {
+      const number = ref.number as number;
+      const hits = saleInvoices.filter(
+        (invoice) => invoice.number === number && (ref.pos == null || invoice.pos === ref.pos),
+      );
+      const label = invoiceRefLabel(ref.pos, number);
+      if (hits.length === 0) {
+        missingInvoiceRefs.push(label);
+        continue;
+      }
+      for (const invoice of hits) {
+        if (invoice.collectStatus === ERP_COLLECT.collected) continue;
+        if (client && invoice.clientId !== client.id) continue;
+        invoiceOptions.push(
+          option(
+            invoice.id,
+            `${invoice.client.name} · ${docLabel(invoice.docType, invoice.pos, invoice.number)} · ${money(Number(invoice.amount) + Number(invoice.vat))}`,
+            0.95,
+          ),
+        );
+      }
+    }
+  }
 
   let duplicate: OcrMatchResult["duplicate"] = null;
   if (kind === "sale_invoice" && extracted.number != null) {
@@ -335,7 +385,7 @@ export async function matchOcrExtracted(
 
   const saleOrder = kind === "sale_invoice" ? best(saleOrderOptions, 0.55) : null;
   const purchaseOrder = kind === "purchase_invoice" ? best(purchaseOrderOptions, 0.55) : null;
-  const invoices = invoiceOptions.filter((row) => row.score >= 0.7).slice(0, 3);
+  const invoices = invoiceOptions.filter((row) => row.score >= 0.7).slice(0, 8);
 
   const blockers: string[] = [];
   if (extracted.number == null) blockers.push("Falta el número.");
@@ -345,6 +395,9 @@ export async function matchOcrExtracted(
   if (kind === "sale_invoice" && !saleOrder) blockers.push("Falta vincular una O.P. de venta.");
   if (kind === "purchase_invoice" && !purchaseOrder) blockers.push("Falta vincular una orden de compra o producción.");
   if (duplicate) blockers.push(`Ya existe ${duplicate.label}.`);
+  for (const label of missingInvoiceRefs) {
+    blockers.push(`No encontré la factura ${label} en el sistema.`);
+  }
 
   return {
     extracted,

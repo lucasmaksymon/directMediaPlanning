@@ -12,9 +12,11 @@ export async function GET(req: Request) {
   const now = new Date();
   const month = Number(searchParams.get("mes")) || now.getMonth() + 1;
   const year = Number(searchParams.get("anio")) || now.getFullYear();
-  const rows = await buildMonthlyReport(month, year);
+  const report = await buildMonthlyReport(month, year);
 
-  const buffer = await renderToBuffer(ErpInformeDocument({ month, year, rows }));
+  const buffer = await renderToBuffer(
+    ErpInformeDocument({ month, year, rows: report.rows, expenses: report.expenses }),
+  );
 
   return new Response(new Uint8Array(buffer), {
     headers: {

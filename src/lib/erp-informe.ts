@@ -1,27 +1,33 @@
 import { prisma } from "@/lib/prisma";
-import { ERP_ORDER, ERP_PAY, ERP_VENDOR } from "@/lib/erp";
+import { ERP_ORDER, ERP_VENDOR } from "@/lib/erp";
+import { receiptWithholding } from "@/lib/erp-gestion";
 
 export type InformeRow = {
-  kind: "order" | "clientTotal" | "monthTotal" | "expenses";
+  kind: "order" | "clientTotal" | "monthTotal";
   client: string;
   order: string;
   uninvoiced: boolean;
-  compraNeto: number;
-  compraIva: number;
-  compraIibb: number;
-  compraRetIva: number;
-  compraTotal: number;
-  ventaNeto: number;
-  ventaIva: number;
-  ventaRetIva: number;
-  ventaRetSuss: number;
-  ventaRetGan: number;
-  ventaRetIibb: number;
-  ventaTotal: number;
-  totalCompraIva: number;
-  comision: number;
-  gananciaBruta: number;
+  compra: number;
+  retenciones: number;
+  venta: number;
+  percepciones: number;
+  gananciaNeta: number;
   porcentaje: number | null;
+};
+
+export type InformeExpenses = {
+  fixed: number;
+  bank: number;
+  vat: number;
+  vatPurchase: number;
+  extra: number;
+  total: number;
+  resultado: number;
+};
+
+export type MonthlyReport = {
+  rows: InformeRow[];
+  expenses: InformeExpenses;
 };
 
 function n(v: { toString(): string } | number | null | undefined) {
@@ -29,54 +35,54 @@ function n(v: { toString(): string } | number | null | undefined) {
   return typeof v === "number" ? v : Number(v.toString());
 }
 
-export async function buildMonthlyReport(month: number, year: number): Promise<InformeRow[]> {
-  const orders = await prisma.erpSaleOrder.findMany({
-    where: { month, year },
-    orderBy: [{ client: { name: "asc" } }, { number: "asc" }],
-    include: {
-      client: { select: { name: true } },
-      invoices: { select: { id: true, amount: true, vat: true } },
-      purchaseOrders: {
-        select: {
-          estado: true,
-          invoiceLinks: {
-            select: {
-              vendorKind: true,
-              invoice: {
-                select: {
-                  isVatPurchase: true,
-                  amount: true,
-                  vat: true,
-                  iibbCaba: true,
-                  iibbBsAs: true,
-                  vatWithholding: true,
-                },
-              },
+function pct(ganancia: number, venta: number) {
+  return venta !== 0 ? (ganancia * 100) / venta : null;
+}
+
+const purchaseInvoiceSelect = {
+  id: true,
+  isVatPurchase: true,
+  amount: true,
+  vat: true,
+  iibbCaba: true,
+  iibbBsAs: true,
+  vatWithholding: true,
+} as const;
+
+export async function buildMonthlyReport(month: number, year: number): Promise<MonthlyReport> {
+  const from = new Date(year, month - 1, 1);
+  const to = new Date(year, month, 1);
+  const [orders, expense, vatPurchases] = await Promise.all([
+    prisma.erpSaleOrder.findMany({
+      where: { month, year },
+      orderBy: [{ client: { name: "asc" } }, { number: "asc" }],
+      include: {
+        client: { select: { name: true } },
+        invoices: { select: { id: true, amount: true, vat: true } },
+        purchaseOrders: {
+          select: {
+            estado: true,
+            invoiceLinks: {
+              select: { vendorKind: true, invoice: { select: purchaseInvoiceSelect } },
+            },
+          },
+        },
+        productionOrders: {
+          select: {
+            estado: true,
+            invoiceLinks: {
+              select: { vendorKind: true, invoice: { select: purchaseInvoiceSelect } },
             },
           },
         },
       },
-      productionOrders: {
-        select: {
-          estado: true,
-          invoiceLinks: {
-            select: {
-              vendorKind: true,
-              invoice: {
-                select: {
-                  amount: true,
-                  vat: true,
-                  iibbCaba: true,
-                  iibbBsAs: true,
-                  vatWithholding: true,
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  });
+    }),
+    prisma.erpExpense.findUnique({ where: { month_year: { month, year } } }),
+    prisma.erpPurchaseInvoice.findMany({
+      where: { isVatPurchase: true, issuedAt: { gte: from, lt: to } },
+      select: { commission: true },
+    }),
+  ]);
 
   const saleInvoiceIds = orders.flatMap((o) => o.invoices.map((i) => i.id));
   const receiptLinks = saleInvoiceIds.length
@@ -85,46 +91,10 @@ export async function buildMonthlyReport(month: number, year: number): Promise<I
         select: {
           invoiceId: true,
           receiptId: true,
-          receipt: {
-            select: {
-              payments: { select: { paymentKind: true, amount: true } },
-            },
-          },
+          receipt: { select: { payments: { select: { paymentKind: true, amount: true } } } },
         },
       })
     : [];
-
-  const vatPurchases = await prisma.erpPurchaseInvoice.findMany({
-    where: {
-      isVatPurchase: true,
-      orderLinks: {
-        some: {
-          OR: [
-            { purchaseOrder: { saleOrder: { month, year } } },
-            { productionOrder: { saleOrder: { month, year } } },
-          ],
-        },
-      },
-    },
-    select: {
-      amount: true,
-      vat: true,
-      commission: true,
-      orderLinks: {
-        select: {
-          purchaseOrder: { select: { saleOrderId: true, estado: true } },
-          productionOrder: { select: { saleOrderId: true, estado: true } },
-        },
-      },
-    },
-  });
-
-  const rows: InformeRow[] = [];
-  let monthCompra = 0;
-  let monthVenta = 0;
-  let monthIva = 0;
-  let monthComision = 0;
-  let monthGan = 0;
 
   const receiptByInvoice = new Map<string, typeof receiptLinks>();
   for (const link of receiptLinks) {
@@ -132,6 +102,13 @@ export async function buildMonthlyReport(month: number, year: number): Promise<I
     list.push(link);
     receiptByInvoice.set(link.invoiceId, list);
   }
+
+  const rows: InformeRow[] = [];
+  let monthCompra = 0;
+  let monthRet = 0;
+  let monthVenta = 0;
+  let monthPerc = 0;
+  let monthGan = 0;
 
   const byClient = new Map<string, typeof orders>();
   for (const order of orders) {
@@ -142,122 +119,70 @@ export async function buildMonthlyReport(month: number, year: number): Promise<I
 
   for (const [clientName, clientOrders] of byClient) {
     let clientCompra = 0;
+    let clientRet = 0;
     let clientVenta = 0;
-    let clientIva = 0;
-    let clientComision = 0;
+    let clientPerc = 0;
     let clientGan = 0;
 
     for (const order of clientOrders) {
       let uninvoiced = order.estado !== ERP_ORDER.invoiced;
-      let compraNeto = 0;
-      let compraIva = 0;
-      let compraIibb = 0;
-      let compraRetIva = 0;
+      let compra = 0;
+      let percepciones = 0;
+      const seenPurchase = new Set<string>();
 
-      for (const po of order.purchaseOrders) {
-        for (const link of po.invoiceLinks) {
-          if (link.vendorKind === ERP_VENDOR.producer) continue;
-          if (link.invoice.isVatPurchase) continue;
-          if (po.estado !== ERP_ORDER.invoiced) uninvoiced = true;
-          compraNeto += n(link.invoice.amount);
-          compraIva += n(link.invoice.vat);
-          compraIibb += n(link.invoice.iibbCaba) + n(link.invoice.iibbBsAs);
-          compraRetIva += n(link.invoice.vatWithholding);
+      const supplierOrders = [
+        ...order.purchaseOrders.map((po) => ({ po, skip: ERP_VENDOR.producer })),
+        ...order.productionOrders.map((po) => ({ po, skip: ERP_VENDOR.media })),
+      ];
+      for (const { po, skip } of supplierOrders) {
+        const own = po.invoiceLinks.filter((link) => link.vendorKind !== skip);
+        const links = own.filter((link) => !link.invoice.isVatPurchase);
+        if (own.length === 0) uninvoiced = true;
+        else if (links.length > 0 && po.estado !== ERP_ORDER.invoiced) uninvoiced = true;
+        for (const link of links) {
+          if (seenPurchase.has(link.invoice.id)) continue;
+          seenPurchase.add(link.invoice.id);
+          compra += n(link.invoice.amount) + n(link.invoice.vat);
+          percepciones += n(link.invoice.iibbCaba) + n(link.invoice.iibbBsAs) + n(link.invoice.vatWithholding);
         }
-        if (po.invoiceLinks.length === 0) uninvoiced = true;
       }
 
-      for (const prod of order.productionOrders) {
-        for (const link of prod.invoiceLinks) {
-          if (link.vendorKind === ERP_VENDOR.media) continue;
-          if (prod.estado !== ERP_ORDER.invoiced) uninvoiced = true;
-          compraNeto += n(link.invoice.amount);
-          compraIva += n(link.invoice.vat);
-          compraIibb += n(link.invoice.iibbCaba) + n(link.invoice.iibbBsAs);
-          compraRetIva += n(link.invoice.vatWithholding);
-        }
-        if (prod.invoiceLinks.length === 0) uninvoiced = true;
-      }
-
-      let ventaNeto = 0;
-      let ventaIva = 0;
-      let ventaRetIva = 0;
-      let ventaRetIibb = 0;
-      let ventaRetGan = 0;
-      let ventaRetSuss = 0;
+      let venta = 0;
+      let retenciones = 0;
       const seenPay = new Set<string>();
-
       for (const inv of order.invoices) {
-        ventaNeto += n(inv.amount);
-        ventaIva += n(inv.vat);
+        venta += n(inv.amount) + n(inv.vat);
         for (const link of receiptByInvoice.get(inv.id) ?? []) {
           for (const pay of link.receipt.payments) {
-            if (pay.paymentKind < ERP_PAY.retVat) continue;
+            const amount = receiptWithholding(pay.paymentKind, n(pay.amount));
+            if (!amount) continue;
             const key = `${link.receiptId}:${pay.paymentKind}`;
             if (seenPay.has(key)) continue;
             seenPay.add(key);
-            const amt = n(pay.amount);
-            if (pay.paymentKind === ERP_PAY.retVat) ventaRetIva += amt;
-            else if (pay.paymentKind === ERP_PAY.retIibb || pay.paymentKind === ERP_PAY.retIibbAlt) {
-              ventaRetIibb += amt;
-            } else if (pay.paymentKind === ERP_PAY.retGan) ventaRetGan += amt;
-            else if (pay.paymentKind === ERP_PAY.retSuss) ventaRetSuss += amt;
+            retenciones += amount;
           }
         }
       }
 
-      let totalCompraIva = 0;
-      let comision = 0;
-      for (const inv of vatPurchases) {
-        const linked = inv.orderLinks.some(
-          (l) =>
-            l.purchaseOrder?.saleOrderId === order.id ||
-            l.productionOrder?.saleOrderId === order.id,
-        );
-        if (!linked) continue;
-        totalCompraIva += n(inv.amount) + n(inv.vat);
-        comision += n(inv.commission);
-        const orderEstado =
-          inv.orderLinks.find((l) => l.purchaseOrder?.saleOrderId === order.id)?.purchaseOrder
-            ?.estado ??
-          inv.orderLinks.find((l) => l.productionOrder?.saleOrderId === order.id)?.productionOrder
-            ?.estado;
-        if (orderEstado !== ERP_ORDER.invoiced) uninvoiced = true;
-      }
-
-      const compraTotal = compraNeto + compraIva + compraIibb + compraRetIva;
-      const ventaTotal = ventaNeto + ventaIva - ventaRetIva - ventaRetIibb - ventaRetGan - ventaRetSuss;
-      const gananciaBruta = ventaTotal - compraTotal - totalCompraIva;
-      const porcentaje = ventaTotal !== 0 ? (gananciaBruta * 100) / ventaTotal : null;
-
+      const gananciaNeta = venta - retenciones - compra - percepciones;
       rows.push({
         kind: "order",
         client: clientName,
         order: order.number,
         uninvoiced,
-        compraNeto,
-        compraIva,
-        compraIibb,
-        compraRetIva,
-        compraTotal,
-        ventaNeto,
-        ventaIva,
-        ventaRetIva,
-        ventaRetSuss,
-        ventaRetGan,
-        ventaRetIibb,
-        ventaTotal,
-        totalCompraIva,
-        comision,
-        gananciaBruta,
-        porcentaje,
+        compra,
+        retenciones,
+        venta,
+        percepciones,
+        gananciaNeta,
+        porcentaje: pct(gananciaNeta, venta),
       });
 
-      clientCompra += compraTotal;
-      clientVenta += ventaTotal;
-      clientIva += totalCompraIva;
-      clientComision += comision;
-      clientGan += gananciaBruta;
+      clientCompra += compra;
+      clientRet += retenciones;
+      clientVenta += venta;
+      clientPerc += percepciones;
+      clientGan += gananciaNeta;
     }
 
     rows.push({
@@ -265,87 +190,53 @@ export async function buildMonthlyReport(month: number, year: number): Promise<I
       client: `Total ${clientName}`,
       order: "",
       uninvoiced: false,
-      compraNeto: 0,
-      compraIva: 0,
-      compraIibb: 0,
-      compraRetIva: 0,
-      compraTotal: clientCompra,
-      ventaNeto: 0,
-      ventaIva: 0,
-      ventaRetIva: 0,
-      ventaRetSuss: 0,
-      ventaRetGan: 0,
-      ventaRetIibb: 0,
-      ventaTotal: clientVenta,
-      totalCompraIva: clientIva,
-      comision: clientComision,
-      gananciaBruta: clientGan,
-      porcentaje: clientVenta !== 0 ? (clientGan * 100) / clientVenta : null,
+      compra: clientCompra,
+      retenciones: clientRet,
+      venta: clientVenta,
+      percepciones: clientPerc,
+      gananciaNeta: clientGan,
+      porcentaje: pct(clientGan, clientVenta),
     });
 
     monthCompra += clientCompra;
+    monthRet += clientRet;
     monthVenta += clientVenta;
-    monthIva += clientIva;
-    monthComision += clientComision;
+    monthPerc += clientPerc;
     monthGan += clientGan;
   }
 
-  const expense = await prisma.erpExpense.findUnique({
-    where: { month_year: { month, year } },
-  });
-  const gastoFijo = n(expense?.fixed);
-  const gastoBanco = n(expense?.bank);
-  const gastoIva = n(expense?.vat);
-  const gastoCom = n(expense?.commissions);
-  const gastos = gastoFijo + gastoBanco + gastoIva + gastoCom;
-
-  rows.push({
-    kind: "monthTotal",
-    client: "Total",
-    order: "",
-    uninvoiced: false,
-    compraNeto: 0,
-    compraIva: 0,
-    compraIibb: 0,
-    compraRetIva: 0,
-    compraTotal: monthCompra,
-    ventaNeto: 0,
-    ventaIva: 0,
-    ventaRetIva: 0,
-    ventaRetSuss: 0,
-    ventaRetGan: 0,
-    ventaRetIibb: 0,
-    ventaTotal: monthVenta,
-    totalCompraIva: monthIva,
-    comision: monthComision,
-    gananciaBruta: monthGan,
-    porcentaje: monthVenta !== 0 ? (monthGan * 100) / monthVenta : null,
-  });
-
-  if (expense) {
+  if (rows.length) {
     rows.push({
-      kind: "expenses",
-      client: "Gastos del mes",
+      kind: "monthTotal",
+      client: "Total",
       order: "",
       uninvoiced: false,
-      compraNeto: gastoFijo,
-      compraIva: gastoBanco,
-      compraIibb: gastoIva,
-      compraRetIva: gastoCom,
-      compraTotal: gastos,
-      ventaNeto: 0,
-      ventaIva: 0,
-      ventaRetIva: 0,
-      ventaRetSuss: 0,
-      ventaRetGan: 0,
-      ventaRetIibb: 0,
-      ventaTotal: 0,
-      totalCompraIva: 0,
-      comision: 0,
-      gananciaBruta: monthGan - gastos,
-      porcentaje: null,
+      compra: monthCompra,
+      retenciones: monthRet,
+      venta: monthVenta,
+      percepciones: monthPerc,
+      gananciaNeta: monthGan,
+      porcentaje: pct(monthGan, monthVenta),
     });
   }
 
-  return rows;
+  const fixed = n(expense?.fixed);
+  const bank = n(expense?.bank);
+  const vat = n(expense?.vat);
+  const extra = n(expense?.extra);
+  const vatPurchase = vatPurchases.reduce((sum, inv) => sum + n(inv.commission), 0);
+  const total = fixed + bank + vat + vatPurchase + extra;
+
+  return {
+    rows,
+    expenses: {
+      fixed,
+      bank,
+      vat,
+      vatPurchase,
+      extra,
+      total,
+      resultado: monthGan - total,
+    },
+  };
 }
