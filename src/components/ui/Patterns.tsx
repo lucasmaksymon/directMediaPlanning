@@ -178,22 +178,23 @@ export function Stat({
   return (
     <div
       className={cn(
-        "rounded-[var(--radius-lg)] border border-border bg-card px-4 py-3",
+        "@container min-w-0 rounded-[var(--radius-lg)] border border-border bg-card px-4 py-3",
         className,
       )}
     >
-      <p className="nm-caption font-medium uppercase tracking-wide">{label}</p>
+      <p className="nm-caption truncate font-medium uppercase tracking-wide">{label}</p>
       <p
         className={cn(
-          "mt-1 text-2xl font-semibold tabular-nums tracking-tight",
+          "mt-1 truncate text-base font-semibold tabular-nums tracking-tight @[11rem]:text-lg @[13rem]:text-xl @[15rem]:text-2xl",
           urgent && "text-warning",
           accent && !urgent && "text-led",
           !accent && !urgent && "text-foreground",
         )}
+        title={typeof value === "string" ? value : undefined}
       >
         {value}
       </p>
-      {hint ? <p className="nm-caption mt-1">{hint}</p> : null}
+      {hint ? <p className="nm-caption mt-1 truncate">{hint}</p> : null}
     </div>
   );
 }
