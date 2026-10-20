@@ -75,6 +75,46 @@ export function receiptWithholding(paymentKind: number, amount: number) {
   return WITHHOLDING_KINDS.has(paymentKind) ? amount : 0;
 }
 
+export const receiptWithholdingSelect = {
+  receiptId: true,
+  receipt: {
+    select: {
+      payments: { select: { paymentKind: true, amount: true } },
+      invoices: { select: { invoiceId: true, invoice: { select: { amount: true, vat: true } } } },
+    },
+  },
+} as const;
+
+type ReceiptWithholdingLink = {
+  receipt: {
+    payments: { paymentKind: number; amount: unknown }[];
+    invoices: { invoiceId: string; invoice: { amount: unknown; vat: unknown } }[];
+  };
+};
+
+/**
+ * Retenciones que le tocan a una factura. Un recibo puede cobrar varias facturas
+ * (incluso de distintas órdenes): sus retenciones se reparten según el total de cada una.
+ */
+export function invoiceWithholdings(invoiceId: string, links: ReceiptWithholdingLink[]) {
+  let sum = 0;
+  for (const { receipt } of links) {
+    const withheld = receipt.payments.reduce(
+      (acc, pay) => acc + receiptWithholding(pay.paymentKind, Number(pay.amount)),
+      0,
+    );
+    if (!withheld) continue;
+    const totals = receipt.invoices.map((ri) => ({
+      id: ri.invoiceId,
+      total: Number(ri.invoice.amount) + Number(ri.invoice.vat),
+    }));
+    const covered = totals.reduce((acc, t) => acc + t.total, 0);
+    const own = totals.find((t) => t.id === invoiceId)?.total ?? 0;
+    sum += covered > 0 ? (withheld * own) / covered : withheld / Math.max(1, totals.length);
+  }
+  return Math.round(sum * 100) / 100;
+}
+
 /** TOTAL venta Excel col. 44: neto + IVA − retenciones. */
 export function saleLineTotal(s: {
   net: number;
@@ -133,12 +173,7 @@ export async function loadGestionOrders(filter: GestionFilter): Promise<GestionO
       invoices: {
         orderBy: [{ issuedAt: "asc" }, { number: "asc" }],
         include: {
-          receiptLinks: {
-            select: {
-              receiptId: true,
-              receipt: { select: { payments: { select: { paymentKind: true, amount: true } } } },
-            },
-          },
+          receiptLinks: { select: receiptWithholdingSelect },
         },
       },
       purchaseOrders: {
@@ -166,7 +201,6 @@ export async function loadGestionOrders(filter: GestionFilter): Promise<GestionO
     let allCollected = order.invoices.length > 0;
     let anyCollected = false;
     let retencionesSum = 0;
-    const seenWithholding = new Set<string>();
     for (const inv of order.invoices) {
       const total = saleLineTotal({
         net: n(inv.amount),
@@ -181,16 +215,7 @@ export async function loadGestionOrders(filter: GestionFilter): Promise<GestionO
       if (!collected) allCollected = false;
       else {
         anyCollected = true;
-        for (const link of inv.receiptLinks) {
-          for (const pay of link.receipt.payments) {
-            const amount = receiptWithholding(pay.paymentKind, n(pay.amount));
-            if (!amount) continue;
-            const key = `${link.receiptId}:${pay.paymentKind}`;
-            if (seenWithholding.has(key)) continue;
-            seenWithholding.add(key);
-            retencionesSum += amount;
-          }
-        }
+        retencionesSum += invoiceWithholdings(inv.id, inv.receiptLinks);
       }
       details.push({
         id: `sale-${inv.id}`,
@@ -478,18 +503,20 @@ export async function loadOrdersToInvoice() {
       invoices: { select: { amount: true, vat: true } },
     },
   });
-  return orders.map((o) => ({
-    id: o.id,
-    number: o.number,
-    client: o.client.name,
-    product: o.product,
-    month: o.month,
-    year: o.year,
-    net: n(o.net),
-    amount: n(o.amount),
-    remaining: saleOrderRemaining(o, saleOrderInvoiceCover(o.invoices)).amount,
-    href: `/backoffice/ordenes/venta?edit=${o.id}`,
-  }));
+  return orders
+    .map((o) => ({
+      id: o.id,
+      number: o.number,
+      client: o.client.name,
+      product: o.product,
+      month: o.month,
+      year: o.year,
+      net: n(o.net),
+      amount: n(o.amount),
+      remaining: saleOrderRemaining(o, saleOrderInvoiceCover(o.invoices)).amount,
+      href: `/backoffice/ordenes/venta?edit=${o.id}`,
+    }))
+    .filter((o) => o.remaining > 0.009);
 }
 
 /** Asigna la factura a la primera fila GESTIÓN de la orden que aún no tiene venta. */

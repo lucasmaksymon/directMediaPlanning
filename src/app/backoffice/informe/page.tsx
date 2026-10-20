@@ -25,7 +25,7 @@ export default async function ErpInformePage({
   return (
     <div className={cn(adminPage, "gap-4")}>
       <PageHeader
-        description="Ganancia neta = venta − retenciones − compra − percepciones. Compra IVA y el resto de gastos se restan abajo. Las órdenes en rojo no están facturadas."
+        description="Ganancia neta = venta − retenciones − compra − percepciones. La compra suma lo facturado y lo pagado en efectivo. Compra IVA y el resto de gastos se restan abajo. Las órdenes en rojo no están facturadas."
         eyebrow="Administración"
         title="Informe mensual"
       />
@@ -99,6 +99,7 @@ function InformeExpensesBlock({ expenses }: { expenses: InformeExpenses }) {
     ["Fijos", expenses.fixed],
     ["Banco", expenses.bank],
     ["IVA", expenses.vat],
+    ["Comisiones", expenses.commissions],
     ["Compra IVA", expenses.vatPurchase],
     ["Gastos extra Ana", expenses.extra],
   ] as const;
@@ -108,7 +109,7 @@ function InformeExpensesBlock({ expenses }: { expenses: InformeExpenses }) {
       <p className="mt-1 text-xs text-muted-foreground">
         Compra IVA es la comisión de las facturas de compra IVA del mes. El resultado resta todos estos gastos de la ganancia neta.
       </p>
-      <dl className="mt-3 grid gap-2 sm:grid-cols-3 lg:grid-cols-7">
+      <dl className="mt-3 grid gap-2 sm:grid-cols-4 lg:grid-cols-8">
         {lines.map(([label, value]) => (
           <div key={label}>
             <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</dt>

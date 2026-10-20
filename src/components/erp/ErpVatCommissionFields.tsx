@@ -3,15 +3,13 @@
 import { useState } from "react";
 import { Input } from "@/components/ui";
 import { ErpField } from "@/components/erp/ErpField";
-import { parseMoney, VAT_PURCHASE_COMMISSION_PCT } from "@/lib/erp";
+import { parseMoney, VAT_PURCHASE_COMMISSION_PCT, vatPurchaseCommission } from "@/lib/erp";
 
-function suggestedCommission(amount: string, vat: string, rate: string, surcharge: string) {
-  const base = parseMoney(amount) + parseMoney(vat);
-  const pct = parseMoney(rate) + parseMoney(surcharge);
-  return String(Math.round(((base * pct) / 100) * 100) / 100);
+function suggestedCommission(amount: string, rate: string, surcharge: string) {
+  return String(vatPurchaseCommission(parseMoney(amount), parseMoney(rate) + parseMoney(surcharge)));
 }
 
-/** Comisión de compra IVA: 10,5% del total, más un recargo editable. Se guarda el importe final. */
+/** Comisión de compra IVA: 10,5% del neto, más un recargo editable. Se guarda el importe final. */
 export function ErpVatCommissionFields({
   amount,
   vat,
@@ -36,7 +34,7 @@ export function ErpVatCommissionFields({
     if (next.vat != null) setVatValue(vatNext);
     if (next.rate != null) setRate(rateNext);
     if (next.surcharge != null) setSurcharge(surchargeNext);
-    setCommissionValue(suggestedCommission(amountNext, vatNext, rateNext, surchargeNext));
+    setCommissionValue(suggestedCommission(amountNext, rateNext, surchargeNext));
   }
 
   return (

@@ -15,8 +15,12 @@ export const ERP_COLLECT = { pending: 0, collected: 1 } as const;
 /** Pago de factura de compra (Excel: PENDIENTE / PAGADO). */
 export const ERP_SETTLE = { pending: 0, paid: 1 } as const;
 
-/** Comisión habitual de una factura de compra IVA, sobre importe + IVA. */
+/** Comisión habitual de una factura de compra IVA, sobre el neto (sin IVA). */
 export const VAT_PURCHASE_COMMISSION_PCT = 10.5;
+
+export function vatPurchaseCommission(net: number, pct: number = VAT_PURCHASE_COMMISSION_PCT) {
+  return Math.round(((net * pct) / 100) * 100) / 100;
+}
 
 /** tipoPago de pagos de recibo de venta (ADMINISTRACION). */
 export const ERP_PAY = {

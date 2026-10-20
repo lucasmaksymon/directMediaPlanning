@@ -1306,7 +1306,7 @@ export function InformeTable({
 }) {
   return (
     <ErpDataTable
-      storageKey="erp.table.informe.v2"
+      storageKey="erp.table.informe.v3"
       rows={rows}
       rowKey={(r) => r.key}
       rowClassName={(r) => (r.kind !== "order" ? "font-semibold" : undefined)}
@@ -1320,19 +1320,19 @@ export function InformeTable({
         },
         { id: "compra", label: "Compra", align: "right", value: (r) => r.compra, cell: (r) => money(r.compra) },
         {
-          id: "retenciones",
-          label: "Retenciones",
-          align: "right",
-          value: (r) => r.retenciones,
-          cell: (r) => money(r.retenciones),
-        },
-        { id: "venta", label: "Venta", align: "right", value: (r) => r.venta, cell: (r) => money(r.venta) },
-        {
           id: "percepciones",
           label: "Percepciones",
           align: "right",
           value: (r) => r.percepciones,
           cell: (r) => money(r.percepciones),
+        },
+        { id: "venta", label: "Venta", align: "right", value: (r) => r.venta, cell: (r) => money(r.venta) },
+        {
+          id: "retenciones",
+          label: "Retenciones",
+          align: "right",
+          value: (r) => r.retenciones,
+          cell: (r) => money(r.retenciones),
         },
         {
           id: "ganancia",

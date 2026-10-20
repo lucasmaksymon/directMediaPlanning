@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { ERP_ORDER, ERP_VENDOR } from "@/lib/erp";
-import { receiptWithholding } from "@/lib/erp-gestion";
+import { ERP_CASH_MODE, ERP_ORDER, ERP_VENDOR, erpCashMode } from "@/lib/erp";
+import { invoiceWithholdings, receiptWithholdingSelect } from "@/lib/erp-gestion";
 
 export type InformeRow = {
   kind: "order" | "clientTotal" | "monthTotal";
@@ -19,6 +19,7 @@ export type InformeExpenses = {
   fixed: number;
   bank: number;
   vat: number;
+  commissions: number;
   vatPurchase: number;
   extra: number;
   total: number;
@@ -49,6 +50,16 @@ const purchaseInvoiceSelect = {
   vatWithholding: true,
 } as const;
 
+const supplierOrderSelect = {
+  estado: true,
+  net: true,
+  cashAmount: true,
+  cashPayment: true,
+  invoiceLinks: {
+    select: { vendorKind: true, invoice: { select: purchaseInvoiceSelect } },
+  },
+} as const;
+
 export async function buildMonthlyReport(month: number, year: number): Promise<MonthlyReport> {
   const from = new Date(year, month - 1, 1);
   const to = new Date(year, month, 1);
@@ -59,22 +70,8 @@ export async function buildMonthlyReport(month: number, year: number): Promise<M
       include: {
         client: { select: { name: true } },
         invoices: { select: { id: true, amount: true, vat: true } },
-        purchaseOrders: {
-          select: {
-            estado: true,
-            invoiceLinks: {
-              select: { vendorKind: true, invoice: { select: purchaseInvoiceSelect } },
-            },
-          },
-        },
-        productionOrders: {
-          select: {
-            estado: true,
-            invoiceLinks: {
-              select: { vendorKind: true, invoice: { select: purchaseInvoiceSelect } },
-            },
-          },
-        },
+        purchaseOrders: { select: supplierOrderSelect },
+        productionOrders: { select: supplierOrderSelect },
       },
     }),
     prisma.erpExpense.findUnique({ where: { month_year: { month, year } } }),
@@ -88,11 +85,7 @@ export async function buildMonthlyReport(month: number, year: number): Promise<M
   const receiptLinks = saleInvoiceIds.length
     ? await prisma.erpSaleReceiptInvoice.findMany({
         where: { invoiceId: { in: saleInvoiceIds } },
-        select: {
-          invoiceId: true,
-          receiptId: true,
-          receipt: { select: { payments: { select: { paymentKind: true, amount: true } } } },
-        },
+        select: { invoiceId: true, ...receiptWithholdingSelect },
       })
     : [];
 
@@ -135,6 +128,12 @@ export async function buildMonthlyReport(month: number, year: number): Promise<M
         ...order.productionOrders.map((po) => ({ po, skip: ERP_VENDOR.media })),
       ];
       for (const { po, skip } of supplierOrders) {
+        const mode = erpCashMode(n(po.net), n(po.cashAmount), po.cashPayment);
+        if (mode === ERP_CASH_MODE.cash) {
+          compra += n(po.net);
+          continue;
+        }
+        if (mode === ERP_CASH_MODE.mixed) compra += n(po.cashAmount);
         const own = po.invoiceLinks.filter((link) => link.vendorKind !== skip);
         const links = own.filter((link) => !link.invoice.isVatPurchase);
         if (own.length === 0) uninvoiced = true;
@@ -149,19 +148,9 @@ export async function buildMonthlyReport(month: number, year: number): Promise<M
 
       let venta = 0;
       let retenciones = 0;
-      const seenPay = new Set<string>();
       for (const inv of order.invoices) {
         venta += n(inv.amount) + n(inv.vat);
-        for (const link of receiptByInvoice.get(inv.id) ?? []) {
-          for (const pay of link.receipt.payments) {
-            const amount = receiptWithholding(pay.paymentKind, n(pay.amount));
-            if (!amount) continue;
-            const key = `${link.receiptId}:${pay.paymentKind}`;
-            if (seenPay.has(key)) continue;
-            seenPay.add(key);
-            retenciones += amount;
-          }
-        }
+        retenciones += invoiceWithholdings(inv.id, receiptByInvoice.get(inv.id) ?? []);
       }
 
       const gananciaNeta = venta - retenciones - compra - percepciones;
@@ -223,9 +212,10 @@ export async function buildMonthlyReport(month: number, year: number): Promise<M
   const fixed = n(expense?.fixed);
   const bank = n(expense?.bank);
   const vat = n(expense?.vat);
+  const commissions = n(expense?.commissions);
   const extra = n(expense?.extra);
   const vatPurchase = vatPurchases.reduce((sum, inv) => sum + n(inv.commission), 0);
-  const total = fixed + bank + vat + vatPurchase + extra;
+  const total = fixed + bank + vat + commissions + vatPurchase + extra;
 
   return {
     rows,
@@ -233,6 +223,7 @@ export async function buildMonthlyReport(month: number, year: number): Promise<M
       fixed,
       bank,
       vat,
+      commissions,
       vatPurchase,
       extra,
       total,

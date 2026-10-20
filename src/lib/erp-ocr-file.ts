@@ -34,10 +34,11 @@ export function attachmentDisplayName(url: string) {
   }
 }
 
-export function ocrFormData(file: File, kindHint: string, issuedOnly = false) {
+export function ocrFormData(file: File, kindHint: string, issuedOnly = false, vatPurchase = false) {
   const data = new FormData();
   data.set("file", asOcrFile(file));
   data.set("kindHint", kindHint);
   data.set("issuedOnly", issuedOnly ? "1" : "0");
+  if (vatPurchase) data.set("vatPurchase", "1");
   return data;
 }

@@ -22,6 +22,8 @@ import {
 
 export type OcrMatchOptions = {
   issuedOnly?: boolean;
+  /** Busca duplicados entre facturas de compra IVA en vez de las comunes. */
+  vatPurchase?: boolean;
 };
 
 /** Palabras que comparten muchos proveedores y clientes: no identifican a nadie. */
@@ -228,7 +230,7 @@ export async function matchOcrExtracted(
       kind === "purchase_invoice"
         ? prisma.erpPurchaseInvoice.findMany({
             where: {
-              isVatPurchase: false,
+              isVatPurchase: Boolean(opts.vatPurchase),
               ...(extracted.number != null ? { number: extracted.number } : {}),
               ...(extracted.pos != null ? { pos: extracted.pos } : {}),
             },

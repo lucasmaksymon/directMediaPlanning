@@ -2,14 +2,13 @@ import { prisma } from "@/lib/prisma";
 import { productTitle } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { adminPage, adminPageBody } from "@/lib/ui-classes";
-import { Autocomplete, EmptyState, Input, PageHeader } from "@/components/ui";
+import { EmptyState, PageHeader } from "@/components/ui";
 import { FacturasIvaTable } from "@/components/erp/erp-standard-tables";
 import { ErpForm } from "@/components/erp/ErpForm";
-import { ErpField } from "@/components/erp/ErpField";
-import { ErpVatCommissionFields } from "@/components/erp/ErpVatCommissionFields";
 import { createErpPurchaseInvoice, updateErpPurchaseInvoice } from "@/app/actions/erp-billing";
-import { ErpDocTypeSelect } from "@/components/erp/ErpDocTypeSelect";
-import { erpInputNumber, isoDate } from "@/lib/erp";
+import { ErpVatPurchaseFormFields } from "@/components/erp/ocr/ErpVatPurchaseFormFields";
+import { ErpOcrImportClient } from "@/components/erp/ocr/ErpOcrImportClient";
+import { isoDate } from "@/lib/erp";
 import { listActiveVendors, listRecentProductionOrdersForPick, listRecentPurchaseOrdersForPick } from "@/lib/erp-list";
 
 export const metadata = { title: productTitle("Facturas compra IVA") };
@@ -32,6 +31,7 @@ export default async function ErpFacturasIvaPage({
     amount: true,
     vat: true,
     commission: true,
+    attachmentUrl: true,
     vendor: { select: { name: true } },
     orderLinks: { select: { purchaseOrderId: true, productionOrderId: true } },
   } as const;
@@ -49,19 +49,22 @@ export default async function ErpFacturasIvaPage({
   const currentOrderId = current?.orderLinks[0]?.purchaseOrderId ?? current?.orderLinks[0]?.productionOrderId ?? "";
   const openOrders = [
     ...purchaseOrders.map((o) => ({
-      id: o.id,
+      value: o.id,
+      vendorId: o.vendorId,
       label: `Compra ${o.number} · ${o.saleOrder.number} · ${o.vendor.name}`,
     })),
     ...productionOrders.map((o) => ({
-      id: o.id,
+      value: o.id,
+      vendorId: o.vendorId,
       label: `Producción ${o.number} · ${o.saleOrder.number} · ${o.vendor.name}`,
     })),
   ];
+  const vendorOptions = vendors.map((v) => ({ value: v.id, label: v.name }));
 
   return (
     <div className={cn(adminPage, "gap-4")}>
       <PageHeader
-        description="La comisión (10,5% del total, más un recargo si hace falta) entra como gasto del mes. No se resta de la orden."
+        description="La comisión (10,5% del neto, más un recargo si hace falta) entra como gasto del mes. No se resta de la orden."
         eyebrow="Facturación"
         title="Facturas de compra IVA"
       />
@@ -74,48 +77,42 @@ export default async function ErpFacturasIvaPage({
           submitLabel={current ? "Guardar cambios" : "Guardar"}
           title={current ? "Editar factura IVA" : "Nueva factura IVA"}
         >
-          {current ? <input name="id" type="hidden" value={current.id} /> : null}
-          <input name="isVatPurchase" type="hidden" value="1" />
-          <ErpField htmlFor="vendorId" label="Proveedor">
-            <Autocomplete
-              defaultValue={current?.vendorId}
-              id="vendorId"
-              name="vendorId"
-              options={vendors.map((v) => ({ value: v.id, label: v.name }))}
-              placeholder="Buscar proveedor…"
-              required
-            />
-          </ErpField>
-          <ErpField htmlFor="orderId" label="Orden de compra o producción">
-            <Autocomplete
-              defaultValue={currentOrderId}
-              id="orderId"
-              name="orderId"
-              options={openOrders.map((o) => ({ value: o.id, label: o.label }))}
-              placeholder="Opcional"
-            />
-          </ErpField>
-          <ErpField htmlFor="issuedAt" label="Fecha">
-            <Input defaultValue={isoDate(current?.issuedAt ?? now)} id="issuedAt" name="issuedAt" type="date" />
-          </ErpField>
-          <ErpField htmlFor="docType" label="Tipo">
-            <ErpDocTypeSelect defaultValue={current?.docType} />
-          </ErpField>
-          <ErpField htmlFor="pos" label="Punto">
-            <Input defaultValue={current?.pos ?? 1} id="pos" name="pos" type="number" />
-          </ErpField>
-          <ErpField htmlFor="number" label="Número">
-            <Input defaultValue={current?.number} id="number" name="number" required type="number" />
-          </ErpField>
-          <ErpVatCommissionFields
-            amount={erpInputNumber(current?.amount)}
-            commission={erpInputNumber(current?.commission)}
-            vat={erpInputNumber(current?.vat)}
+          <ErpVatPurchaseFormFields
+            allowOcr={!current}
+            current={
+              current
+                ? {
+                    id: current.id,
+                    vendorId: current.vendorId,
+                    orderId: currentOrderId,
+                    issuedAt: isoDate(current.issuedAt),
+                    docType: current.docType,
+                    pos: current.pos,
+                    number: current.number,
+                    amount: current.amount,
+                    vat: current.vat,
+                    commission: current.commission,
+                    attachmentUrl: current.attachmentUrl,
+                  }
+                : null
+            }
+            now={isoDate(now)}
+            orders={openOrders.map((o) => ({ value: o.value, label: o.label }))}
+            vendors={vendorOptions}
           />
         </ErpForm>
+        <ErpOcrImportClient
+          kind="purchase_invoice"
+          purchaseOrders={openOrders}
+          vatPurchase
+          vendors={vendorOptions}
+        />
 
         {invoices.length === 0 ? (
-          <EmptyState description="No hay facturas de compra IVA." title="Sin facturas IVA" />
+          <div className="contents">
+            <div className="flex justify-end gap-2" data-erp-page-toolbar />
+            <EmptyState description="No hay facturas de compra IVA." title="Sin facturas IVA" />
+          </div>
         ) : (
           <FacturasIvaTable
             rows={invoices.map((f) => ({

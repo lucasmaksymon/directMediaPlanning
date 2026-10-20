@@ -13,7 +13,15 @@ import {
   saleOrderInvoiceCover,
   saleOrderPickLabel,
   saleOrderRemaining,
+  vatPurchaseCommission,
 } from "./erp";
+
+describe("vatPurchaseCommission", () => {
+  it("usa solo el neto, sin IVA", () => {
+    expect(vatPurchaseCommission(14_000_000)).toBe(1_470_000);
+    expect(vatPurchaseCommission(14_000_000, 12.5)).toBe(1_750_000);
+  });
+});
 
 describe("erpInvoiceRef", () => {
   it("arma el comprobante con punto de venta y número como en Facturación", () => {

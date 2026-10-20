@@ -12,6 +12,7 @@ import {
   type OcrPaymentLine,
 } from "@/lib/erp-ocr";
 import { matchOcrExtracted } from "@/lib/erp-ocr-match";
+import { vatPurchaseCommission } from "@/lib/erp";
 import {
   createErpPurchaseInvoice,
   createErpSaleInvoice,
@@ -43,6 +44,7 @@ export async function ocrErpDocument(formData: FormData): Promise<OcrDocumentRes
     ]);
     const matched = await matchOcrExtracted(extracted, kindHint, {
       issuedOnly: String(formData.get("issuedOnly") ?? "1") !== "0",
+      vatPurchase: String(formData.get("vatPurchase") ?? "") === "1",
     });
     return {
       ok: true,
@@ -225,6 +227,15 @@ export async function importOcrSaleInvoices(rows: ImportOcrSaleInvoiceRow[]) {
 
 export async function importOcrPurchaseInvoices(rows: ImportOcrPurchaseInvoiceRow[]) {
   return runImports(rows, (row) => createErpPurchaseInvoice(purchaseInvoiceForm(row)));
+}
+
+export async function importOcrVatPurchaseInvoices(rows: ImportOcrPurchaseInvoiceRow[]) {
+  return runImports(rows, (row) => {
+    const fd = purchaseInvoiceForm(row);
+    fd.set("isVatPurchase", "1");
+    fd.set("commission", String(vatPurchaseCommission(Number(row.amount) || 0)));
+    return createErpPurchaseInvoice(fd);
+  });
 }
 
 export async function importOcrSaleReceipts(rows: ImportOcrSaleReceiptRow[]) {

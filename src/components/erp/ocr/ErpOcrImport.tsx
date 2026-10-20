@@ -10,10 +10,12 @@ import type { OcrKind, OcrMatchResult } from "@/lib/erp-ocr";
 export function ErpOcrImport({
   kind,
   issuedOnly = true,
+  vatPurchase = false,
   onResult,
 }: {
   kind: OcrKind;
   issuedOnly?: boolean;
+  vatPurchase?: boolean;
   onResult: (result: OcrMatchResult) => void;
 }) {
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +27,7 @@ export function ErpOcrImport({
     setError(null);
     setPending(true);
     try {
-      const res = await ocrErpDocument(ocrFormData(file, kind, issuedOnly));
+      const res = await ocrErpDocument(ocrFormData(file, kind, issuedOnly, vatPurchase));
       if (!res.ok) throw new Error(res.error);
       onResult(res.result);
     } catch (e) {

@@ -8,6 +8,7 @@ import {
   importOcrPurchaseInvoices,
   importOcrSaleInvoices,
   importOcrSaleReceipts,
+  importOcrVatPurchaseInvoices,
   ocrErpDocument,
 } from "@/app/actions/erp-ocr";
 import { Alert, Autocomplete, Badge, Button, Checkbox, Input, Modal, Table, TBody, TD, TH, THead, TR } from "@/components/ui";
@@ -83,22 +84,22 @@ function emptyDraft(): OcrFormDraft {
   });
 }
 
-function rowReady(kind: OcrKind, row: ImportRow) {
+function rowReady(kind: OcrKind, row: ImportRow, vatPurchase = false) {
   if (row.status !== "review") return false;
   if (row.result?.duplicate) return false;
   if (!row.draft.number || !row.draft.issuedAt) return false;
   if (kind === "sale_invoice") return Boolean(row.draft.saleOrderId);
-  if (kind === "purchase_invoice") return Boolean(row.draft.vendorId && row.draft.orderId);
+  if (kind === "purchase_invoice") return Boolean(row.draft.vendorId && (vatPurchase || row.draft.orderId));
   return Boolean(row.draft.clientId);
 }
 
-function statusBadge(row: ImportRow, kind: OcrKind) {
+function statusBadge(row: ImportRow, kind: OcrKind, vatPurchase: boolean) {
   if (row.status === "reading" || row.status === "queued") return <Badge>Leyendo</Badge>;
   if (row.status === "error") return <Badge variant="error">Error</Badge>;
   if (row.status === "imported") return <Badge variant="success">Importado</Badge>;
   if (row.status === "failed") return <Badge variant="error">Falló</Badge>;
   if (row.result?.duplicate) return <Badge variant="warning">Duplicado</Badge>;
-  if (rowReady(kind, row)) return <Badge variant="success">Listo</Badge>;
+  if (rowReady(kind, row, vatPurchase)) return <Badge variant="success">Listo</Badge>;
   return <Badge variant="warning">Incompleto</Badge>;
 }
 
@@ -113,6 +114,7 @@ export function ErpOcrImportClient({
   saleOrders = [],
   purchaseOrders = [],
   invoices = [],
+  vatPurchase = false,
 }: {
   kind: OcrKind;
   clients?: Catalog[];
@@ -120,6 +122,8 @@ export function ErpOcrImportClient({
   saleOrders?: Catalog[];
   purchaseOrders?: Catalog[];
   invoices?: Catalog[];
+  /** Compra IVA: la orden es opcional y la comisión se calcula al importar. */
+  vatPurchase?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -129,7 +133,7 @@ export function ErpOcrImportClient({
   const [toolbarSlot, setToolbarSlot] = useState<Element | null>(null);
 
   const reviewable = rows.filter((row) => row.status === "review");
-  const selected = reviewable.filter((row) => row.selected && rowReady(kind, row));
+  const selected = reviewable.filter((row) => row.selected && rowReady(kind, row, vatPurchase));
   const progress = rows.filter((row) => row.status === "reading" || row.status === "queued").length;
   const invoiceOptions = useMemo(() => invoices, [invoices]);
   const imported = rows.some((row) => row.status === "imported");
@@ -172,21 +176,24 @@ export function ErpOcrImportClient({
     });
     setRows((prev) => [...queued.map(({ file: _file, ...row }) => row), ...prev]);
     for (const row of queued) {
-      const res = await ocrErpDocument(ocrFormData(row.file, kind, false));
+      const res = await ocrErpDocument(ocrFormData(row.file, kind, false, vatPurchase));
       if (!res.ok) {
         updateRow(row.id, (current) => ({ ...current, status: "error", error: res.error }));
         continue;
       }
       const draft = ocrDraftFromMatch(res.result);
-      updateRow(row.id, (current) => ({
-        ...current,
-        status: "review",
-        result: res.result,
-        fileUrl: res.result.attachmentUrl || current.fileUrl,
-        draft,
-        selected: res.result.ready,
-        error: undefined,
-      }));
+      updateRow(row.id, (current) => {
+        const next: ImportRow = {
+          ...current,
+          status: "review",
+          result: res.result,
+          fileUrl: res.result.attachmentUrl || current.fileUrl,
+          draft,
+          selected: false,
+          error: undefined,
+        };
+        return { ...next, selected: vatPurchase ? rowReady(kind, next, true) : res.result.ready };
+      });
     }
     setBusy(false);
   }
@@ -218,7 +225,7 @@ export function ErpOcrImportClient({
         );
         applyImport(res, selected);
       } else if (kind === "purchase_invoice") {
-        const res = await importOcrPurchaseInvoices(
+        const res = await (vatPurchase ? importOcrVatPurchaseInvoices : importOcrPurchaseInvoices)(
           selected.map((row) => ({
             vendorId: row.draft.vendorId,
             orderId: row.draft.orderId,
@@ -308,7 +315,7 @@ export function ErpOcrImportClient({
         onClose={close}
         open={open}
         size="xl"
-        title={KIND_TITLE[kind]}
+        title={vatPurchase ? "Importar facturas de compra IVA" : KIND_TITLE[kind]}
       >
         <div className="space-y-3">
           <ErpOcrDropzone
@@ -336,13 +343,13 @@ export function ErpOcrImportClient({
                     <Checkbox
                       checked={
                         reviewable.length > 0 &&
-                        selected.length === reviewable.filter((row) => rowReady(kind, row)).length
+                        selected.length === reviewable.filter((row) => rowReady(kind, row, vatPurchase)).length
                       }
                       onChange={(e) => {
                         const next = e.currentTarget.checked;
                         setRows((prev) =>
                           prev.map((row) =>
-                            row.status === "review" && rowReady(kind, row) ? { ...row, selected: next } : row,
+                            row.status === "review" && rowReady(kind, row, vatPurchase) ? { ...row, selected: next } : row,
                           ),
                         );
                       }}
@@ -369,7 +376,7 @@ export function ErpOcrImportClient({
                     <TD>
                       <Checkbox
                         checked={row.selected}
-                        disabled={!rowReady(kind, row)}
+                        disabled={!rowReady(kind, row, vatPurchase)}
                         onChange={(e) => updateRow(row.id, (current) => ({ ...current, selected: e.target.checked }))}
                       />
                     </TD>
@@ -385,11 +392,11 @@ export function ErpOcrImportClient({
                       {row.error ? <p className="text-[11px] text-error">{row.error}</p> : null}
                       {row.result?.blockers.length && row.status === "review" ? (
                         <p className="max-w-[16rem] text-[11px] text-muted-foreground">
-                          {row.result.blockers.join(" · ")}
+                          {row.result.blockers.filter((b) => !vatPurchase || !/orden/i.test(b)).join(" · ")}
                         </p>
                       ) : null}
                     </TD>
-                    <TD>{statusBadge(row, kind)}</TD>
+                    <TD>{statusBadge(row, kind, vatPurchase)}</TD>
                     <TD className="max-w-[12rem]">
                       <p className="truncate">
                         {kind === "purchase_invoice"
@@ -483,7 +490,13 @@ export function ErpOcrImportClient({
                             disabled={!row.draft.vendorId}
                             onChange={(value) => updateRow(row.id, (current) => patchDraft(current, { orderId: value }))}
                             options={purchaseOrders.filter((o) => o.vendorId === row.draft.vendorId)}
-                            placeholder={row.draft.vendorId ? "Orden de este proveedor…" : "Elegí un proveedor…"}
+                            placeholder={
+                              !row.draft.vendorId
+                                ? "Elegí un proveedor…"
+                                : vatPurchase
+                                  ? "Orden (opcional)…"
+                                  : "Orden de este proveedor…"
+                            }
                             value={row.draft.orderId}
                           />
                         </div>

@@ -32,6 +32,7 @@ export function ErpInformeDocument(props: {
     ["Fijos", props.expenses.fixed],
     ["Banco", props.expenses.bank],
     ["IVA", props.expenses.vat],
+    ["Comisiones", props.expenses.commissions],
     ["Compra IVA", props.expenses.vatPurchase],
     ["Gastos extra Ana", props.expenses.extra],
     ["Total gastos", props.expenses.total],
@@ -43,15 +44,15 @@ export function ErpInformeDocument(props: {
       <Page orientation="landscape" size="A4" style={styles.page}>
         <Text style={styles.title}>Informe mensual</Text>
         <Text style={styles.sub}>
-          {ERP_MONTHS[props.month]} {props.year} · ganancia neta = venta − retenciones − compra − percepciones
+          {ERP_MONTHS[props.month]} {props.year} · ganancia neta = venta − retenciones − (compra + percepciones)
         </Text>
         <View style={[styles.row, styles.head]}>
           <Text style={styles.c0}>Cliente</Text>
           <Text style={styles.c1}>Orden</Text>
           <Text style={styles.c2}>Compra</Text>
-          <Text style={styles.c3}>Retenciones</Text>
+          <Text style={styles.c3}>Percepciones</Text>
           <Text style={styles.c4}>Venta</Text>
-          <Text style={styles.c5}>Percepciones</Text>
+          <Text style={styles.c5}>Retenciones</Text>
           <Text style={styles.c6}>Ganancia neta</Text>
           <Text style={styles.c7}>%</Text>
         </View>
@@ -60,9 +61,9 @@ export function ErpInformeDocument(props: {
             <Text style={[styles.c0, r.kind !== "order" ? styles.strong : {}]}>{r.client}</Text>
             <Text style={[styles.c1, r.uninvoiced ? styles.red : {}]}>{r.order}</Text>
             <Text style={styles.c2}>{money(r.compra)}</Text>
-            <Text style={styles.c3}>{money(r.retenciones)}</Text>
+            <Text style={styles.c3}>{money(r.percepciones)}</Text>
             <Text style={styles.c4}>{money(r.venta)}</Text>
-            <Text style={styles.c5}>{money(r.percepciones)}</Text>
+            <Text style={styles.c5}>{money(r.retenciones)}</Text>
             <Text style={[styles.c6, styles.strong]}>{money(r.gananciaNeta)}</Text>
             <Text style={styles.c7}>{r.porcentaje == null ? "—" : `${r.porcentaje.toFixed(2)}%`}</Text>
           </View>
