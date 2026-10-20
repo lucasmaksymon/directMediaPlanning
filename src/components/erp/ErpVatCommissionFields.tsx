@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui";
 import { ErpField } from "@/components/erp/ErpField";
 import { parseMoney, VAT_PURCHASE_COMMISSION_PCT, vatPurchaseCommission } from "@/lib/erp";
+import { vatForNet } from "@/lib/erp-ocr-score";
 
 function suggestedCommission(amount: string, rate: string, surcharge: string) {
   return String(vatPurchaseCommission(parseMoney(amount), parseMoney(rate) + parseMoney(surcharge)));
@@ -43,7 +44,13 @@ export function ErpVatCommissionFields({
         <Input
           id="amount"
           name="amount"
-          onChange={(e) => refresh({ amount: e.target.value })}
+          onChange={(e) => {
+            const net = parseMoney(e.target.value);
+            const prevNet = parseMoney(amountValue);
+            const prevVat = parseMoney(vatValue);
+            const rate = prevNet > 0 && prevVat > 0 ? prevVat / prevNet : 0.21;
+            refresh({ amount: e.target.value, vat: String(vatForNet(net, rate)) });
+          }}
           value={amountValue}
         />
       </ErpField>

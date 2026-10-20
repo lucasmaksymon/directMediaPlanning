@@ -71,6 +71,25 @@ export type OcrMatchOption = {
   id: string;
   label: string;
   score: number;
+  /** Por qué se sugiere, para mostrarlo al usuario. */
+  reason?: string;
+};
+
+/** Mejores opciones de cada vínculo. Se muestran cuando el OCR no está seguro. */
+export type OcrCandidates = {
+  client: OcrMatchOption[];
+  vendor: OcrMatchOption[];
+  saleOrder: OcrMatchOption[];
+  purchaseOrder: OcrMatchOption[];
+  invoices: OcrMatchOption[];
+};
+
+export const EMPTY_OCR_CANDIDATES: OcrCandidates = {
+  client: [],
+  vendor: [],
+  saleOrder: [],
+  purchaseOrder: [],
+  invoices: [],
 };
 
 export type OcrDuplicate = {
@@ -87,6 +106,10 @@ export type OcrMatchResult = {
   purchaseOrder: OcrMatchOption | null;
   invoices: OcrMatchOption[];
   duplicate: OcrDuplicate | null;
+  candidates: OcrCandidates;
+  /** Dudas que no bloquean pero hay que confirmar antes de guardar. */
+  review: string[];
+  /** Sin bloqueos ni dudas: se puede importar sin revisar. */
   ready: boolean;
   blockers: string[];
 };

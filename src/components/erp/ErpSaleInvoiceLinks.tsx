@@ -3,7 +3,10 @@
 import { useMemo, useState } from "react";
 import { Autocomplete, Input } from "@/components/ui";
 import { ErpField } from "@/components/erp/ErpField";
-import { erpInputNumber, money } from "@/lib/erp";
+import { ErpOcrCandidates } from "@/components/erp/ocr/ErpOcrCandidates";
+import { erpInputNumber, money, parseMoney } from "@/lib/erp";
+import type { OcrMatchOption } from "@/lib/erp-ocr";
+import { vatForNet } from "@/lib/erp-ocr-score";
 
 export type ErpSaleOrderOption = {
   id: string;
@@ -12,6 +15,8 @@ export type ErpSaleOrderOption = {
   legalName: string;
   net: number;
   vat: number;
+  /** IVA / neto de la orden (0,21 si no se puede calcular). */
+  vatRate: number;
   remainingNet: number;
   remainingVat: number;
   remainingAmount: number;
@@ -33,6 +38,7 @@ export function ErpSaleInvoiceLinks({
   defaultReceiptRef,
   defaultAmount,
   defaultVat,
+  candidates = [],
 }: {
   orders: ErpSaleOrderOption[];
   receipts: ErpReceiptOption[];
@@ -41,21 +47,22 @@ export function ErpSaleInvoiceLinks({
   defaultReceiptRef?: string | null;
   defaultAmount?: number | string | null;
   defaultVat?: number | string | null;
+  /** Órdenes sugeridas por el OCR cuando no eligió ninguna con seguridad. */
+  candidates?: OcrMatchOption[];
 }) {
+  const hasDefaultAmount = defaultAmount != null && defaultAmount !== "";
   const [orderId, setOrderId] = useState(defaultOrderId ?? "");
   const selected = orders.find((o) => o.id === orderId);
   const [legalName, setLegalName] = useState(defaultLegalName || selected?.legalName || "");
+  // Importes del PDF, de la factura en edición o tipeados: no se pisan al cambiar la orden.
+  const [amountLocked, setAmountLocked] = useState(hasDefaultAmount);
   const [amount, setAmount] = useState(
-    defaultAmount != null && defaultAmount !== ""
-      ? erpInputNumber(defaultAmount)
-      : selected
-        ? erpInputNumber(selected.remainingNet)
-        : "0",
+    hasDefaultAmount ? erpInputNumber(defaultAmount) : selected ? erpInputNumber(selected.remainingNet) : "0",
   );
   const [vat, setVat] = useState(
     defaultVat != null && defaultVat !== ""
       ? erpInputNumber(defaultVat)
-      : selected
+      : selected && !hasDefaultAmount
         ? erpInputNumber(selected.remainingVat)
         : "0",
   );
@@ -65,6 +72,18 @@ export function ErpSaleInvoiceLinks({
   );
   const receiptValue = defaultReceiptRef ?? "";
   const receiptKnown = clientReceipts.some((r) => r.ref === receiptValue);
+  const openCandidates = candidates.filter((c) => orders.some((o) => o.id === c.id));
+
+  function pickOrder(id: string) {
+    setOrderId(id);
+    const next = orders.find((o) => o.id === id);
+    if (!next) return;
+    setLegalName(next.legalName);
+    if (!amountLocked) {
+      setAmount(erpInputNumber(next.remainingNet));
+      setVat(erpInputNumber(next.remainingVat));
+    }
+  }
 
   return (
     <>
@@ -72,20 +91,13 @@ export function ErpSaleInvoiceLinks({
         <Autocomplete
           id="saleOrderId"
           name="saleOrderId"
-          onChange={(id) => {
-            setOrderId(id);
-            const next = orders.find((o) => o.id === id);
-            if (next) {
-              setLegalName(next.legalName);
-              setAmount(erpInputNumber(next.remainingNet));
-              setVat(erpInputNumber(next.remainingVat));
-            }
-          }}
+          onChange={pickOrder}
           options={orders.map((o) => ({ value: o.id, label: o.label }))}
           placeholder="Buscar orden…"
           required
           value={orderId}
         />
+        {!orderId ? <ErpOcrCandidates onPick={pickOrder} options={openCandidates} /> : null}
         {selected && selected.invoicedAmount > 0.009 ? (
           <p className="text-xs text-muted-foreground">
             {selected.remainingAmount > 0.009
@@ -121,7 +133,11 @@ export function ErpSaleInvoiceLinks({
           id="amount"
           inputMode="decimal"
           name="amount"
-          onChange={(e) => setAmount(e.target.value)}
+          onChange={(e) => {
+            setAmountLocked(true);
+            setAmount(e.target.value);
+            setVat(String(vatForNet(parseMoney(e.target.value), selected?.vatRate ?? 0.21)));
+          }}
           value={amount}
         />
       </ErpField>

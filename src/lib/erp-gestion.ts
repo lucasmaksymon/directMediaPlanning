@@ -408,7 +408,8 @@ function uniqueIds(ids: string[]) {
   return [...new Set(ids.filter(Boolean))];
 }
 
-export async function loadPendingPayables() {
+/** `duplicates: false` saltea la búsqueda de gemelas pagadas (una ida más a la base); `paidDuplicate` queda en false. */
+export async function loadPendingPayables({ duplicates = true }: { duplicates?: boolean } = {}) {
   const invoices = await prisma.erpPurchaseInvoice.findMany({
     where: { payStatus: ERP_SETTLE.pending, paymentLinks: { none: {} }, receiptLinks: { none: {} } },
     orderBy: { dueAt: "asc" },
@@ -422,7 +423,7 @@ export async function loadPendingPayables() {
       },
     },
   });
-  const paidTwins = invoices.length
+  const paidTwins = duplicates && invoices.length
     ? await prisma.erpPurchaseInvoice.findMany({
         where: {
           payStatus: ERP_SETTLE.paid,
@@ -462,10 +463,14 @@ export async function reconcileSaleCollectStatus() {
   });
 }
 
-export async function loadPendingReceivables() {
-  await reconcileSaleCollectStatus();
+/**
+ * `reconcile: false` no escribe (ni espera esa ida a la base): las facturas con recibo
+ * igual quedan afuera por el filtro, así que el listado sale idéntico.
+ */
+export async function loadPendingReceivables({ reconcile = true }: { reconcile?: boolean } = {}) {
+  if (reconcile) await reconcileSaleCollectStatus();
   const invoices = await prisma.erpSaleInvoice.findMany({
-    where: { collectStatus: ERP_COLLECT.pending },
+    where: { collectStatus: ERP_COLLECT.pending, receiptLinks: { none: {} } },
     orderBy: { dueAt: "asc" },
     include: {
       client: { select: { name: true } },

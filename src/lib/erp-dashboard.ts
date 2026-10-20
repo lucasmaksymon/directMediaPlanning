@@ -104,11 +104,16 @@ function bucket<T extends { amount: number; overdue: boolean }>(rows: T[]): Buck
   return { count: rows.length, amount, overdueCount, overdueAmount };
 }
 
-/** Venta y compra netas de las órdenes del período (no de lo facturado). */
+/**
+ * Venta y compra netas de las órdenes del período (no de lo facturado), con el mes
+ * anterior para comparar. Una sola consulta: son pocas órdenes por mes.
+ */
 async function loadMonthlyOrderTotals(month: number, year: number) {
+  const prev = previousPeriod(month, year);
   const orders = await prisma.erpSaleOrder.findMany({
-    where: { month, year },
+    where: { OR: [{ month, year }, prev] },
     select: {
+      month: true,
       net: true,
       client: { select: { name: true } },
       purchaseOrders: { select: { net: true } },
@@ -119,11 +124,18 @@ async function loadMonthlyOrderTotals(month: number, year: number) {
   const byClient = new Map<string, { venta: number; compra: number }>();
   let venta = 0;
   let compra = 0;
+  let prevVenta = 0;
+  let prevCompra = 0;
   for (const order of orders) {
     const orderVenta = n(order.net);
     const orderCompra =
       order.purchaseOrders.reduce((s, po) => s + n(po.net), 0) +
       order.productionOrders.reduce((s, po) => s + n(po.net), 0);
+    if (order.month !== month) {
+      prevVenta += orderVenta;
+      prevCompra += orderCompra;
+      continue;
+    }
     venta += orderVenta;
     compra += orderCompra;
     const client = byClient.get(order.client.name) ?? { venta: 0, compra: 0 };
@@ -137,34 +149,26 @@ async function loadMonthlyOrderTotals(month: number, year: number) {
     .sort((a, b) => Math.abs(b.ganancia) - Math.abs(a.ganancia))
     .slice(0, 6);
 
-  return { venta, compra, topClients };
-}
-
-/** Solo sumas: el mes anterior se usa para comparar, no para listar. */
-async function loadPeriodSums(month: number, year: number) {
-  const period = { month, year };
-  const [sale, purchase, production] = await Promise.all([
-    prisma.erpSaleOrder.aggregate({ where: period, _sum: { net: true } }),
-    prisma.erpPurchaseOrder.aggregate({ where: { saleOrder: period }, _sum: { net: true } }),
-    prisma.erpProductionOrder.aggregate({ where: { saleOrder: period }, _sum: { net: true } }),
-  ]);
-  const venta = n(sale._sum.net);
-  return { venta, ganancia: venta - n(purchase._sum.net) - n(production._sum.net) };
+  return {
+    venta,
+    compra,
+    topClients,
+    previous: { ...prev, venta: prevVenta, ganancia: prevVenta - prevCompra },
+  };
 }
 
 export async function loadBackofficeDashboard(): Promise<BackofficeDashboard> {
   const now = new Date();
   const month = now.getMonth() + 1;
   const year = now.getFullYear();
-  const prev = previousPeriod(month, year);
 
+  // Una ida a la base por consulta, todas en paralelo: nada encadenado ni escrituras.
   try {
-    const [totals, previous, receivables, payables, toInvoice, cheques, campaigns, recentOrders] =
+    const [totals, receivables, payables, toInvoice, cheques, campaigns, recentOrders] =
       await Promise.all([
         loadMonthlyOrderTotals(month, year),
-        loadPeriodSums(prev.month, prev.year),
-        loadPendingReceivables(),
-        loadPendingPayables(),
+        loadPendingReceivables({ reconcile: false }),
+        loadPendingPayables({ duplicates: false }),
         loadOrdersToInvoice(),
         prisma.erpTreasuryPayment.findMany({
           where: { paymentKind: ERP_PAY.cheque, estado: ERP_PAY_STATUS.pending },
@@ -196,7 +200,7 @@ export async function loadBackofficeDashboard(): Promise<BackofficeDashboard> {
         }),
       ]);
 
-    const { venta, compra, topClients } = totals;
+    const { venta, compra, topClients, previous } = totals;
     const ganancia = venta - compra;
 
     const agenda: DashboardDue[] = [
@@ -240,7 +244,7 @@ export async function loadBackofficeDashboard(): Promise<BackofficeDashboard> {
       compra,
       ganancia,
       margen: venta !== 0 ? (ganancia * 100) / venta : null,
-      previous: { ...prev, ...previous },
+      previous,
       toInvoice: {
         count: toInvoice.length,
         amount: toInvoice.reduce((s, o) => s + o.remaining, 0),

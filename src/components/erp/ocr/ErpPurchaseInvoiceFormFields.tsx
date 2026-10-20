@@ -8,7 +8,8 @@ import { ErpDocTypeSelect } from "@/components/erp/ErpDocTypeSelect";
 import { ErpOcrImport } from "@/components/erp/ocr/ErpOcrImport";
 import { ErpOcrWarnings } from "@/components/erp/ocr/ErpOcrWarnings";
 import { ERP_SETTLE, erpInputNumber } from "@/lib/erp";
-import { ocrDraftFromMatch, type OcrFormDraft } from "@/lib/erp-ocr";
+import { ErpOcrCandidates } from "@/components/erp/ocr/ErpOcrCandidates";
+import { EMPTY_OCR_CANDIDATES, ocrDraftFromMatch, type OcrCandidates, type OcrFormDraft } from "@/lib/erp-ocr";
 
 export type PurchaseInvoiceCurrent = {
   id: string;
@@ -87,7 +88,11 @@ export function ErpPurchaseInvoiceFormFields({
   const [key, setKey] = useState(0);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [blockers, setBlockers] = useState<string[]>([]);
+  const [review, setReview] = useState<string[]>([]);
+  const [candidates, setCandidates] = useState<OcrCandidates>(EMPTY_OCR_CANDIDATES);
   const orderOptions = orders.filter((o) => o.vendorId === vendorId);
+  const vendorCandidates = candidates.vendor.filter((c) => vendors.some((v) => v.value === c.id));
+  const orderCandidates = candidates.purchaseOrder.filter((c) => orderOptions.some((o) => o.value === c.id));
 
   function applyVendor(nextVendorId: string) {
     setVendorId(nextVendorId);
@@ -110,11 +115,13 @@ export function ErpPurchaseInvoiceFormFields({
             setOrderId(next.orderId);
             setWarnings(result.extracted.warnings);
             setBlockers(result.blockers);
+            setReview(result.review);
+            setCandidates(result.candidates);
             setKey((n) => n + 1);
           }}
         />
       ) : null}
-      <ErpOcrWarnings blockers={blockers} warnings={warnings} />
+      <ErpOcrWarnings blockers={blockers} review={review} warnings={warnings} />
       <div className="contents" key={key}>
         <ErpField htmlFor="vendorId" label="Proveedor">
           <Autocomplete
@@ -126,6 +133,7 @@ export function ErpPurchaseInvoiceFormFields({
             required
             value={vendorId}
           />
+          {!vendorId ? <ErpOcrCandidates onPick={applyVendor} options={vendorCandidates} /> : null}
         </ErpField>
         <ErpField htmlFor="isCreditNote" label="Tipo de comprobante">
           <Select defaultValue={draft.isCreditNote} id="isCreditNote" name="isCreditNote">
@@ -144,6 +152,7 @@ export function ErpPurchaseInvoiceFormFields({
             required
             value={orderId}
           />
+          {!orderId ? <ErpOcrCandidates onPick={setOrderId} options={orderCandidates} /> : null}
         </ErpField>
         <ErpField htmlFor="issuedAt" label="Fecha">
           <Input defaultValue={draft.issuedAt} id="issuedAt" name="issuedAt" type="date" />

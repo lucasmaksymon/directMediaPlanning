@@ -9,7 +9,7 @@ import { ErpOcrImport } from "@/components/erp/ocr/ErpOcrImport";
 import { ErpOcrWarnings } from "@/components/erp/ocr/ErpOcrWarnings";
 import { ErpSaleInvoiceLinks, type ErpReceiptOption, type ErpSaleOrderOption } from "@/components/erp/ErpSaleInvoiceLinks";
 import { ERP_COLLECT, erpInputNumber } from "@/lib/erp";
-import { ocrDraftFromMatch, type OcrFormDraft } from "@/lib/erp-ocr";
+import { ocrDraftFromMatch, type OcrFormDraft, type OcrMatchOption } from "@/lib/erp-ocr";
 
 export type SaleInvoiceCurrent = {
   id: string;
@@ -88,6 +88,8 @@ export function ErpSaleInvoiceFormFields({
   const [key, setKey] = useState(0);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [blockers, setBlockers] = useState<string[]>([]);
+  const [review, setReview] = useState<string[]>([]);
+  const [candidates, setCandidates] = useState<OcrMatchOption[]>([]);
 
   return (
     <>
@@ -100,13 +102,16 @@ export function ErpSaleInvoiceFormFields({
             setDraft(ocrDraftFromMatch(result));
             setWarnings(result.extracted.warnings);
             setBlockers(result.blockers);
+            setReview(result.review);
+            setCandidates(result.candidates.saleOrder);
             setKey((n) => n + 1);
           }}
         />
       ) : null}
-      <ErpOcrWarnings blockers={blockers} warnings={warnings} />
+      <ErpOcrWarnings blockers={blockers} review={review} warnings={warnings} />
       <div className="contents" key={key}>
         <ErpSaleInvoiceLinks
+          candidates={candidates}
           defaultAmount={draft.amount || undefined}
           defaultLegalName={draft.legalName || undefined}
           defaultOrderId={draft.saleOrderId || undefined}

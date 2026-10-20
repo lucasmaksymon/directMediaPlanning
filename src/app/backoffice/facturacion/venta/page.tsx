@@ -102,6 +102,7 @@ export default async function ErpFacturasVentaPage({
                 legalName: o.client.legalName?.trim() || o.client.name,
                 net: Number(o.net),
                 vat: Number(o.vat),
+                vatRate: Number(o.net) > 0 ? Number(o.vat) / Number(o.net) : 0.21,
                 remainingNet: remaining.net,
                 remainingVat: remaining.vat,
                 remainingAmount: remaining.amount,

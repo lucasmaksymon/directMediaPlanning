@@ -16,7 +16,8 @@ import {
   erpInputNumber,
   selectOptions,
 } from "@/lib/erp";
-import { ocrDraftFromMatch, type OcrFormDraft } from "@/lib/erp-ocr";
+import { ErpOcrCandidates } from "@/components/erp/ocr/ErpOcrCandidates";
+import { EMPTY_OCR_CANDIDATES, ocrDraftFromMatch, type OcrCandidates, type OcrFormDraft } from "@/lib/erp-ocr";
 
 export type SaleReceiptCurrent = {
   id: string;
@@ -100,6 +101,11 @@ export function ErpSaleReceiptFormFields({
   const [key, setKey] = useState(0);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [blockers, setBlockers] = useState<string[]>([]);
+  const [review, setReview] = useState<string[]>([]);
+  const [candidates, setCandidates] = useState<OcrCandidates>(EMPTY_OCR_CANDIDATES);
+  const [clientId, setClientId] = useState(draft.clientId);
+  const [invoiceIds, setInvoiceIds] = useState<string[]>(draft.invoiceIds);
+  const invoiceCandidates = candidates.invoices.filter((c) => invoices.some((i) => i.value === c.id));
 
   const paymentRows =
     draft.payments.length > 0
@@ -113,24 +119,36 @@ export function ErpSaleReceiptFormFields({
         <ErpOcrImport
           kind="sale_receipt"
           onResult={(result) => {
-            setDraft(ocrDraftFromMatch(result));
+            const next = ocrDraftFromMatch(result);
+            setDraft(next);
+            setClientId(next.clientId);
+            setInvoiceIds(next.invoiceIds);
             setWarnings(result.extracted.warnings);
             setBlockers(result.blockers);
+            setReview(result.review);
+            setCandidates(result.candidates);
             setKey((n) => n + 1);
           }}
         />
       ) : null}
-      <ErpOcrWarnings blockers={blockers} warnings={warnings} />
+      <ErpOcrWarnings blockers={blockers} review={review} warnings={warnings} />
       <div className="contents" key={key}>
         <ErpField htmlFor="clientId" label="Cliente">
           <Autocomplete
-            defaultValue={draft.clientId}
             id="clientId"
             name="clientId"
+            onChange={setClientId}
             options={clients}
             placeholder="Buscar cliente…"
             required
+            value={clientId}
           />
+          {!clientId ? (
+            <ErpOcrCandidates
+              onPick={setClientId}
+              options={candidates.client.filter((c) => clients.some((cl) => cl.value === c.id))}
+            />
+          ) : null}
         </ErpField>
         <ErpField htmlFor="number" label="Número">
           <Input defaultValue={draft.number} id="number" name="number" required type="number" />
@@ -146,13 +164,19 @@ export function ErpSaleReceiptFormFields({
         </ErpField>
         <ErpField htmlFor="invoiceId" label="Facturas" wide>
           <Autocomplete
-            defaultValue={draft.invoiceIds}
             emptyLabel="Sin facturas"
             id="invoiceId"
             multiple
             name="invoiceId"
+            onChange={setInvoiceIds}
             options={invoices}
             placeholder="Buscar factura…"
+            value={invoiceIds}
+          />
+          <ErpOcrCandidates
+            onPick={(id) => setInvoiceIds((prev) => (prev.includes(id) ? prev : [...prev, id]))}
+            options={invoiceCandidates}
+            selected={invoiceIds}
           />
         </ErpField>
         <ErpField htmlFor="attachmentUrl" label="Adjunto" wide>

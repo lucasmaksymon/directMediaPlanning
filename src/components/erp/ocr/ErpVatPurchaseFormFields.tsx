@@ -9,7 +9,8 @@ import { ErpVatCommissionFields } from "@/components/erp/ErpVatCommissionFields"
 import { ErpOcrImport } from "@/components/erp/ocr/ErpOcrImport";
 import { ErpOcrWarnings } from "@/components/erp/ocr/ErpOcrWarnings";
 import { erpInputNumber, vatPurchaseCommission } from "@/lib/erp";
-import { ocrDraftFromMatch } from "@/lib/erp-ocr";
+import { ErpOcrCandidates } from "@/components/erp/ocr/ErpOcrCandidates";
+import { EMPTY_OCR_CANDIDATES, ocrDraftFromMatch, type OcrCandidates } from "@/lib/erp-ocr";
 
 export type VatPurchaseCurrent = {
   id: string;
@@ -70,6 +71,10 @@ export function ErpVatPurchaseFormFields({
   const [key, setKey] = useState(0);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [blockers, setBlockers] = useState<string[]>([]);
+  const [review, setReview] = useState<string[]>([]);
+  const [candidates, setCandidates] = useState<OcrCandidates>(EMPTY_OCR_CANDIDATES);
+  const [vendorId, setVendorId] = useState(draft.vendorId);
+  const [orderId, setOrderId] = useState(draft.orderId);
 
   return (
     <>
@@ -82,9 +87,14 @@ export function ErpVatPurchaseFormFields({
           vatPurchase
           onResult={(result) => {
             const next = ocrDraftFromMatch(result);
+            const nextOrderId = orders.some((o) => o.value === next.orderId) ? next.orderId : "";
+            setVendorId(next.vendorId);
+            setOrderId(nextOrderId);
+            setReview(result.review);
+            setCandidates(result.candidates);
             setDraft({
               vendorId: next.vendorId,
-              orderId: orders.some((o) => o.value === next.orderId) ? next.orderId : "",
+              orderId: nextOrderId,
               issuedAt: next.issuedAt || now,
               docType: next.docType || "A",
               pos: next.pos || "1",
@@ -100,26 +110,40 @@ export function ErpVatPurchaseFormFields({
           }}
         />
       ) : null}
-      <ErpOcrWarnings blockers={blockers} warnings={warnings} />
+      <ErpOcrWarnings blockers={blockers} review={review} warnings={warnings} />
       <div className="contents" key={key}>
         <ErpField htmlFor="vendorId" label="Proveedor">
           <Autocomplete
-            defaultValue={draft.vendorId}
             id="vendorId"
             name="vendorId"
+            onChange={setVendorId}
             options={vendors}
             placeholder="Buscar proveedor…"
             required
+            value={vendorId}
           />
+          {!vendorId ? (
+            <ErpOcrCandidates
+              onPick={setVendorId}
+              options={candidates.vendor.filter((c) => vendors.some((v) => v.value === c.id))}
+            />
+          ) : null}
         </ErpField>
         <ErpField htmlFor="orderId" label="Orden de compra o producción">
           <Autocomplete
-            defaultValue={draft.orderId}
             id="orderId"
             name="orderId"
+            onChange={setOrderId}
             options={orders}
             placeholder="Opcional"
+            value={orderId}
           />
+          {!orderId && vendorId ? (
+            <ErpOcrCandidates
+              onPick={setOrderId}
+              options={candidates.purchaseOrder.filter((c) => orders.some((o) => o.value === c.id))}
+            />
+          ) : null}
         </ErpField>
         <ErpField htmlFor="issuedAt" label="Fecha">
           <Input defaultValue={draft.issuedAt} id="issuedAt" name="issuedAt" type="date" />

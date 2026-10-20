@@ -15,7 +15,14 @@ import { Alert, Autocomplete, Badge, Button, Checkbox, Input, Modal, Table, TBod
 import { ErpOcrDropzone } from "@/components/erp/ocr/ErpOcrDropzone";
 import { cn } from "@/lib/cn";
 import { ocrFormData } from "@/lib/erp-ocr-file";
-import { ocrDraftFromMatch, type OcrFormDraft, type OcrKind, type OcrMatchResult } from "@/lib/erp-ocr";
+import {
+  EMPTY_OCR_CANDIDATES,
+  ocrDraftFromMatch,
+  type OcrFormDraft,
+  type OcrKind,
+  type OcrMatchResult,
+} from "@/lib/erp-ocr";
+import { vatForNet } from "@/lib/erp-ocr-score";
 
 const TOOLBAR_SLOT = "[data-erp-page-toolbar]";
 
@@ -79,9 +86,26 @@ function emptyDraft(): OcrFormDraft {
     purchaseOrder: null,
     invoices: [],
     duplicate: null,
+    candidates: EMPTY_OCR_CANDIDATES,
+    review: [],
     ready: false,
     blockers: [],
   });
+}
+
+/** Sugerencias del OCR primero, para elegir rápido cuando no está seguro. */
+function candidatesFirst<T extends { value: string }>(options: T[], candidates: { id: string }[] | undefined) {
+  if (!candidates?.length) return options;
+  const ids = candidates.map((c) => c.id);
+  const first = ids.map((id) => options.find((o) => o.value === id)).filter(Boolean) as T[];
+  return [...first, ...options.filter((o) => !ids.includes(o.value))];
+}
+
+function nextVat(draft: OcrFormDraft, amount: string) {
+  const prevNet = Number(draft.amount) || 0;
+  const prevVat = Number(draft.vat) || 0;
+  const rate = prevNet > 0 && prevVat > 0 ? prevVat / prevNet : 0.21;
+  return String(vatForNet(Number(amount) || 0, rate));
 }
 
 function rowReady(kind: OcrKind, row: ImportRow, vatPurchase = false) {
@@ -99,6 +123,7 @@ function statusBadge(row: ImportRow, kind: OcrKind, vatPurchase: boolean) {
   if (row.status === "imported") return <Badge variant="success">Importado</Badge>;
   if (row.status === "failed") return <Badge variant="error">Falló</Badge>;
   if (row.result?.duplicate) return <Badge variant="warning">Duplicado</Badge>;
+  if (row.result?.review.length) return <Badge variant="warning">Revisar</Badge>;
   if (rowReady(kind, row, vatPurchase)) return <Badge variant="success">Listo</Badge>;
   return <Badge variant="warning">Incompleto</Badge>;
 }
@@ -192,7 +217,10 @@ export function ErpOcrImportClient({
           selected: false,
           error: undefined,
         };
-        return { ...next, selected: vatPurchase ? rowReady(kind, next, true) : res.result.ready };
+        const doubtFree =
+          res.result.review.length === 0 &&
+          res.result.blockers.every((b) => vatPurchase && /orden/i.test(b));
+        return { ...next, selected: rowReady(kind, next, vatPurchase) && doubtFree };
       });
     }
     setBusy(false);
@@ -395,6 +423,11 @@ export function ErpOcrImportClient({
                           {row.result.blockers.filter((b) => !vatPurchase || !/orden/i.test(b)).join(" · ")}
                         </p>
                       ) : null}
+                      {row.result?.review.length && row.status === "review" ? (
+                        <p className="max-w-[16rem] text-[11px] text-[var(--warning,#b54708)]">
+                          Revisar: {row.result.review.join(" · ")}
+                        </p>
+                      ) : null}
                     </TD>
                     <TD>{statusBadge(row, kind, vatPurchase)}</TD>
                     <TD className="max-w-[12rem]">
@@ -446,7 +479,16 @@ export function ErpOcrImportClient({
                         <Input
                           defaultValue={row.draft.amount}
                           key={`${row.id}-a-${row.draft.amount}`}
-                          onBlur={(e) => updateRow(row.id, (current) => patchDraft(current, { amount: e.target.value }))}
+                          onBlur={(e) =>
+                            updateRow(row.id, (current) =>
+                              e.target.value === current.draft.amount
+                                ? current
+                                : patchDraft(current, {
+                                    amount: e.target.value,
+                                    ...(kind === "sale_receipt" ? {} : { vat: nextVat(current.draft, e.target.value) }),
+                                  }),
+                            )
+                          }
                         />
                         <Input
                           className={cn(kind === "sale_receipt" && "hidden")}
@@ -461,7 +503,7 @@ export function ErpOcrImportClient({
                         <Autocomplete
                           compact
                           onChange={(value) => updateRow(row.id, (current) => patchDraft(current, { saleOrderId: value }))}
-                          options={saleOrders}
+                          options={candidatesFirst(saleOrders, row.result?.candidates.saleOrder)}
                           placeholder="O.P. venta…"
                           value={row.draft.saleOrderId}
                         />
@@ -481,7 +523,7 @@ export function ErpOcrImportClient({
                                 });
                               })
                             }
-                            options={vendors}
+                            options={candidatesFirst(vendors, row.result?.candidates.vendor)}
                             placeholder="Proveedor…"
                             value={row.draft.vendorId}
                           />
@@ -489,7 +531,10 @@ export function ErpOcrImportClient({
                             compact
                             disabled={!row.draft.vendorId}
                             onChange={(value) => updateRow(row.id, (current) => patchDraft(current, { orderId: value }))}
-                            options={purchaseOrders.filter((o) => o.vendorId === row.draft.vendorId)}
+                            options={candidatesFirst(
+                              purchaseOrders.filter((o) => o.vendorId === row.draft.vendorId),
+                              row.result?.candidates.purchaseOrder,
+                            )}
                             placeholder={
                               !row.draft.vendorId
                                 ? "Elegí un proveedor…"
@@ -506,7 +551,7 @@ export function ErpOcrImportClient({
                           <Autocomplete
                             compact
                             onChange={(value) => updateRow(row.id, (current) => patchDraft(current, { clientId: value }))}
-                            options={clients}
+                            options={candidatesFirst(clients, row.result?.candidates.client)}
                             placeholder="Cliente…"
                             value={row.draft.clientId}
                           />
@@ -516,7 +561,7 @@ export function ErpOcrImportClient({
                             onChange={(value) =>
                               updateRow(row.id, (current) => patchDraft(current, { invoiceIds: value }))
                             }
-                            options={invoiceOptions}
+                            options={candidatesFirst(invoiceOptions, row.result?.candidates.invoices)}
                             placeholder="Facturas…"
                             value={row.draft.invoiceIds}
                           />

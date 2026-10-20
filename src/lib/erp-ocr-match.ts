@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import {
+  ERP_CASH_MODE,
   ERP_COLLECT,
   ERP_ORDER,
+  erpCashMode,
+  invoiceCoverAmount,
   isSaleOrderOpen,
   money,
   saleOrderInvoiceCover,
@@ -9,6 +12,14 @@ import {
   saleOrderRemaining,
 } from "@/lib/erp";
 import {
+  amountReview,
+  fitScore,
+  pickSure,
+  scoreSaleOrder,
+  scoreSupplierOrder,
+} from "@/lib/erp-ocr-score";
+import {
+  EMPTY_OCR_CANDIDATES,
   fixOcrDueByTerms,
   foldName,
   isOurCompany,
@@ -61,12 +72,6 @@ export function nameScore(query: OcrParty, candidate: { name: string; legalName?
   return best >= 0.5 ? 0.5 + best * 0.3 : 0;
 }
 
-function amountScore(left: number | null | undefined, right: number | null | undefined) {
-  if (left == null || right == null || (left === 0 && right === 0)) return 0.3;
-  const max = Math.max(Math.abs(left), Math.abs(right), 1);
-  return Math.max(0, 1 - Math.abs(left - right) / max);
-}
-
 function dateScore(left: string | null | undefined, right: Date | null | undefined) {
   if (!left || !right) return 0.4;
   const a = new Date(`${left}T12:00:00`).getTime();
@@ -80,8 +85,21 @@ function option(id: string, label: string, score: number): OcrMatchOption {
   return { id, label, score: Math.round(score * 100) / 100 };
 }
 
-function best(options: OcrMatchOption[], min = 0.45) {
-  return options[0] && options[0].score >= min ? options[0] : null;
+const supplierOrderSelect = {
+  id: true,
+  number: true,
+  amount: true,
+  net: true,
+  cashAmount: true,
+  cashPayment: true,
+  issuedAt: true,
+  vendorId: true,
+  vendor: { select: { name: true } },
+  invoiceLinks: { select: { invoice: { select: { amount: true, vat: true, isCreditNote: true } } } },
+} as const;
+
+function topOptions(options: OcrMatchOption[], min = 0.3, max = 5) {
+  return options.filter((o) => o.score >= min).slice(0, max);
 }
 
 function partyForKind(extracted: OcrExtracted, kind: OcrKind): OcrParty {
@@ -152,37 +170,21 @@ export async function matchOcrExtracted(
               cashAmount: true,
               issuedAt: true,
               estado: true,
+              product: true,
+              month: true,
+              year: true,
               clientId: true,
               client: { select: { name: true } },
+              items: { select: { element: true } },
               invoices: { select: { amount: true, vat: true } },
             },
           })
         : Promise.resolve([]),
       kind === "purchase_invoice"
-        ? prisma.erpPurchaseOrder.findMany({
-            where: orderFilter,
-            select: {
-              id: true,
-              number: true,
-              amount: true,
-              issuedAt: true,
-              vendorId: true,
-              vendor: { select: { name: true } },
-            },
-          })
+        ? prisma.erpPurchaseOrder.findMany({ where: orderFilter, select: supplierOrderSelect })
         : Promise.resolve([]),
       kind === "purchase_invoice"
-        ? prisma.erpProductionOrder.findMany({
-            where: orderFilter,
-            select: {
-              id: true,
-              number: true,
-              amount: true,
-              issuedAt: true,
-              vendorId: true,
-              vendor: { select: { name: true } },
-            },
-          })
+        ? prisma.erpProductionOrder.findMany({ where: orderFilter, select: supplierOrderSelect })
         : Promise.resolve([]),
       kind === "sale_invoice"
         ? prisma.erpSaleInvoice.findMany({
@@ -270,8 +272,10 @@ export async function matchOcrExtracted(
     .filter((row) => row.score > 0)
     .sort((a, b) => b.score - a.score);
 
-  const client = best(clientOptions);
-  const vendor = best(vendorOptions);
+  const client = pickSure(clientOptions, 0.9);
+  const vendor = pickSure(vendorOptions, 0.9);
+  const clientGuess = client ?? clientOptions[0] ?? null;
+  const vendorGuess = vendor ?? vendorOptions[0] ?? null;
 
   const paymentDays =
     kind === "purchase_invoice"
@@ -281,45 +285,54 @@ export async function matchOcrExtracted(
         : undefined;
   if (paymentDays != null) extracted = fixOcrDueByTerms(extracted, paymentDays);
 
+  const saleRemaining = new Map<string, number>();
   const saleOrderOptions = saleOrders
     .filter((order) => isSaleOrderOpen(order, saleOrderInvoiceCover(order.invoices)))
     .map((order) => {
-      const invoiced = saleOrderInvoiceCover(order.invoices);
-      const remaining = saleOrderRemaining(order, invoiced);
-      const target = remaining.amount > 0.009 ? remaining.amount : Number(order.amount);
-      const partyBoost = client && order.clientId === client.id ? 1 : 0.15;
-      const openBoost = remaining.amount > 0.009 ? 0.08 : 0;
-      const score =
-        partyBoost * 0.5 +
-        amountScore(target, total) * 0.3 +
-        dateScore(extracted.issuedAt, order.issuedAt) * 0.2 +
-        openBoost;
-      return option(order.id, saleOrderPickLabel(order, remaining), score);
+      const remaining = saleOrderRemaining(order, saleOrderInvoiceCover(order.invoices));
+      saleRemaining.set(order.id, remaining.amount);
+      const scored = scoreSaleOrder({
+        sameClient: Boolean(clientGuess && order.clientId === clientGuess.id),
+        detail: extracted.detail,
+        total,
+        issuedAt: extracted.issuedAt,
+        order: {
+          number: order.number,
+          product: order.product,
+          elements: order.items.map((item) => item.element ?? ""),
+          month: order.month,
+          year: order.year,
+          remaining: remaining.amount,
+          full: saleOrderRemaining(order, { amount: 0, vat: 0 }).amount,
+        },
+      });
+      return { ...option(order.id, saleOrderPickLabel(order, remaining), scored.score), reason: scored.reason };
     })
     .sort((a, b) => b.score - a.score);
 
+  const supplierRemaining = new Map<string, number>();
   const purchaseOrderOptions = [
-    ...purchaseOrders.map((order) => ({
-      ...order,
-      label: `Compra ${order.number} · ${order.vendor.name} · ${money(order.amount)}`,
-    })),
-    ...productionOrders.map((order) => ({
-      ...order,
-      label: `Producción ${order.number} · ${order.vendor.name} · ${money(order.amount)}`,
-    })),
+    ...purchaseOrders.map((order) => ({ ...order, prefix: "Compra" })),
+    ...productionOrders.map((order) => ({ ...order, prefix: "Producción" })),
   ]
-    .filter((order) => vendor && order.vendorId === vendor.id)
+    .filter((order) => vendorGuess && order.vendorId === vendorGuess.id)
+    .filter((order) => erpCashMode(Number(order.net), Number(order.cashAmount), order.cashPayment) !== ERP_CASH_MODE.cash)
     .map((order) => {
-      const score =
-        0.5 +
-        amountScore(Number(order.amount), total) * 0.3 +
-        dateScore(extracted.issuedAt, order.issuedAt) * 0.2;
-      return option(order.id, order.label, score);
+      const full = Number(order.amount) - Number(order.cashAmount);
+      const covered = order.invoiceLinks.reduce((s, link) => s + invoiceCoverAmount(link.invoice), 0);
+      const remaining = Math.max(0, full - covered);
+      supplierRemaining.set(order.id, remaining);
+      const scored = scoreSupplierOrder(fitScore(total, remaining, full), dateScore(extracted.issuedAt, order.issuedAt));
+      const label = `${order.prefix} ${order.number} · ${order.vendor.name} · ${money(order.amount)} · resta ${money(remaining)}`;
+      return { ...option(order.id, label, scored.score), reason: scored.reason };
     })
     .sort((a, b) => b.score - a.score);
 
   const missingInvoiceRefs: string[] = [];
   const invoiceOptions: OcrMatchOption[] = [];
+  const invoiceCandidates: OcrMatchOption[] = [];
+  const review: string[] = [];
+  let pickedInvoicesTotal = 0;
   if (kind === "sale_receipt") {
     for (const ref of receiptRefs) {
       const number = ref.number as number;
@@ -331,17 +344,40 @@ export async function matchOcrExtracted(
         missingInvoiceRefs.push(label);
         continue;
       }
-      for (const invoice of hits) {
-        if (invoice.collectStatus === ERP_COLLECT.collected) continue;
-        if (client && invoice.clientId !== client.id) continue;
-        invoiceOptions.push(
-          option(
-            invoice.id,
-            `${invoice.client.name} · ${docLabel(invoice.docType, invoice.pos, invoice.number)} · ${money(Number(invoice.amount) + Number(invoice.vat))}`,
-            0.95,
-          ),
-        );
+      const usable = hits.filter(
+        (invoice) =>
+          invoice.collectStatus !== ERP_COLLECT.collected && (!clientGuess || invoice.clientId === clientGuess.id),
+      );
+      const asOption = (invoice: (typeof hits)[number], score: number, reason?: string) => ({
+        ...option(
+          invoice.id,
+          `${invoice.client.name} · ${docLabel(invoice.docType, invoice.pos, invoice.number)} · ${money(Number(invoice.amount) + Number(invoice.vat))}`,
+          score,
+        ),
+        reason,
+      });
+      if (usable.length === 1 && client) {
+        invoiceOptions.push(asOption(usable[0], 0.95));
+        pickedInvoicesTotal += Number(usable[0].amount) + Number(usable[0].vat);
+        continue;
       }
+      if (usable.length > 1) {
+        review.push(`La factura ${label} coincide con ${usable.length} facturas del sistema: elegí cuál.`);
+        for (const invoice of usable) invoiceCandidates.push(asOption(invoice, 0.6, "mismo número"));
+        continue;
+      }
+      if (usable.length === 1) {
+        review.push(`Confirmá la factura ${label}: el cliente no se identificó con seguridad.`);
+        invoiceCandidates.push(asOption(usable[0], 0.6, "mismo número"));
+        continue;
+      }
+      const collected = hits.some((invoice) => invoice.collectStatus === ERP_COLLECT.collected);
+      review.push(
+        collected
+          ? `La factura ${label} ya figura cobrada: revisá si corresponde a este recibo.`
+          : `La factura ${label} es de otro cliente: revisá el cliente o la factura.`,
+      );
+      for (const invoice of hits) invoiceCandidates.push(asOption(invoice, 0.4, collected ? "ya cobrada" : "otro cliente"));
     }
   }
 
@@ -385,20 +421,86 @@ export async function matchOcrExtracted(
     }
   }
 
-  const saleOrder = kind === "sale_invoice" ? best(saleOrderOptions, 0.55) : null;
-  const purchaseOrder = kind === "purchase_invoice" ? best(purchaseOrderOptions, 0.55) : null;
+  const saleOrder = kind === "sale_invoice" && client ? pickSure(saleOrderOptions) : null;
+  const purchaseOrder = kind === "purchase_invoice" && vendor ? pickSure(purchaseOrderOptions) : null;
   const invoices = invoiceOptions.filter((row) => row.score >= 0.7).slice(0, 8);
 
   const blockers: string[] = [];
   if (extracted.number == null) blockers.push("Falta el número.");
   if (!extracted.issuedAt) blockers.push("Falta la fecha.");
-  if (kind !== "purchase_invoice" && !client) blockers.push("No hay cliente coincidente. Elegilo a mano.");
-  if (kind === "purchase_invoice" && !vendor) blockers.push("No hay proveedor coincidente. Elegilo a mano.");
-  if (kind === "sale_invoice" && !saleOrder) blockers.push("Falta vincular una O.P. de venta.");
-  if (kind === "purchase_invoice" && !purchaseOrder) blockers.push("Falta vincular una orden de compra o producción.");
+  if (kind !== "sale_receipt" && !(extracted.amount ?? 0)) blockers.push("Falta el importe neto.");
+  if (kind === "sale_receipt" && !(extracted.amount ?? extracted.total ?? 0)) blockers.push("Falta el importe del recibo.");
+  if (kind !== "purchase_invoice" && !client) {
+    blockers.push(
+      clientOptions.length
+        ? "No estoy seguro del cliente: elegí el correcto entre las opciones."
+        : "No hay cliente coincidente. Elegilo a mano.",
+    );
+  }
+  if (kind === "purchase_invoice" && !vendor) {
+    blockers.push(
+      vendorOptions.length
+        ? "No estoy seguro del proveedor: elegí el correcto entre las opciones."
+        : "No hay proveedor coincidente. Elegilo a mano.",
+    );
+  }
+  const saleTop = topOptions(saleOrderOptions);
+  const purchaseTop = topOptions(purchaseOrderOptions);
+  if (kind === "sale_invoice" && !saleOrder) {
+    blockers.push(
+      saleTop.length > 1
+        ? `Hay ${saleTop.length} órdenes posibles: elegí la correcta.`
+        : saleTop.length === 1
+          ? "Confirmá la O.P. de venta sugerida."
+          : "Falta vincular una O.P. de venta.",
+    );
+  }
+  if (kind === "purchase_invoice" && !purchaseOrder) {
+    blockers.push(
+      purchaseTop.length > 1
+        ? `Hay ${purchaseTop.length} órdenes de compra o producción posibles: elegí la correcta.`
+        : purchaseTop.length === 1
+          ? "Confirmá la orden de compra o producción sugerida."
+          : "Falta vincular una orden de compra o producción.",
+    );
+  }
   if (duplicate) blockers.push(`Ya existe ${duplicate.label}.`);
   for (const label of missingInvoiceRefs) {
     blockers.push(`No encontré la factura ${label} en el sistema.`);
+  }
+
+  if (kind !== "sale_receipt") {
+    review.push(
+      ...amountReview({
+        docType: extracted.docType,
+        amount: extracted.amount,
+        vat: extracted.vat,
+        total: extracted.total,
+        extras:
+          (extracted.nonTaxable ?? 0) +
+          (extracted.internalTax ?? 0) +
+          (kind === "purchase_invoice"
+            ? (extracted.iibbCaba ?? 0) + (extracted.iibbBsAs ?? 0) + (extracted.vatWithholding ?? 0)
+            : 0),
+        confidence: extracted.fieldConfidence,
+      }),
+    );
+    const picked = saleOrder ?? purchaseOrder;
+    const remaining = picked ? (saleRemaining.get(picked.id) ?? supplierRemaining.get(picked.id)) : undefined;
+    if (picked && remaining != null && total > remaining + 1 && !extracted.isCreditNote) {
+      review.push(`La factura (${money(total)}) supera lo que resta de la orden (${money(remaining)}).`);
+    }
+  } else {
+    const receiptTotal = extracted.amount ?? extracted.total ?? 0;
+    const paid = extracted.payments.reduce((s, p) => s + (p.amount || 0), 0);
+    if (extracted.payments.length && Math.abs(paid - receiptTotal) > 1) {
+      review.push(`Los pagos suman ${money(paid)} y el recibo dice ${money(receiptTotal)}.`);
+    }
+    if (invoices.length && invoices.length === receiptRefs.length && Math.abs(pickedInvoicesTotal - receiptTotal) > 1) {
+      review.push(`Las facturas suman ${money(pickedInvoicesTotal)} y el recibo dice ${money(receiptTotal)}.`);
+    }
+    const low = ["amount", "number"].filter((k) => (extracted.fieldConfidence[k] ?? 1) < 0.8);
+    if (low.length) review.push("El OCR no está seguro del importe o el número del recibo.");
   }
 
   return {
@@ -409,7 +511,16 @@ export async function matchOcrExtracted(
     purchaseOrder,
     invoices,
     duplicate,
-    ready: blockers.length === 0,
+    candidates: {
+      ...EMPTY_OCR_CANDIDATES,
+      client: kind === "purchase_invoice" ? [] : topOptions(clientOptions),
+      vendor: kind === "purchase_invoice" ? topOptions(vendorOptions) : [],
+      saleOrder: saleTop,
+      purchaseOrder: purchaseTop,
+      invoices: invoiceCandidates,
+    },
+    review,
+    ready: blockers.length === 0 && review.length === 0,
     blockers,
   };
 }
