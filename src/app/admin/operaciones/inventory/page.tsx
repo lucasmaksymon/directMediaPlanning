@@ -20,7 +20,7 @@ import {
   withPageParam,
 } from "@/lib/pagination";
 
-import { isInternalRole } from "@/lib/roles";
+import { isPlanningRole } from "@/lib/roles";
 const statusDot: Record<string, string> = {
   published: "bg-led",
   draft: "bg-muted-foreground",
@@ -36,7 +36,7 @@ export default async function AdminInventoryPage({
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (!isInternalRole(session.user.role)) redirect("/");
+  if (!isPlanningRole(session.user.role)) redirect("/");
 
   const sp = await searchParams;
   const q = firstSearchParam(sp, "q");

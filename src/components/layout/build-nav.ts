@@ -1,4 +1,4 @@
-import { isInternalRole } from "@/lib/roles";
+import { isAdministrationRole, isAdminRole, isPlanningRole } from "@/lib/roles";
 export type NavItem = { href: string; label: string };
 
 type AuthLike = {
@@ -25,35 +25,29 @@ export function buildHeaderNav(session: AuthLike): {
 
   const role = session.user.role;
 
-  if (isInternalRole(role)) {
+  if (isPlanningRole(role) || isAdministrationRole(role)) {
     const ops: NavItem = { href: "/admin", label: "Operaciones" };
     const backoffice: NavItem = { href: "/backoffice", label: "Administración" };
-    return {
-      desktop: [catalog, ops, backoffice],
-      mobilePrimary: [catalog, ops, backoffice],
-      mobileSections: [
-        {
-          title: "Operaciones",
-          items: [
-            { href: "/admin", label: "Métricas" },
-            { href: "/admin/reservas", label: "Reservas" },
-            { href: "/admin/operaciones/inventory", label: "Inventario" },
-            { href: "/admin/presentaciones", label: "Presentaciones" },
-            ...(role === "admin" ? [{ href: "/admin/usuarios", label: "Usuarios" }] : []),
-          ],
-        },
-        {
-          title: "Administración",
-          items: [
-            { href: "/backoffice", label: "Inicio" },
-            { href: "/backoffice/gestion", label: "Gestión" },
-            { href: "/backoffice/ordenes/venta", label: "O.P. Venta" },
-            { href: "/backoffice/informe", label: "Informe mensual" },
-            { href: "/backoffice/clientes", label: "Clientes" },
-          ],
-        },
-      ],
-    };
+    const opsItems: NavItem[] = [
+      { href: "/admin", label: "Métricas" },
+      { href: "/admin/reservas", label: "Reservas" },
+      { href: "/admin/operaciones/inventory", label: "Inventario" },
+      { href: "/admin/presentaciones", label: "Presentaciones" },
+      ...(isAdminRole(role) ? [{ href: "/admin/usuarios", label: "Usuarios" }] : []),
+    ];
+    const backofficeItems: NavItem[] = [
+      { href: "/backoffice", label: "Inicio" },
+      { href: "/backoffice/gestion", label: "Gestión" },
+      { href: "/backoffice/ordenes/venta", label: "O.P. Venta" },
+      { href: "/backoffice/informe", label: "Informe mensual" },
+      { href: "/backoffice/clientes", label: "Clientes" },
+    ];
+    const desktop = [catalog, ...(isPlanningRole(role) ? [ops] : []), ...(isAdministrationRole(role) ? [backoffice] : [])];
+    const mobileSections = [
+      ...(isPlanningRole(role) ? [{ title: "Operaciones", items: opsItems }] : []),
+      ...(isAdministrationRole(role) ? [{ title: "Administración", items: backofficeItems }] : []),
+    ];
+    return { desktop, mobilePrimary: desktop, mobileSections };
   }
 
   if (role === "advertiser") {

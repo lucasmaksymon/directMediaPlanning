@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import { clientKey, rateLimit } from "@/lib/rate-limit";
-import { isInternalRole } from "@/lib/roles";
+import { isAdministrationRole, isAdminRole, isPlanningRole } from "@/lib/roles";
 
 function redirectToLogin(req: { url: string; nextUrl: URL }) {
   const login = new URL("/login", req.url);
@@ -38,22 +38,27 @@ export default auth((req) => {
 
   if (pathname.startsWith("/provider")) {
     if (!session) return NextResponse.redirect(new URL("/login", req.url));
-    if (role !== "provider" && !isInternalRole(role)) return NextResponse.redirect(new URL("/", req.url));
+    if (role !== "provider" && !isAdminRole(role)) return NextResponse.redirect(new URL("/", req.url));
   }
 
-  if (pathname.startsWith("/admin") || pathname.startsWith("/backoffice")) {
+  if (pathname.startsWith("/admin")) {
     if (!session) return NextResponse.redirect(new URL("/login", req.url));
-    if (!isInternalRole(role)) return NextResponse.redirect(new URL("/", req.url));
+    if (!isPlanningRole(role)) return NextResponse.redirect(new URL("/", req.url));
+  }
+
+  if (pathname.startsWith("/backoffice")) {
+    if (!session) return NextResponse.redirect(new URL("/login", req.url));
+    if (!isAdministrationRole(role)) return NextResponse.redirect(new URL("/", req.url));
   }
 
   if (pathname.startsWith("/advertiser")) {
     if (!session) return NextResponse.redirect(new URL("/login", req.url));
-    if (role !== "advertiser" && !isInternalRole(role)) return NextResponse.redirect(new URL("/", req.url));
+    if (role !== "advertiser" && !isAdminRole(role)) return NextResponse.redirect(new URL("/", req.url));
   }
 
   if (pathname.startsWith("/agency")) {
     if (!session) return NextResponse.redirect(new URL("/login", req.url));
-    if (role !== "agency" && !isInternalRole(role)) return NextResponse.redirect(new URL("/", req.url));
+    if (role !== "agency" && !isAdminRole(role)) return NextResponse.redirect(new URL("/", req.url));
   }
 
   return NextResponse.next();

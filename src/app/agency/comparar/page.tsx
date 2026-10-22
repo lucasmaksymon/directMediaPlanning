@@ -8,7 +8,7 @@ import { btnPrimary, panelPage, pageScroll, surfaceCard } from "@/lib/ui-classes
 import { productTitle } from "@/lib/brand";
 import { EmptyState, PageHeader } from "@/components/ui";
 
-import { isInternalRole } from "@/lib/roles";
+import { isAdminRole } from "@/lib/roles";
 export const metadata = { title: productTitle("Comparar espacios") };
 
 const formatLabels: Record<string, string> = {
@@ -23,7 +23,7 @@ export default async function AgencyCompararPage({
   searchParams: Promise<{ ids?: string }>;
 }) {
   const session = await auth();
-  if (!session?.user || (session.user.role !== "agency" && !isInternalRole(session.user.role))) {
+  if (!session?.user || (session.user.role !== "agency" && !isAdminRole(session.user.role))) {
     redirect("/");
   }
 

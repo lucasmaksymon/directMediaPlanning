@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
-import { requireOpsSession } from "@/lib/ops-access";
+import { requireAdministrationSession } from "@/lib/ops-access";
 import {
   ERP_COLLECT,
   ERP_PAY,
@@ -151,7 +151,7 @@ async function resolveDueAt(
 
 export async function createErpSaleInvoice(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const saleOrderId = requiredString(formData.get("saleOrderId"), "la orden");
     const order = await prisma.erpSaleOrder.findUniqueOrThrow({
       where: { id: saleOrderId },
@@ -209,7 +209,7 @@ export async function createErpSaleInvoice(formData: FormData): Promise<Result> 
 
 export async function updateErpSaleInvoice(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const id = requiredId(formData.get("id"));
     const current = await prisma.erpSaleInvoice.findUniqueOrThrow({
       where: { id },
@@ -274,7 +274,7 @@ export async function updateErpSaleInvoice(formData: FormData): Promise<Result> 
 
 export async function deleteErpSaleInvoice(id: string): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const invoice = await prisma.erpSaleInvoice.findUniqueOrThrow({
       where: { id },
       select: { saleOrderId: true, _count: { select: { receiptLinks: true } } },
@@ -352,7 +352,7 @@ async function purchaseInvoicePayload(formData: FormData) {
 
 export async function createErpPurchaseInvoice(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const payload = await purchaseInvoicePayload(formData);
     const invoice = await prisma.erpPurchaseInvoice.create({
       data: {
@@ -380,7 +380,7 @@ export async function createErpPurchaseInvoice(formData: FormData): Promise<Resu
 
 export async function updateErpPurchaseInvoice(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const id = requiredId(formData.get("id"));
     const prevLinks = await prisma.erpPurchaseInvoiceOrder.findMany({
       where: { invoiceId: id },
@@ -417,7 +417,7 @@ export async function updateErpPurchaseInvoice(formData: FormData): Promise<Resu
 
 export async function deleteErpPurchaseInvoice(id: string): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const invoice = await prisma.erpPurchaseInvoice.findUniqueOrThrow({
       where: { id },
       select: {
@@ -447,7 +447,7 @@ export async function erpChequeImportContext(input: {
   numbers: string[];
 }): Promise<{ ok: true; knownNumbers: string[]; clientTaxId: string } | { ok: false; error: string }> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const numbers = [...new Set(input.numbers.map((n) => n.trim()).filter(Boolean))];
     const [known, client] = await Promise.all([
       numbers.length
@@ -478,7 +478,7 @@ export async function erpChequeImportContext(input: {
 
 export async function createErpSaleReceipt(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const clientId = requiredString(formData.get("clientId"), "el cliente");
     const issuedAt = parseDateField(formData.get("issuedAt"));
     if (!issuedAt) throw new Error("Indicá la fecha.");
@@ -508,7 +508,7 @@ export async function createErpSaleReceipt(formData: FormData): Promise<Result> 
 
 export async function updateErpSaleReceipt(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const id = requiredId(formData.get("id"));
     const issuedAt = parseDateField(formData.get("issuedAt"));
     if (!issuedAt) throw new Error("Indicá la fecha.");
@@ -558,7 +558,7 @@ export async function updateErpSaleReceipt(formData: FormData): Promise<Result> 
 
 export async function deleteErpSaleReceipt(id: string): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const linked = await prisma.erpSaleReceiptInvoice.findMany({
       where: { receiptId: id },
       select: { invoiceId: true },
@@ -643,7 +643,7 @@ async function paymentOrderAmount(
 
 export async function createErpPaymentOrder(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const vendorId = requiredString(formData.get("vendorId"), "el proveedor");
     const issuedAt = parseDateField(formData.get("issuedAt"));
     if (!issuedAt) throw new Error("Indicá la fecha.");
@@ -690,7 +690,7 @@ export async function createErpPaymentOrder(formData: FormData): Promise<Result>
 
 export async function updateErpPaymentOrder(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const id = requiredId(formData.get("id"));
     const issuedAt = parseDateField(formData.get("issuedAt"));
     if (!issuedAt) throw new Error("Indicá la fecha.");
@@ -770,7 +770,7 @@ export async function updateErpPaymentOrder(formData: FormData): Promise<Result>
 
 export async function deleteErpPaymentOrder(id: string): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const sources = await prisma.erpTreasuryPayment.findMany({
       where: { paymentOrderId: id, endorsedFromId: { not: null } },
       select: { endorsedFromId: true },
@@ -800,7 +800,7 @@ export async function deleteErpPaymentOrder(id: string): Promise<Result> {
 
 export async function createErpIssuedCheque(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const purchaseReceiptId = String(formData.get("purchaseReceiptId") ?? "").trim() || null;
     await prisma.erpTreasuryPayment.create({
       data: {
@@ -826,7 +826,7 @@ export async function createErpIssuedCheque(formData: FormData): Promise<Result>
 
 export async function updateErpCheque(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const id = requiredId(formData.get("id"));
     const current = await prisma.erpTreasuryPayment.findUnique({ where: { id } });
     if (!current) throw new Error("El cheque no existe.");
@@ -858,7 +858,7 @@ export async function updateErpCheque(formData: FormData): Promise<Result> {
 
 export async function setErpSaleCollectStatus(id: string, collectStatus: number): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const collected =
       collectStatus === ERP_COLLECT.collected
         ? (
@@ -886,7 +886,7 @@ export async function setErpSaleCollectStatus(id: string, collectStatus: number)
 
 export async function setErpPurchasePayStatus(id: string, payStatus: number): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpPurchaseInvoice.update({ where: { id }, data: { payStatus } });
     refreshBilling();
     return { ok: true };
@@ -897,7 +897,7 @@ export async function setErpPurchasePayStatus(id: string, payStatus: number): Pr
 
 export async function deleteErpCheque(id: string): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const row = await prisma.erpTreasuryPayment.findUnique({ where: { id } });
     if (!row) throw new Error("El cheque no existe.");
     const endorsed = await prisma.erpTreasuryPayment.findFirst({

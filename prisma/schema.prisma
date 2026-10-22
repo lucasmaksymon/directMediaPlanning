@@ -16,6 +16,8 @@ enum UserRole {
   admin
   agency
   staff
+  planning
+  administration
 }
 
 enum InventoryFormat {

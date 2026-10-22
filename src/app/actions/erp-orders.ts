@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireOpsSession } from "@/lib/ops-access";
+import { requireAdministrationSession } from "@/lib/ops-access";
 import {
   ERP_ORDER,
   ERP_VENDOR,
@@ -304,7 +304,7 @@ function productionExtraData(formData: FormData) {
 
 export async function createErpSaleOrder(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const items = (await withCampaignCatalog(campaignLinesFromForm(formData))).map(dropLineId);
     const data = await saleOrderData(formData);
     const created = await prisma.erpSaleOrder.create({
@@ -321,7 +321,7 @@ export async function createErpSaleOrder(formData: FormData): Promise<Result> {
 
 export async function updateErpSaleOrder(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const id = requiredId(formData.get("id"));
     const lines = await withCampaignCatalog(campaignLinesFromForm(formData));
     const keep = lines.map((l) => l.id).filter((lineId): lineId is string => Boolean(lineId));
@@ -347,7 +347,7 @@ export async function updateErpSaleOrder(formData: FormData): Promise<Result> {
 
 export async function deleteErpSaleOrder(id: string): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const [invoices, purchases, productions] = await Promise.all([
       prisma.erpSaleInvoice.count({ where: { saleOrderId: id } }),
       prisma.erpPurchaseOrder.count({ where: { saleOrderId: id } }),
@@ -366,7 +366,7 @@ export async function deleteErpSaleOrder(id: string): Promise<Result> {
 
 export async function createErpPurchaseOrder(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const lines = await withPurchaseCatalog(purchaseLinesFromForm(formData));
     const adjustmentLines = adjustmentLinesFromForm(formData);
     const items = lines.map(dropLineId);
@@ -390,7 +390,7 @@ export async function createErpPurchaseOrder(formData: FormData): Promise<Result
 
 export async function updateErpPurchaseOrder(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const id = requiredId(formData.get("id"));
     const lines = await withPurchaseCatalog(purchaseLinesFromForm(formData));
     const adjustmentLines = adjustmentLinesFromForm(formData);
@@ -428,7 +428,7 @@ export async function updateErpPurchaseOrder(formData: FormData): Promise<Result
 
 export async function deleteErpPurchaseOrder(id: string): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const links = await prisma.erpPurchaseInvoiceOrder.count({ where: { purchaseOrderId: id } });
     if (links > 0) throw new Error("No se puede borrar: tiene facturas asociadas.");
     await prisma.erpPurchaseOrder.delete({ where: { id } });
@@ -441,7 +441,7 @@ export async function deleteErpPurchaseOrder(id: string): Promise<Result> {
 
 export async function createErpProductionOrder(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const data = linkedOrderData(formData);
     const items = productionLinesFromForm(formData).map(dropLineId);
     const deliveries = deliveryLinesFromForm(formData).map(dropLineId);
@@ -466,7 +466,7 @@ export async function createErpProductionOrder(formData: FormData): Promise<Resu
 
 export async function updateErpProductionOrder(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const id = requiredId(formData.get("id"));
     const data = linkedOrderData(formData);
     const itemLines = productionLinesFromForm(formData);
@@ -510,7 +510,7 @@ export async function updateErpProductionOrder(formData: FormData): Promise<Resu
 
 export async function createErpCampaignItem(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const element = await ensureErpElementName(requiredString(formData.get("element"), "el elemento"));
     const locationRaw = optionalString(formData.get("location"));
     await prisma.erpCampaignItem.create({
@@ -540,7 +540,7 @@ export async function createErpCampaignItem(formData: FormData): Promise<Result>
 
 export async function createErpPurchaseOrderItem(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpPurchaseOrderItem.create({
       data: {
         purchaseOrderId: requiredString(formData.get("purchaseOrderId"), "la orden"),
@@ -562,7 +562,7 @@ export async function createErpPurchaseOrderItem(formData: FormData): Promise<Re
 
 export async function deleteErpPurchaseOrderItem(id: string): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpPurchaseOrderItem.delete({ where: { id } });
     refreshOrders();
     return { ok: true };
@@ -573,7 +573,7 @@ export async function deleteErpPurchaseOrderItem(id: string): Promise<Result> {
 
 export async function createErpProductionOrderItem(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpProductionOrderItem.create({
       data: {
         productionOrderId: requiredString(formData.get("productionOrderId"), "la orden"),
@@ -594,7 +594,7 @@ export async function createErpProductionOrderItem(formData: FormData): Promise<
 
 export async function deleteErpProductionOrderItem(id: string): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpProductionOrderItem.delete({ where: { id } });
     refreshOrders();
     return { ok: true };
@@ -605,7 +605,7 @@ export async function deleteErpProductionOrderItem(id: string): Promise<Result> 
 
 export async function createErpProductionDelivery(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpProductionDelivery.create({
       data: {
         productionOrderId: requiredString(formData.get("productionOrderId"), "la orden"),
@@ -622,7 +622,7 @@ export async function createErpProductionDelivery(formData: FormData): Promise<R
 
 export async function deleteErpProductionDelivery(id: string): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpProductionDelivery.delete({ where: { id } });
     refreshOrders();
     return { ok: true };
@@ -633,7 +633,7 @@ export async function deleteErpProductionDelivery(id: string): Promise<Result> {
 
 export async function deleteErpCampaignItem(id: string): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpCampaignItem.delete({ where: { id } });
     refreshOrders();
     return { ok: true };
@@ -644,7 +644,7 @@ export async function deleteErpCampaignItem(id: string): Promise<Result> {
 
 export async function deleteErpProductionOrder(id: string): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const links = await prisma.erpPurchaseInvoiceOrder.count({ where: { productionOrderId: id } });
     if (links > 0) throw new Error("No se puede borrar: tiene facturas asociadas.");
     await prisma.erpProductionOrder.delete({ where: { id } });

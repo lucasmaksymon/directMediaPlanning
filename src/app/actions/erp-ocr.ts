@@ -1,6 +1,6 @@
 "use server";
 
-import { requireOpsSession } from "@/lib/ops-access";
+import { requireAdministrationSession } from "@/lib/ops-access";
 import { erpFail, type ErpResult } from "@/lib/erp-write";
 import { saveErpAttachment } from "@/lib/erp-attachment";
 import {
@@ -29,7 +29,7 @@ function moneyField(value: number | string | null | undefined) {
 
 export async function ocrErpDocument(formData: FormData): Promise<OcrDocumentResult> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const file = formData.get("file");
     if (!file || typeof file === "string" || !("arrayBuffer" in file) || file.size === 0) {
       throw new Error("Subí un PDF o una imagen.");
@@ -210,7 +210,7 @@ async function runImports<T>(
   save: (row: T) => Promise<ErpResult>,
 ): Promise<{ ok: true; results: ImportOcrRowResult[] } | { ok: false; error: string }> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const results: ImportOcrRowResult[] = [];
     for (const [index, row] of rows.entries()) {
       const res = await save(row);

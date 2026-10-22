@@ -28,7 +28,7 @@ import {
   withPageParam,
 } from "@/lib/pagination";
 
-import { isInternalRole } from "@/lib/roles";
+import { isPlanningRole } from "@/lib/roles";
 export const metadata = { title: productTitle("Reservas") };
 
 const STATUS_OPTIONS = Object.keys(reservationStatusLabel) as ReservationStatus[];
@@ -39,7 +39,7 @@ export default async function AdminReservasPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const session = await auth();
-  if (!session?.user || !isInternalRole(session.user.role)) redirect("/");
+  if (!session?.user || !isPlanningRole(session.user.role)) redirect("/");
 
   const sp = await searchParams;
   const q = firstSearchParam(sp, "q");

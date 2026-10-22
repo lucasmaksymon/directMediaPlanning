@@ -8,7 +8,7 @@ import { cn } from "@/lib/cn";
 import { PageHeader, Stat, StatRow } from "@/components/ui/Patterns";
 import { buttonVariants } from "@/lib/ui-variants";
 
-import { isInternalRole } from "@/lib/roles";
+import { homePathForRole, isAdministrationRole, isPlanningRole } from "@/lib/roles";
 export const metadata = {
   title: productTitle("Inicio"),
 };
@@ -118,6 +118,8 @@ export default async function InicioPage() {
     );
   }
 
-  if (isInternalRole(session.user.role)) redirect("/admin");
+  if (isPlanningRole(session.user.role) || isAdministrationRole(session.user.role)) {
+    redirect(homePathForRole(session.user.role));
+  }
   redirect("/");
 }

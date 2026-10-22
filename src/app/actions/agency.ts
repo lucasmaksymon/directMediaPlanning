@@ -4,14 +4,14 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
-import { isInternalRole } from "@/lib/roles";
+import { isAdminRole } from "@/lib/roles";
 async function requireAgency() {
   const session = await auth();
-  if (!session?.user || (session.user.role !== "agency" && !isInternalRole(session.user.role))) {
+  if (!session?.user || (session.user.role !== "agency" && !isAdminRole(session.user.role))) {
     throw new Error("Solo agencias pueden realizar esta acción.");
   }
   const profile = await prisma.agencyProfile.findUnique({ where: { userId: session.user.id } });
-  if (!profile && !isInternalRole(session.user.role)) throw new Error("Sin perfil de agencia.");
+  if (!profile && !isAdminRole(session.user.role)) throw new Error("Sin perfil de agencia.");
   return { session, profile };
 }
 

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { requireOpsSession } from "@/lib/ops-access";
+import { requirePlanningSession } from "@/lib/ops-access";
 import { panelPage, pageScroll, surfaceCard } from "@/lib/ui-classes";
 import { cn } from "@/lib/cn";
 import { formatArs } from "@/lib/format";
@@ -13,7 +13,7 @@ export const metadata = { title: productTitle("Programática SSP") };
 
 export default async function ProgrammaticPage() {
   if (!isProgrammaticEnabled()) redirect("/admin/operaciones");
-  await requireOpsSession();
+  await requirePlanningSession();
 
   const deals = await prisma.programmaticDeal.findMany({
     include: { inventoryUnit: { select: { name: true, locationLabel: true } } },

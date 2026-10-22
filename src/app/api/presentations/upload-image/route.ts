@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { savePresentationImage } from "@/lib/presentations/local-upload";
 import { NextResponse } from "next/server";
 
-import { isInternalRole } from "@/lib/roles";
+import { isPlanningRole } from "@/lib/roles";
 export const runtime = "nodejs";
 
 const MAX_BYTES = 8 * 1024 * 1024;
@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   if (!session?.user) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
-  if (!isInternalRole(session.user.role)) {
+  if (!isPlanningRole(session.user.role)) {
     return NextResponse.json({ error: "No autorizado." }, { status: 403 });
   }
 

@@ -15,7 +15,7 @@ import {
 import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/Badge";
 
-import { isInternalRole } from "@/lib/roles";
+import { homePathForRole, isAdministrationRole, isPlanningRole } from "@/lib/roles";
 const formatLabels: Record<string, string> = {
   digital_ooh: "Digital OOH",
   static_ooh: "OOH estático",
@@ -59,7 +59,7 @@ export async function HomePageContent() {
   const role = session?.user?.role;
   const isLoggedIn = Boolean(session?.user);
   const isAdvertiser = role === "advertiser";
-  const isAdmin = isInternalRole(role);
+  const isOps = isPlanningRole(role) || isAdministrationRole(role);
 
   const [lastMinute, publishedCount] = isLoggedIn
     ? await Promise.all([
@@ -69,8 +69,10 @@ export async function HomePageContent() {
     : [[], 0];
   const preview = lastMinute.slice(0, 3);
 
-  const primaryHref = isAdmin ? "/admin" : isAdvertiser ? "/advertiser" : isLoggedIn ? "/explorar" : "/login";
-  const primaryLabel = isAdmin
+  const primaryHref = isOps ? homePathForRole(role) : isAdvertiser ? "/advertiser" : isLoggedIn ? "/explorar" : "/login";
+  const primaryLabel = role === "administration"
+    ? "Ir a administración"
+    : isPlanningRole(role)
     ? "Ir a operaciones"
     : isAdvertiser
       ? "Mi cuenta"
@@ -252,17 +254,19 @@ export async function HomePageContent() {
                 : "¿Listo para planificar tu próxima campaña?"}
             </p>
             <p className="nm-secondary mt-1">
-              {isAdmin
-                ? "Gestioná inventario, reservas y clientes desde operaciones."
+              {role === "administration"
+                ? "Gestioná órdenes, facturas y cobros desde administración."
+                : isPlanningRole(role)
+                ? "Gestioná inventario, reservas y presentaciones desde operaciones."
                 : isAdvertiser
                   ? "Seguí tus solicitudes o explorá nuevas oportunidades."
                   : `Creá tu cuenta de cliente en ${PRODUCT_NAME} en menos de un minuto.`}
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap justify-center gap-3">
-            {isAdmin ? (
-              <Link className={btnMarketing} href="/admin/operaciones">
-                Panel operaciones
+            {isOps ? (
+              <Link className={btnMarketing} href={homePathForRole(role)}>
+                {role === "administration" ? "Panel administración" : "Panel operaciones"}
               </Link>
             ) : isAdvertiser ? (
               <Link className={btnMarketing} href="/advertiser/planificar">

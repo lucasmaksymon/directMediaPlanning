@@ -10,12 +10,12 @@ import { reservationStatusLabel } from "@/lib/labels";
 import { PageHeader, Stat, StatRow, EmptyState, SectionHeader } from "@/components/ui/Patterns";
 import { buttonVariants } from "@/lib/ui-variants";
 
-import { isInternalRole } from "@/lib/roles";
+import { isAdminRole } from "@/lib/roles";
 export const metadata = { title: productTitle("Panel Medio") };
 
 export default async function ProviderDashboardPage() {
   const session = await auth();
-  if (!session?.user || (session.user.role !== "provider" && !isInternalRole(session.user.role))) {
+  if (!session?.user || (session.user.role !== "provider" && !isAdminRole(session.user.role))) {
     redirect("/");
   }
 

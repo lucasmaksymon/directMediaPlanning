@@ -6,14 +6,14 @@ import { DisponibilidadClient } from "./DisponibilidadClient";
 import Link from "next/link";
 import { adminOpsPage, adminOpsPageBody, adminOpsPageHeader } from "@/lib/ui-classes";
 
-import { isInternalRole } from "@/lib/roles";
+import { isPlanningRole } from "@/lib/roles";
 type Props = { params: Promise<{ id: string }> };
 
 export default async function DisponibilidadPage({ params }: Props) {
   const { id } = await params;
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (!isInternalRole(session.user.role)) redirect("/");
+  if (!isPlanningRole(session.user.role)) redirect("/");
 
   const unit = await prisma.inventoryUnit.findFirst({
     where: { id },

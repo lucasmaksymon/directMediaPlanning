@@ -18,7 +18,9 @@ const roleBadgeVariant: Record<string, "info" | "brand" | "warning" | "default">
   provider: "brand",
   agency: "default",
   admin: "warning",
-  staff: "brand",
+  planning: "info",
+  administration: "brand",
+  staff: "default",
 };
 
 export default async function AdminUsuariosPage() {

@@ -1,15 +1,15 @@
 import { createUploadthing, type FileRouter } from "uploadthing/next";
 import { auth } from "@/auth";
 
-import { isInternalRole } from "@/lib/roles";
+import { isAdministrationRole, isPlanningRole } from "@/lib/roles";
 const f = createUploadthing();
 
 export const ourFileRouter = {
   inventoryImage: f({ image: { maxFileSize: "8MB", maxFileCount: 6 } })
     .middleware(async () => {
       const session = await auth();
-      if (!session?.user || (!isInternalRole(session.user.role))) {
-        throw new Error("Solo los medios pueden subir imágenes.");
+      if (!session?.user || !isPlanningRole(session.user.role)) {
+        throw new Error("Sin permisos para subir imágenes.");
       }
       return { userId: session.user.id };
     })
@@ -22,8 +22,8 @@ export const ourFileRouter = {
   })
     .middleware(async () => {
       const session = await auth();
-      if (!session?.user || !isInternalRole(session.user.role)) {
-        throw new Error("Solo administración puede adjuntar comprobantes.");
+      if (!session?.user || !isAdministrationRole(session.user.role)) {
+        throw new Error("Sin permisos para adjuntar comprobantes.");
       }
       return { userId: session.user.id };
     })
@@ -33,8 +33,8 @@ export const ourFileRouter = {
   presentationCreative: f({ image: { maxFileSize: "8MB", maxFileCount: 1 } })
     .middleware(async () => {
       const session = await auth();
-      if (!session?.user || !isInternalRole(session.user.role)) {
-        throw new Error("Solo administración puede subir el arte del cliente.");
+      if (!session?.user || !isPlanningRole(session.user.role)) {
+        throw new Error("Sin permisos para subir el arte del cliente.");
       }
       return { userId: session.user.id };
     })

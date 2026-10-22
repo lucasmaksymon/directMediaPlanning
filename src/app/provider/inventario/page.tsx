@@ -29,7 +29,7 @@ import {
   withPageParam,
 } from "@/lib/pagination";
 
-import { isInternalRole } from "@/lib/roles";
+import { isAdminRole } from "@/lib/roles";
 export const metadata = { title: productTitle("Mis espacios") };
 
 const formatLabels: Record<string, string> = {
@@ -58,7 +58,7 @@ export default async function ProviderInventarioPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const session = await auth();
-  if (!session?.user || (session.user.role !== "provider" && !isInternalRole(session.user.role))) {
+  if (!session?.user || (session.user.role !== "provider" && !isAdminRole(session.user.role))) {
     redirect("/");
   }
 

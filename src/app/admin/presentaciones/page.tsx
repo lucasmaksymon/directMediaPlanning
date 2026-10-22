@@ -6,13 +6,13 @@ import { cn } from "@/lib/cn";
 import { adminOpsPage, adminOpsPageBody, adminOpsPageHeader } from "@/lib/ui-classes";
 import { PresentationBuilder } from "./PresentationBuilder";
 
-import { isInternalRole } from "@/lib/roles";
+import { isPlanningRole } from "@/lib/roles";
 export const metadata = { title: productTitle("Presentaciones") };
 
 export default async function AdminPresentacionesPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (!isInternalRole(session.user.role)) redirect("/");
+  if (!isPlanningRole(session.user.role)) redirect("/");
 
   const rawUnits = await prisma.inventoryUnit.findMany({
     where: { status: { in: ["published", "draft"] } },

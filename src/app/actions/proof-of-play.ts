@@ -4,7 +4,7 @@ import { PoPStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { requireOpsSession } from "@/lib/ops-access";
+import { requirePlanningSession } from "@/lib/ops-access";
 
 export async function submitProofOfPlay(
   reservationId: string,
@@ -54,7 +54,7 @@ export async function verifyProofOfPlay(
   approved: boolean,
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    await requireOpsSession();
+    await requirePlanningSession();
     await prisma.proofOfPlay.update({
       where: { reservationId },
       data: {

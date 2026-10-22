@@ -3,19 +3,19 @@
 import { SlotState } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
-import { OpsAccessError, requireOpsSession } from "@/lib/ops-access";
+import { OpsAccessError, requirePlanningSession } from "@/lib/ops-access";
 import { prisma } from "@/lib/prisma";
 import { BLOCKING_SLOT_STATES, reservationOverlapWhere } from "@/lib/availability";
 
-import { isInternalRole } from "@/lib/roles";
+import { isPlanningRole } from "@/lib/roles";
 export type AvailabilityActionResult = { ok: boolean; error?: string };
 
 async function assertUnitAccess(unitId: string): Promise<{ isAdmin: boolean; providerId?: string }> {
   const session = await auth();
   if (!session?.user?.id) throw new OpsAccessError("No autenticado.");
 
-  if (isInternalRole(session.user.role)) {
-    await requireOpsSession();
+  if (isPlanningRole(session.user.role)) {
+    await requirePlanningSession();
     const unit = await prisma.inventoryUnit.findFirst({ where: { id: unitId }, select: { id: true } });
     if (!unit) throw new OpsAccessError("Unidad no encontrada.");
     return { isAdmin: true };
@@ -81,10 +81,10 @@ export async function deleteAvailabilityBlock(blockId: string): Promise<Availabi
       if (!profile || block.unit.providerId !== profile.id) {
         return { ok: false, error: "Sin permisos." };
       }
-    } else if (!isInternalRole(session.user.role)) {
+    } else if (!isPlanningRole(session.user.role)) {
       return { ok: false, error: "Sin permisos." };
     } else {
-      await requireOpsSession();
+      await requirePlanningSession();
     }
 
     await prisma.availabilityBlock.delete({ where: { id: blockId } });

@@ -10,12 +10,12 @@ import Link from "next/link";
 import { PageHeader, Stat, StatRow, EmptyState, SectionHeader } from "@/components/ui/Patterns";
 import { buttonVariants } from "@/lib/ui-variants";
 
-import { isInternalRole } from "@/lib/roles";
+import { isAdminRole } from "@/lib/roles";
 export const metadata = { title: productTitle("Panel Agencia") };
 
 export default async function AgencyPage() {
   const session = await auth();
-  if (!session?.user || (session.user.role !== "agency" && !isInternalRole(session.user.role))) {
+  if (!session?.user || (session.user.role !== "agency" && !isAdminRole(session.user.role))) {
     redirect("/");
   }
 

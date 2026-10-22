@@ -427,14 +427,17 @@ const AGENCY_NAV: RoleNavItem[] = [
 
 export function AdminShell({ children }: { children: ReactNode }) {
   const { data } = useSession();
-  const nav = data?.user?.role === "admin" ? OPS_NAV : OPS_NAV.filter((item) => item.href !== "/admin/usuarios");
+  const isAdmin = data?.user?.role === "admin";
+  const nav = isAdmin ? OPS_NAV : OPS_NAV.filter((item) => item.href !== "/admin/usuarios");
   return (
     <RoleShell
       footer={
         <div className="space-y-1">
-          <Link className="nm-caption block px-2 py-1 hover:text-foreground" href="/backoffice">
-            Ir a Administración →
-          </Link>
+          {isAdmin ? (
+            <Link className="nm-caption block px-2 py-1 hover:text-foreground" href="/backoffice">
+              Ir a Administración →
+            </Link>
+          ) : null}
           <Link className="nm-caption block px-2 py-1 hover:text-foreground" href="/explorar">
             Ver catálogo →
           </Link>
@@ -449,12 +452,15 @@ export function AdminShell({ children }: { children: ReactNode }) {
 }
 
 export function BackofficeShell({ children }: { children: ReactNode }) {
+  const { data } = useSession();
   return (
     <RoleShell
       footer={
-        <Link className="nm-caption block px-2 py-1 hover:text-foreground" href="/admin">
-          Ir a Operaciones →
-        </Link>
+        data?.user?.role === "admin" ? (
+          <Link className="nm-caption block px-2 py-1 hover:text-foreground" href="/admin">
+            Ir a Operaciones →
+          </Link>
+        ) : null
       }
       nav={BACKOFFICE_NAV}
       title="Administración"

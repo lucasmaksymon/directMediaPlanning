@@ -8,13 +8,13 @@ import { sendEmail } from "@/lib/email";
 import { APP_URL } from "@/lib/email";
 import { assertProviderScreenLimit } from "@/lib/freemium";
 
-import { isInternalRole } from "@/lib/roles";
+import { isAdminRole } from "@/lib/roles";
 class ProviderAccessError extends Error {}
 
 /** Verifica que la sesión sea de proveedor y devuelve el perfil. */
 async function requireProviderSession() {
   const session = await auth();
-  if (!session?.user?.id || (session.user.role !== "provider" && !isInternalRole(session.user.role))) {
+  if (!session?.user?.id || (session.user.role !== "provider" && !isAdminRole(session.user.role))) {
     throw new ProviderAccessError("Acceso denegado.");
   }
   const profile = await prisma.providerProfile.findUnique({

@@ -1,6 +1,6 @@
 "use server";
 
-import { requireOpsSession } from "@/lib/ops-access";
+import { requireAdministrationSession } from "@/lib/ops-access";
 import { erpFail } from "@/lib/erp-write";
 import { saveErpAttachment } from "@/lib/erp-attachment";
 import { inferOcrMime, requestOcrJson } from "@/lib/erp-ocr";
@@ -17,7 +17,7 @@ export type OrderOcrResult = { ok: true; result: OrderOcrMatchResult } | { ok: f
 
 export async function ocrErpOrder(formData: FormData): Promise<OrderOcrResult> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const file = formData.get("file");
     if (!file || typeof file === "string" || !("arrayBuffer" in file) || file.size === 0) {
       throw new Error("Subí el PDF de la orden.");

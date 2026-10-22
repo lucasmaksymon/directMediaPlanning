@@ -3,14 +3,14 @@
 import { DealType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireOpsSession } from "@/lib/ops-access";
+import { requirePlanningSession } from "@/lib/ops-access";
 
 export async function upsertProgrammaticDeal(
   unitId: string,
   formData: FormData,
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    await requireOpsSession();
+    await requirePlanningSession();
     const dealType = String(formData.get("dealType") ?? "open") as DealType;
     const floorPrice = Number(formData.get("floorPrice") ?? 0);
     const openRtbUnitId = String(formData.get("openRtbUnitId") ?? "").trim() || undefined;
@@ -45,7 +45,7 @@ export async function createSlotAvailability(
   slotEnd: Date,
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    await requireOpsSession();
+    await requirePlanningSession();
     await prisma.slotAvailability.create({
       data: { unitId, slotStart, slotEnd, state: "available" },
     });

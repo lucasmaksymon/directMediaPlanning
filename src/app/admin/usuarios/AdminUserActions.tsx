@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { adminCreateUser, adminDeleteUser, adminSetUserPassword, adminSetUserRole } from "@/app/actions/admin";
 import { ROLE_LABELS } from "@/lib/roles";
+import { Input, Select } from "@/components/ui";
 
 const pillButton =
   "rounded-full border px-3 py-1 text-xs font-semibold transition disabled:opacity-50";
@@ -24,10 +25,10 @@ function PasswordForm({ userId, onClose }: { userId: string; onClose: (saved: bo
   return (
     <div className="flex flex-col gap-1">
       <div className="flex flex-wrap items-center gap-2">
-        <input
+        <Input
           autoComplete="new-password"
           autoFocus
-          className="h-7 w-44 rounded-md border border-border bg-background px-2 text-xs"
+          className="h-9 w-52 py-1.5 text-xs"
           minLength={8}
           onChange={(e) => setPassword(e.target.value)}
           onKeyDown={(e) => {
@@ -79,18 +80,19 @@ export function AdminCreateUser() {
     <form action={handleSubmit} className="flex flex-wrap items-end gap-2">
       <label className="space-y-1 text-xs text-muted-foreground">
         Email
-        <input className="block h-8 w-56 rounded-md border border-border bg-background px-2 text-sm text-foreground" name="email" required type="email" />
+        <Input className="w-56" name="email" required type="email" />
       </label>
       <label className="space-y-1 text-xs text-muted-foreground">
         Contraseña
-        <input className="block h-8 w-44 rounded-md border border-border bg-background px-2 text-sm text-foreground" minLength={8} name="password" required type="text" />
+        <Input className="w-44" minLength={8} name="password" required type="text" />
       </label>
-      <label className="space-y-1 text-xs text-muted-foreground">
+      <label className="w-44 space-y-1 text-xs text-muted-foreground">
         Rol
-        <select className="block h-8 rounded-md border border-border bg-background px-2 text-sm text-foreground" defaultValue="staff" name="role">
-          <option value="staff">Equipo</option>
+        <Select defaultValue="planning" name="role">
+          <option value="planning">Planificación</option>
+          <option value="administration">Administración</option>
           <option value="admin">Admin</option>
-        </select>
+        </Select>
       </label>
       <button className={`${pillButton} h-8 border-primary/50 text-primary hover:bg-primary/10`} disabled={isPending} type="submit">
         {isPending ? "Creando…" : "Crear usuario"}
@@ -104,29 +106,41 @@ export function AdminCreateUser() {
 function RoleSelect({ userId, role }: { userId: string; role: string }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const internal = role === "admin" || role === "staff";
+  const internal = role === "admin" || role === "planning" || role === "administration";
+  const [current, setCurrent] = useState(internal ? role : "");
+
+  useEffect(() => {
+    setCurrent(internal ? role : "");
+  }, [internal, role]);
 
   function handleChange(next: string) {
+    if (!next || next === current) return;
+    const previous = current;
+    setCurrent(next);
     setError(null);
     startTransition(async () => {
       const res = await adminSetUserRole(userId, next);
-      if (!res.ok) setError(res.error ?? "No se pudo cambiar el rol.");
+      if (!res.ok) {
+        setCurrent(previous);
+        setError(res.error ?? "No se pudo cambiar el rol.");
+      }
     });
   }
 
   return (
-    <span className="inline-flex flex-col">
-      <select
-        className="h-7 rounded-md border border-border bg-background px-2 text-xs"
+    <span className="inline-flex w-40 flex-col">
+      <Select
+        compact
         disabled={isPending}
         onChange={(e) => handleChange(e.target.value)}
         title={internal ? "Cambiar rol" : "Este rol se asigna en el registro"}
-        value={internal ? role : ""}
+        value={current}
       >
         {internal ? null : <option value="">{ROLE_LABELS[role] ?? role}</option>}
-        <option value="staff">Equipo</option>
+        <option value="planning">Planificación</option>
+        <option value="administration">Administración</option>
         <option value="admin">Admin</option>
-      </select>
+      </Select>
       {error ? <span className="text-xs text-error">{error}</span> : null}
     </span>
   );

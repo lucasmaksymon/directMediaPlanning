@@ -20,10 +20,10 @@ import {
   type ErpOrderPdfKind,
 } from "@/lib/pdf/erp-order-document";
 
-import { isInternalRole } from "@/lib/roles";
+import { isAdministrationRole } from "@/lib/roles";
 export async function GET(req: Request) {
   const session = await auth();
-  if (!session?.user || !isInternalRole(session.user.role)) {
+  if (!session?.user || !isAdministrationRole(session.user.role)) {
     return Response.json({ error: "No autenticado." }, { status: 401 });
   }
 

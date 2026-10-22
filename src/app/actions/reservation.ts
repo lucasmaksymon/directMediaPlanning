@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { CLIENT_BRAND } from "@/lib/brand";
 import { sendEmail } from "@/lib/email";
 import { computePlatformFee, getPlatformFeeRate } from "@/lib/platform-fee";
-import { requireOpsSession } from "@/lib/ops-access";
+import { requirePlanningSession } from "@/lib/ops-access";
 import { sendWhatsApp, buildNewReservationWhatsApp } from "@/lib/whatsapp";
 import {
   blockedAvailabilityWhere,
@@ -319,7 +319,7 @@ export async function decideReservationById(
 ): Promise<ReservationState> {
   if (!opts?.skipAuth) {
     try {
-      await requireOpsSession();
+      await requirePlanningSession();
     } catch {
       return { error: "No tenés permiso para esta acción." };
     }

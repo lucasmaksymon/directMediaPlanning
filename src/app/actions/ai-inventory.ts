@@ -3,7 +3,7 @@
 import { auth } from "@/auth";
 import { openai } from "@/lib/openai";
 
-import { isInternalRole } from "@/lib/roles";
+import { isPlanningRole } from "@/lib/roles";
 export type GenerateDescriptionResult =
   | { ok: true; description: string }
   | { ok: false; error: string };
@@ -16,7 +16,7 @@ export async function generateUnitDescription(input: {
   priceModel: string;
 }): Promise<GenerateDescriptionResult> {
   const session = await auth();
-  if (!session?.user || !isInternalRole(session.user.role)) {
+  if (!session?.user || !isPlanningRole(session.user.role)) {
     return { ok: false, error: "Solo operaciones NextMedia pueden usar esta función." };
   }
 

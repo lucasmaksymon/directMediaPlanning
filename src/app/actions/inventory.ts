@@ -11,7 +11,7 @@ import { redirect } from "next/navigation";
 import {
   assertUnitBelongsToProvider,
   OpsAccessError,
-  requireOpsSession,
+  requirePlanningSession,
   resolveProviderIdFromForm,
 } from "@/lib/ops-access";
 import { prisma } from "@/lib/prisma";
@@ -35,7 +35,7 @@ export async function createInventoryUnit(
   formData: FormData,
 ): Promise<ActionState> {
   try {
-    await requireOpsSession();
+    await requirePlanningSession();
     const providerId = await resolveProviderIdFromForm(formData);
 
     const name = String(formData.get("name") ?? "").trim();
@@ -123,7 +123,7 @@ export async function updateInventoryUnit(
   formData: FormData,
 ): Promise<ActionState> {
   try {
-    await requireOpsSession();
+    await requirePlanningSession();
     const providerId = await resolveProviderIdFromForm(formData);
     await assertUnitBelongsToProvider(unitId, providerId);
 
@@ -212,7 +212,7 @@ export async function importInventoryCsv(
   formData: FormData,
 ): Promise<{ error?: string; imported?: number; errors?: string[] }> {
   try {
-    await requireOpsSession();
+    await requirePlanningSession();
     const file = formData.get("file");
     if (!(file instanceof File) || file.size === 0) {
       return { error: "Subí un CSV con la plantilla de unidades." };

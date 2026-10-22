@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireOpsSession } from "@/lib/ops-access";
+import { requireAdministrationSession } from "@/lib/ops-access";
 import { readErpAttachment } from "@/lib/erp-attachment";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const { id } = await params;
     const file = await readErpAttachment(decodeURIComponent(id));
     if (!file) {

@@ -13,7 +13,7 @@ import { isPresentationMockupEnabled } from "@/lib/features";
 import { NextResponse } from "next/server";
 import sharp from "sharp";
 
-import { isInternalRole } from "@/lib/roles";
+import { isPlanningRole } from "@/lib/roles";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
@@ -111,7 +111,7 @@ export async function POST(req: Request) {
   if (!session?.user) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
-  if (!isInternalRole(session.user.role)) {
+  if (!isPlanningRole(session.user.role)) {
     return NextResponse.json({ error: "No autorizado." }, { status: 403 });
   }
   if (!isPresentationMockupEnabled()) {

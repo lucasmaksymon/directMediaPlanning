@@ -1,6 +1,6 @@
 "use server";
 
-import { requireOpsSession } from "@/lib/ops-access";
+import { requireAdministrationSession } from "@/lib/ops-access";
 import { saveErpAttachment } from "@/lib/erp-attachment";
 import { inferOcrMime } from "@/lib/erp-ocr";
 import { erpFail } from "@/lib/erp-write";
@@ -9,7 +9,7 @@ export type StoreErpAttachmentResult = { ok: true; url: string } | { ok: false; 
 
 export async function storeErpAttachment(formData: FormData): Promise<StoreErpAttachmentResult> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const file = formData.get("file");
     if (!file || typeof file === "string" || !("arrayBuffer" in file) || file.size === 0) {
       throw new Error("Subí un PDF o una imagen.");

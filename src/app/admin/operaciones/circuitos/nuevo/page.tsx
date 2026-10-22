@@ -6,13 +6,13 @@ import { productTitle } from "@/lib/brand";
 import { CircuitForm } from "../CircuitForm";
 import { adminOpsPage, adminOpsPageBody, adminOpsPageHeader } from "@/lib/ui-classes";
 
-import { isInternalRole } from "@/lib/roles";
+import { isPlanningRole } from "@/lib/roles";
 export const metadata = { title: productTitle("Nuevo circuito") };
 
 export default async function NuevoCircuitoPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (!isInternalRole(session.user.role)) redirect("/");
+  if (!isPlanningRole(session.user.role)) redirect("/");
 
   const rawUnits = await prisma.inventoryUnit.findMany({
     select: { id: true, name: true, locationLabel: true, format: true, basePriceAmount: true },

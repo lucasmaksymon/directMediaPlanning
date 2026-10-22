@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireOpsSession } from "@/lib/ops-access";
+import { requireAdministrationSession } from "@/lib/ops-access";
 import { ERP_RECORD, parseIntField, parseMoney, requiredString } from "@/lib/erp";
 import {
   syncErpCatalogFromInventory as pullCatalogFromInventory,
@@ -73,7 +73,7 @@ function vendorData(formData: FormData) {
 
 export async function createErpCompany(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpCompany.create({ data: companyData(formData) });
     refreshMasters();
     return { ok: true };
@@ -84,7 +84,7 @@ export async function createErpCompany(formData: FormData): Promise<Result> {
 
 export async function updateErpCompany(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpCompany.update({
       where: { id: requiredId(formData.get("id")) },
       data: companyData(formData),
@@ -98,7 +98,7 @@ export async function updateErpCompany(formData: FormData): Promise<Result> {
 
 export async function deleteErpCompany(id: string): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const used = await prisma.erpClient.count({ where: { companyId: id } });
     if (used > 0) throw new Error("No se puede borrar: tiene clientes asociados.");
     await prisma.erpCompany.delete({ where: { id } });
@@ -111,7 +111,7 @@ export async function deleteErpCompany(id: string): Promise<Result> {
 
 export async function createErpClient(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpClient.create({ data: clientData(formData) });
     refreshMasters();
     return { ok: true };
@@ -122,7 +122,7 @@ export async function createErpClient(formData: FormData): Promise<Result> {
 
 export async function updateErpClient(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpClient.update({
       where: { id: requiredId(formData.get("id")) },
       data: clientData(formData),
@@ -136,7 +136,7 @@ export async function updateErpClient(formData: FormData): Promise<Result> {
 
 export async function deleteErpClient(id: string): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const [orders, invoices, receipts] = await Promise.all([
       prisma.erpSaleOrder.count({ where: { clientId: id } }),
       prisma.erpSaleInvoice.count({ where: { clientId: id } }),
@@ -155,7 +155,7 @@ export async function deleteErpClient(id: string): Promise<Result> {
 
 export async function createErpVendor(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpVendor.create({ data: vendorData(formData) });
     refreshMasters();
     return { ok: true };
@@ -166,7 +166,7 @@ export async function createErpVendor(formData: FormData): Promise<Result> {
 
 export async function updateErpVendor(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpVendor.update({
       where: { id: requiredId(formData.get("id")) },
       data: vendorData(formData),
@@ -180,7 +180,7 @@ export async function updateErpVendor(formData: FormData): Promise<Result> {
 
 export async function deleteErpVendor(id: string): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const [po, prod, inv, rec, pay] = await Promise.all([
       prisma.erpPurchaseOrder.count({ where: { vendorId: id } }),
       prisma.erpProductionOrder.count({ where: { vendorId: id } }),
@@ -201,7 +201,7 @@ export async function deleteErpVendor(id: string): Promise<Result> {
 
 export async function createErpProvince(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpProvince.create({
       data: { name: requiredString(formData.get("name"), "la plaza") },
     });
@@ -214,7 +214,7 @@ export async function createErpProvince(formData: FormData): Promise<Result> {
 
 export async function updateErpProvince(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpProvince.update({
       where: { id: requiredId(formData.get("id")) },
       data: { name: requiredString(formData.get("name"), "la plaza") },
@@ -228,7 +228,7 @@ export async function updateErpProvince(formData: FormData): Promise<Result> {
 
 export async function deleteErpProvince(id: string): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpProvince.delete({ where: { id } });
     refreshMasters();
     return { ok: true };
@@ -239,7 +239,7 @@ export async function deleteErpProvince(id: string): Promise<Result> {
 
 export async function createErpCity(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpCity.create({
       data: {
         name: requiredString(formData.get("name"), "la localidad"),
@@ -255,7 +255,7 @@ export async function createErpCity(formData: FormData): Promise<Result> {
 
 export async function updateErpCity(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpCity.update({
       where: { id: requiredId(formData.get("id")) },
       data: {
@@ -272,7 +272,7 @@ export async function updateErpCity(formData: FormData): Promise<Result> {
 
 export async function deleteErpCity(id: string): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpCity.delete({ where: { id } });
     refreshMasters();
     return { ok: true };
@@ -283,7 +283,7 @@ export async function deleteErpCity(id: string): Promise<Result> {
 
 export async function createErpCurrency(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpCurrency.create({
       data: {
         code: requiredString(formData.get("code"), "el código").toUpperCase(),
@@ -300,7 +300,7 @@ export async function createErpCurrency(formData: FormData): Promise<Result> {
 
 export async function updateErpCurrency(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpCurrency.update({
       where: { id: requiredId(formData.get("id")) },
       data: {
@@ -318,7 +318,7 @@ export async function updateErpCurrency(formData: FormData): Promise<Result> {
 
 export async function deleteErpCurrency(id: string): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpCurrency.delete({ where: { id } });
     refreshMasters();
     return { ok: true };
@@ -329,7 +329,7 @@ export async function deleteErpCurrency(id: string): Promise<Result> {
 
 export async function createErpElement(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpElement.create({
       data: {
         name: requiredString(formData.get("name"), "el elemento"),
@@ -345,7 +345,7 @@ export async function createErpElement(formData: FormData): Promise<Result> {
 
 export async function updateErpElement(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const id = requiredId(formData.get("id"));
     const name = requiredString(formData.get("name"), "el elemento");
     const prev = await prisma.erpElement.findUnique({ where: { id }, select: { name: true } });
@@ -368,7 +368,7 @@ export async function updateErpElement(formData: FormData): Promise<Result> {
 
 export async function deleteErpElement(id: string): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpElement.delete({ where: { id } });
     refreshMasters();
     return { ok: true };
@@ -381,7 +381,7 @@ export async function syncErpElementsFromCampaigns(): Promise<
   { ok: true; message: string } | { ok: false; error: string }
 > {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const s = await pullElementsFromCampaigns();
     refreshMasters();
     const parts = [
@@ -401,7 +401,7 @@ export async function syncErpCatalogFromInventory(): Promise<
   { ok: true; message: string } | { ok: false; error: string }
 > {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const s = await pullCatalogFromInventory();
     refreshMasters();
     const parts = [
@@ -421,7 +421,7 @@ export async function syncErpCatalogFromInventory(): Promise<
 
 export async function upsertErpExpense(formData: FormData): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     const month = parseIntField(formData.get("month"));
     const year = parseIntField(formData.get("year"));
     if (month < 1 || month > 12 || year < 2000) throw new Error("Mes o año inválido.");
@@ -454,7 +454,7 @@ export async function upsertErpExpense(formData: FormData): Promise<Result> {
 
 export async function deleteErpExpense(id: string): Promise<Result> {
   try {
-    await requireOpsSession();
+    await requireAdministrationSession();
     await prisma.erpExpense.delete({ where: { id } });
     revalidatePath("/backoffice/gastos");
     revalidatePath("/backoffice/informe");

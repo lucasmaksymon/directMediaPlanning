@@ -3,7 +3,7 @@ import { openai } from "@/lib/openai";
 import { fetchImageAsFile, imageResultToUrl, supportsInputFidelity } from "@/lib/ai/image-edit";
 import { NextResponse } from "next/server";
 
-import { isInternalRole } from "@/lib/roles";
+import { isAdminRole } from "@/lib/roles";
 function buildScenePrompt(
   formatLabel: string,
   locationLabel: string,
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
   if (!session?.user) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
-  if (session.user.role !== "advertiser" && !isInternalRole(session.user.role)) {
+  if (session.user.role !== "advertiser" && !isAdminRole(session.user.role)) {
     return NextResponse.json({ error: "No autorizado." }, { status: 403 });
   }
 

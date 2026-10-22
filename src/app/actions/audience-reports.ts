@@ -2,14 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireOpsSession } from "@/lib/ops-access";
+import { requirePlanningSession } from "@/lib/ops-access";
 
 export async function importAudienceReport(
   unitId: string,
   formData: FormData,
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    await requireOpsSession();
+    await requirePlanningSession();
     const provider = String(formData.get("provider") ?? "estimated").trim();
     const impressions = Number(formData.get("impressions") ?? 0);
     const periodStart = new Date(String(formData.get("periodStart") ?? ""));

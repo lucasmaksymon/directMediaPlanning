@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
-import { requireOpsSession } from "@/lib/ops-access";
+import { requirePlanningSession } from "@/lib/ops-access";
 
 async function requireAdmin() {
   const session = await auth();
@@ -20,7 +20,7 @@ export async function adminChangeReservationStatus(
   newStatus: ReservationStatus,
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    await requireOpsSession();
+    await requirePlanningSession();
     await prisma.reservation.update({
       where: { id: reservationId },
       data: { status: newStatus },
@@ -60,7 +60,7 @@ export async function adminSetUserPassword(
   }
 }
 
-const INTERNAL_ROLES = [UserRole.admin, UserRole.staff] as const;
+const ASSIGNABLE_ROLES = [UserRole.admin, UserRole.planning, UserRole.administration] as const;
 
 export async function adminSetUserRole(
   userId: string,
@@ -69,8 +69,8 @@ export async function adminSetUserRole(
   try {
     const session = await requireAdmin();
     if (userId === session.user.id) throw new Error("No podés cambiar tu propio rol.");
-    if (!INTERNAL_ROLES.includes(role as (typeof INTERNAL_ROLES)[number])) {
-      throw new Error("Elegí Admin o Equipo.");
+    if (!ASSIGNABLE_ROLES.includes(role as (typeof ASSIGNABLE_ROLES)[number])) {
+      throw new Error("Elegí Admin, Planificación o Administración.");
     }
     await prisma.user.update({ where: { id: userId }, data: { role: role as UserRole } });
     revalidatePath("/admin/usuarios");
@@ -88,8 +88,8 @@ export async function adminCreateUser(formData: FormData): Promise<{ ok: boolean
     const role = String(formData.get("role") ?? "");
     if (!email.includes("@")) throw new Error("Ingresá un email válido.");
     if (password.length < 8) throw new Error("La contraseña debe tener al menos 8 caracteres.");
-    if (!INTERNAL_ROLES.includes(role as (typeof INTERNAL_ROLES)[number])) {
-      throw new Error("Elegí Admin o Equipo.");
+    if (!ASSIGNABLE_ROLES.includes(role as (typeof ASSIGNABLE_ROLES)[number])) {
+      throw new Error("Elegí Admin, Planificación o Administración.");
     }
     await prisma.user.create({
       data: { email, passwordHash: await hashPassword(password), role: role as UserRole },
@@ -104,7 +104,7 @@ export async function adminCreateUser(formData: FormData): Promise<{ ok: boolean
 }
 
 export async function adminGetStats() {
-  await requireOpsSession();
+  await requirePlanningSession();
   const [
     totalUsers,
     totalProviders,

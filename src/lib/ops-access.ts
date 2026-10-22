@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { isInternalRole } from "@/lib/roles";
+import { isAdministrationRole, isPlanningRole } from "@/lib/roles";
 
 export class OpsAccessError extends Error {
   constructor(message: string) {
@@ -9,13 +9,22 @@ export class OpsAccessError extends Error {
   }
 }
 
-/** Solo equipo NextMedia (admin) puede operar inventario y backoffice. */
-export async function requireOpsSession() {
+async function requireRole(allow: (role?: string | null) => boolean) {
   const session = await auth();
-  if (!session?.user?.id || !isInternalRole(session.user.role)) {
+  if (!session?.user?.id || !allow(session.user.role)) {
     throw new OpsAccessError("Acceso denegado.");
   }
   return session;
+}
+
+/** Inventario, reservas y presentaciones. */
+export function requirePlanningSession() {
+  return requireRole(isPlanningRole);
+}
+
+/** Órdenes, facturación y maestros del backoffice. */
+export function requireAdministrationSession() {
+  return requireRole(isAdministrationRole);
 }
 
 export async function resolveProviderIdFromForm(formData: FormData): Promise<string> {

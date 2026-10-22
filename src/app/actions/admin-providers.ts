@@ -1,14 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireOpsSession } from "@/lib/ops-access";
+import { requirePlanningSession } from "@/lib/ops-access";
 import { prisma } from "@/lib/prisma";
 
 export async function createInternalProvider(
   companyName: string,
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    await requireOpsSession();
+    await requirePlanningSession();
     const name = companyName.trim();
     if (name.length < 2) return { ok: false, error: "Indicá un nombre de al menos 2 caracteres." };
 

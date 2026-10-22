@@ -9,7 +9,7 @@ import { advertiserPage, btnSecondary } from "@/lib/ui-classes";
 import { PayReservationButton } from "@/components/payments/PayReservationButton";
 import { PageHeader, EmptyState } from "@/components/ui/Patterns";
 
-import { isInternalRole } from "@/lib/roles";
+import { isAdminRole } from "@/lib/roles";
 const statusDot: Record<string, string> = {
   pending_provider: "bg-signal",
   accepted: "bg-led",
@@ -21,7 +21,7 @@ const statusDot: Record<string, string> = {
 export default async function AdvertiserReservationsPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "advertiser" && !isInternalRole(session.user.role)) redirect("/");
+  if (session.user.role !== "advertiser" && !isAdminRole(session.user.role)) redirect("/");
 
   const reservations = await prisma.reservation.findMany({
     where: { advertiserId: session.user.id },

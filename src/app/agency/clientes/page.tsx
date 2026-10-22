@@ -7,12 +7,12 @@ import { productTitle } from "@/lib/brand";
 import { PageHeader } from "@/components/ui";
 import { AgencyClientsManager } from "./AgencyClientsManager";
 
-import { isInternalRole } from "@/lib/roles";
+import { isAdminRole } from "@/lib/roles";
 export const metadata = { title: productTitle("Clientes · Agencia") };
 
 export default async function AgencyClientesPage() {
   const session = await auth();
-  if (!session?.user || (session.user.role !== "agency" && !isInternalRole(session.user.role))) redirect("/");
+  if (!session?.user || (session.user.role !== "agency" && !isAdminRole(session.user.role))) redirect("/");
 
   const agencyProfile = await prisma.agencyProfile.findUnique({
     where: { userId: session.user.id },
