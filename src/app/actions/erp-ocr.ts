@@ -13,6 +13,7 @@ import {
 } from "@/lib/erp-ocr";
 import { matchOcrExtracted } from "@/lib/erp-ocr-match";
 import { vatPurchaseCommission } from "@/lib/erp";
+import { salePayDefaults } from "@/lib/erp-cheque-excel";
 import {
   createErpPurchaseInvoice,
   createErpSaleInvoice,
@@ -190,16 +191,16 @@ function saleReceiptForm(row: ImportOcrSaleReceiptRow) {
         ]
       : [];
   for (const line of payments) {
+    const defaults = salePayDefaults(line);
     fd.append("py.paymentKind", String(line.paymentKind));
     fd.append("py.number", line.number ?? "");
     fd.append("py.issuedAt", line.issuedAt ?? "");
     fd.append("py.paidAt", line.paidAt ?? "");
-    fd.append("py.checkOrder", String(line.checkOrder ?? 0));
-    fd.append("py.checkType", String(line.checkType ?? 0));
-    fd.append("py.checkMode", String(line.checkMode ?? 0));
+    fd.append("py.checkOrder", String(defaults.checkOrder));
+    fd.append("py.checkType", String(defaults.checkType));
+    fd.append("py.checkMode", String(defaults.checkMode));
     fd.append("py.amount", moneyField(line.amount));
-    fd.append("py.estado", "1");
-    fd.append("py.attachmentUrl", row.attachmentUrl ?? "");
+    fd.append("py.estado", String(defaults.estado));
   }
   return fd;
 }

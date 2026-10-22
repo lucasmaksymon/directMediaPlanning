@@ -98,7 +98,6 @@ export default async function ErpRecibosPage({
                         checkMode: String(p.checkMode),
                         amount: erpInputNumber(p.amount),
                         estado: String(p.estado),
-                        attachmentUrl: p.attachmentUrl ?? "",
                       },
                     })),
                   }

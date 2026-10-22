@@ -3,6 +3,16 @@
 /* Modo oscuro: clase `dark` en <html> (next-themes) */
 @variant dark (&:where(.dark, .dark *));
 
+/* Tailwind v4 deja los botones con cursor default. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary,
+  label:has(> input[type="checkbox"]:not(:disabled)) {
+    cursor: pointer;
+  }
+}
+
 :root {
   color-scheme: light dark;
 

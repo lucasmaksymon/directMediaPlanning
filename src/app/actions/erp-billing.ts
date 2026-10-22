@@ -440,6 +440,42 @@ export async function deleteErpPurchaseInvoice(id: string): Promise<Result> {
   }
 }
 
+/** Para completar cheques desde el Excel del banco: cheques ya cargados en otros recibos y CUIT del cliente. */
+export async function erpChequeImportContext(input: {
+  clientId?: string;
+  receiptId?: string;
+  numbers: string[];
+}): Promise<{ ok: true; knownNumbers: string[]; clientTaxId: string } | { ok: false; error: string }> {
+  try {
+    await requireOpsSession();
+    const numbers = [...new Set(input.numbers.map((n) => n.trim()).filter(Boolean))];
+    const [known, client] = await Promise.all([
+      numbers.length
+        ? prisma.erpTreasuryPayment.findMany({
+            where: {
+              paymentKind: ERP_PAY.cheque,
+              number: { in: numbers },
+              ...(input.receiptId
+                ? { OR: [{ saleReceiptId: null }, { saleReceiptId: { not: input.receiptId } }] }
+                : {}),
+            },
+            select: { number: true },
+          })
+        : [],
+      input.clientId
+        ? prisma.erpClient.findUnique({ where: { id: input.clientId }, select: { taxId: true } })
+        : null,
+    ]);
+    return {
+      ok: true,
+      knownNumbers: known.map((row) => row.number).filter((n): n is string => Boolean(n)),
+      clientTaxId: (client?.taxId ?? "").replace(/\D/g, ""),
+    };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "No se pudo revisar los cheques." };
+  }
+}
+
 export async function createErpSaleReceipt(formData: FormData): Promise<Result> {
   try {
     await requireOpsSession();
@@ -479,6 +515,7 @@ export async function updateErpSaleReceipt(formData: FormData): Promise<Result> 
     const invoiceIds = formData.getAll("invoiceId").map(String).filter(Boolean);
     const lines = receiptPaymentsFromForm(formData);
     const keep = lines.map((l) => l.id).filter((lineId): lineId is string => Boolean(lineId));
+    const linesHaveAttachment = formData.has("py.attachmentUrl");
     await prisma.$transaction(async (tx) => {
       const previous = await tx.erpSaleReceiptInvoice.findMany({
         where: { receiptId: id },
@@ -505,7 +542,8 @@ export async function updateErpSaleReceipt(formData: FormData): Promise<Result> 
         where: { saleReceiptId: id, ...(keep.length ? { id: { notIn: keep } } : {}) },
       });
       for (const line of lines) {
-        const { id: lineId, ...row } = line;
+        const { id: lineId, attachmentUrl, ...rest } = line;
+        const row = linesHaveAttachment ? { ...rest, attachmentUrl } : rest;
         if (lineId) await tx.erpTreasuryPayment.update({ where: { id: lineId }, data: row });
         else await tx.erpTreasuryPayment.create({ data: { saleReceiptId: id, ...row } });
       }

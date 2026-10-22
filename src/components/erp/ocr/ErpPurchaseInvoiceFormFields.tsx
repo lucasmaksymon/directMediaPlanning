@@ -7,7 +7,8 @@ import { ErpField } from "@/components/erp/ErpField";
 import { ErpDocTypeSelect } from "@/components/erp/ErpDocTypeSelect";
 import { ErpOcrImport } from "@/components/erp/ocr/ErpOcrImport";
 import { ErpOcrWarnings } from "@/components/erp/ocr/ErpOcrWarnings";
-import { ERP_SETTLE, erpInputNumber } from "@/lib/erp";
+import { ERP_SETTLE, erpInputNumber, parseMoney } from "@/lib/erp";
+import { vatForNet } from "@/lib/erp-ocr-score";
 import { ErpOcrCandidates } from "@/components/erp/ocr/ErpOcrCandidates";
 import { EMPTY_OCR_CANDIDATES, ocrDraftFromMatch, type OcrCandidates, type OcrFormDraft } from "@/lib/erp-ocr";
 
@@ -67,6 +68,33 @@ function draftFromCurrent(current: PurchaseInvoiceCurrent | null | undefined, no
     attachmentUrl: current?.attachmentUrl ?? "",
     payments: [],
   };
+}
+
+/** Al tocar el importe recalcula el IVA con la alícuota que ya tenía (21% si no había). */
+function NetVatFields({ amount, vat }: { amount: string; vat: string }) {
+  const [amountValue, setAmountValue] = useState(amount);
+  const [vatValue, setVatValue] = useState(vat);
+  return (
+    <>
+      <ErpField htmlFor="amount" label="Importe">
+        <Input
+          id="amount"
+          name="amount"
+          onChange={(e) => {
+            const prevNet = parseMoney(amountValue);
+            const prevVat = parseMoney(vatValue);
+            const rate = prevNet > 0 && prevVat > 0 ? prevVat / prevNet : 0.21;
+            setAmountValue(e.target.value);
+            setVatValue(String(vatForNet(parseMoney(e.target.value), rate)));
+          }}
+          value={amountValue}
+        />
+      </ErpField>
+      <ErpField htmlFor="vat" label="IVA">
+        <Input id="vat" name="vat" onChange={(e) => setVatValue(e.target.value)} value={vatValue} />
+      </ErpField>
+    </>
+  );
 }
 
 export function ErpPurchaseInvoiceFormFields({
@@ -166,12 +194,7 @@ export function ErpPurchaseInvoiceFormFields({
         <ErpField htmlFor="number" label="Número">
           <Input defaultValue={draft.number} id="number" name="number" required type="number" />
         </ErpField>
-        <ErpField htmlFor="amount" label="Importe">
-          <Input defaultValue={draft.amount} id="amount" name="amount" />
-        </ErpField>
-        <ErpField htmlFor="vat" label="IVA">
-          <Input defaultValue={draft.vat} id="vat" name="vat" />
-        </ErpField>
+        <NetVatFields amount={draft.amount} vat={draft.vat} />
         <ErpField htmlFor="vatWithholding" label="Ret. IVA">
           <Input defaultValue={draft.vatWithholding} id="vatWithholding" name="vatWithholding" />
         </ErpField>

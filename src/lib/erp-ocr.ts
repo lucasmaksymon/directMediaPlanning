@@ -7,6 +7,7 @@ import {
   fixSwappedIssuedIso,
   parseMoney,
 } from "@/lib/erp";
+import { salePayDefaults } from "@/lib/erp-cheque-excel";
 
 export const OCR_KINDS = ["sale_invoice", "purchase_invoice", "sale_receipt"] as const;
 export type OcrKind = (typeof OCR_KINDS)[number];
@@ -634,17 +635,20 @@ export function ocrDraftFromMatch(result: OcrMatchResult): OcrFormDraft {
     diegoFee: "0",
     balance: moneyStr(e.balance),
     attachmentUrl: result.attachmentUrl ?? "",
-    payments: e.payments.map((line, index) => ({
-      paymentKind: String(line.paymentKind),
-      number: line.number ?? "",
-      issuedAt: line.issuedAt ?? "",
-      paidAt: line.paidAt ?? "",
-      checkOrder: String(line.checkOrder),
-      checkType: String(line.checkType),
-      checkMode: String(line.checkMode),
-      amount: moneyStr(line.amount),
-      estado: "1",
-      attachmentUrl: index === 0 ? (result.attachmentUrl ?? "") : "",
-    })),
+    payments: e.payments.map((line) => {
+      const defaults = salePayDefaults(line);
+      return {
+        paymentKind: String(line.paymentKind),
+        number: line.number ?? "",
+        issuedAt: line.issuedAt ?? "",
+        paidAt: line.paidAt ?? "",
+        checkOrder: String(defaults.checkOrder),
+        checkType: String(defaults.checkType),
+        checkMode: String(defaults.checkMode),
+        amount: moneyStr(line.amount),
+        estado: String(defaults.estado),
+        attachmentUrl: "",
+      };
+    }),
   };
 }

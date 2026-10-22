@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Autocomplete, Input } from "@/components/ui";
 import { ErpAttach } from "@/components/erp/ErpAttach";
 import { ErpField } from "@/components/erp/ErpField";
-import { ErpLineList } from "@/components/erp/ErpLineList";
+import { ErpLineList, type ErpLineRow } from "@/components/erp/ErpLineList";
+import { ErpChequeExcelImport } from "@/components/erp/ocr/ErpChequeExcelImport";
 import { ErpOcrImport } from "@/components/erp/ocr/ErpOcrImport";
 import { ErpOcrWarnings } from "@/components/erp/ocr/ErpOcrWarnings";
 import {
@@ -81,7 +82,6 @@ const PAY_FIELDS = [
   { name: "checkMode", label: "Modo cheque", options: selectOptions(ERP_CHECK_MODE) },
   { name: "amount", label: "Importe", type: "number" as const },
   { name: "estado", label: "Estado", options: selectOptions(ERP_PAY_SALE_STATUS) },
-  { name: "attachmentUrl", label: "Recibo de pago", type: "file" as const, wide: true },
 ];
 
 export function ErpSaleReceiptFormFields({
@@ -105,12 +105,10 @@ export function ErpSaleReceiptFormFields({
   const [candidates, setCandidates] = useState<OcrCandidates>(EMPTY_OCR_CANDIDATES);
   const [clientId, setClientId] = useState(draft.clientId);
   const [invoiceIds, setInvoiceIds] = useState<string[]>(draft.invoiceIds);
+  const [paymentRows, setPaymentRows] = useState<ErpLineRow[]>(() => current?.payments ?? []);
+  const [linesKey, setLinesKey] = useState(0);
+  const [chequeNotes, setChequeNotes] = useState<string[]>([]);
   const invoiceCandidates = candidates.invoices.filter((c) => invoices.some((i) => i.value === c.id));
-
-  const paymentRows =
-    draft.payments.length > 0
-      ? draft.payments.map((line) => ({ values: line }))
-      : current?.payments ?? [];
 
   return (
     <>
@@ -123,6 +121,8 @@ export function ErpSaleReceiptFormFields({
             setDraft(next);
             setClientId(next.clientId);
             setInvoiceIds(next.invoiceIds);
+            setPaymentRows(next.payments.map((line) => ({ values: line })));
+            setChequeNotes([]);
             setWarnings(result.extracted.warnings);
             setBlockers(result.blockers);
             setReview(result.review);
@@ -182,9 +182,22 @@ export function ErpSaleReceiptFormFields({
         <ErpField htmlFor="attachmentUrl" label="Adjunto" wide>
           <ErpAttach defaultValue={draft.attachmentUrl} name="attachmentUrl" />
         </ErpField>
+        <ErpChequeExcelImport
+          clientId={clientId}
+          fields={PAY_FIELDS.map((f) => f.name)}
+          onLines={(rows, notes) => {
+            setPaymentRows(rows);
+            setChequeNotes(notes);
+            setLinesKey((n) => n + 1);
+          }}
+          prefix="py"
+          receiptId={current?.id}
+        />
+        <ErpOcrWarnings warnings={chequeNotes} />
         <ErpLineList
           addLabel="Agregar pago"
           fields={PAY_FIELDS}
+          key={linesKey}
           prefix="py"
           rows={paymentRows}
           title="Pagos recibidos"

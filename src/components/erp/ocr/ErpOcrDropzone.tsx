@@ -1,15 +1,21 @@
 "use client";
 
 import { useRef, useState, type DragEvent, type ReactNode } from "react";
-import { ScanSearch } from "lucide-react";
+import { FileSpreadsheet, ScanSearch } from "lucide-react";
 import { cn } from "@/lib/cn";
+
+const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 function isOcrFile(file: File) {
   return file.type === "application/pdf" || file.type.startsWith("image/") || /\.(pdf|png|jpe?g|webp|gif)$/i.test(file.name);
 }
 
-function takeFiles(list: FileList | File[] | null, multiple: boolean) {
-  const files = Array.from(list ?? []).filter(isOcrFile);
+function isExcelFile(file: File) {
+  return file.type === XLSX_MIME || /\.xlsx$/i.test(file.name);
+}
+
+function takeFiles(list: FileList | File[] | null, multiple: boolean, accepts: (file: File) => boolean) {
+  const files = Array.from(list ?? []).filter(accepts);
   return multiple ? files : files.slice(0, 1);
 }
 
@@ -18,14 +24,17 @@ export function ErpOcrDropzone({
   disabled,
   label,
   hint,
+  fileKind = "ocr",
   onFiles,
 }: {
   multiple?: boolean;
   disabled?: boolean;
   label: string;
   hint?: ReactNode;
+  fileKind?: "ocr" | "excel";
   onFiles: (files: File[]) => void;
 }) {
+  const accepts = fileKind === "excel" ? isExcelFile : isOcrFile;
   const fileRef = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
 
@@ -46,7 +55,7 @@ export function ErpOcrDropzone({
     e.stopPropagation();
     setOver(false);
     if (disabled) return;
-    const files = takeFiles(e.dataTransfer.files, Boolean(multiple));
+    const files = takeFiles(e.dataTransfer.files, Boolean(multiple), accepts);
     if (files.length) onFiles(files);
   }
 
@@ -62,13 +71,13 @@ export function ErpOcrDropzone({
       onDrop={onDrop}
     >
       <input
-        accept="application/pdf,image/*"
+        accept={fileKind === "excel" ? `.xlsx,${XLSX_MIME}` : "application/pdf,image/*"}
         className="sr-only"
         disabled={disabled}
         form=""
         multiple={multiple}
         onChange={(e) => {
-          const files = takeFiles(e.target.files, Boolean(multiple));
+          const files = takeFiles(e.target.files, Boolean(multiple), accepts);
           e.currentTarget.value = "";
           if (files.length) onFiles(files);
         }}
@@ -82,7 +91,7 @@ export function ErpOcrDropzone({
         type="button"
       >
         <span className="inline-flex items-center gap-1.5 text-sm font-medium">
-          <ScanSearch className="size-3.5" />
+          {fileKind === "excel" ? <FileSpreadsheet className="size-3.5" /> : <ScanSearch className="size-3.5" />}
           {label}
         </span>
         {hint ? <span className="text-xs text-muted-foreground">{hint}</span> : null}
