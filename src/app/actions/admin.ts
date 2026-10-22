@@ -4,6 +4,7 @@ import { ReservationStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { hashPassword } from "@/lib/password";
 
 async function requireAdmin() {
   const session = await auth();
@@ -35,6 +36,23 @@ export async function adminDeleteUser(userId: string): Promise<{ ok: boolean; er
     await requireAdmin();
     await prisma.user.delete({ where: { id: userId } });
     revalidatePath("/admin/usuarios");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error desconocido." };
+  }
+}
+
+export async function adminSetUserPassword(
+  userId: string,
+  password: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await requireAdmin();
+    if (password.length < 8) throw new Error("La contraseña debe tener al menos 8 caracteres.");
+    await prisma.$transaction([
+      prisma.user.update({ where: { id: userId }, data: { passwordHash: await hashPassword(password) } }),
+      prisma.passwordResetToken.deleteMany({ where: { userId } }),
+    ]);
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Error desconocido." };
