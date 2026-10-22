@@ -3,7 +3,7 @@
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 import type { ExploreMapMarker } from "@/lib/explore-query";
 
@@ -17,17 +17,30 @@ const markerIcon = L.icon({
   shadowSize: [41, 41],
 });
 
+function pointsKey(points: [number, number][]) {
+  return points.map((p) => `${p[0].toFixed(5)},${p[1].toFixed(5)}`).join(";");
+}
+
+/** Encuadra una sola vez por conjunto de puntos. Si el efecto depende del array, cada render del padre vuelve a alejar el mapa. */
 function FitView({ points }: { points: [number, number][] }) {
   const map = useMap();
+  const key = pointsKey(points);
+  const pointsRef = useRef(points);
+  pointsRef.current = points;
+
   useEffect(() => {
-    if (points.length === 0) return;
-    if (points.length === 1) {
-      map.setView(points[0]!, 13);
-      return;
-    }
-    const bounds = L.latLngBounds(points);
-    map.fitBounds(bounds, { padding: [48, 48], maxZoom: 14 });
-  }, [map, points]);
+    const current = pointsRef.current;
+    if (current.length === 0) return;
+    const frame = requestAnimationFrame(() => {
+      map.invalidateSize();
+      if (current.length === 1) {
+        map.setView(current[0]!, 13, { animate: false });
+        return;
+      }
+      map.fitBounds(L.latLngBounds(current), { padding: [48, 48], maxZoom: 14, animate: false });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [map, key]);
   return null;
 }
 
