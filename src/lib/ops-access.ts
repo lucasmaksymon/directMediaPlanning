@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { isInternalRole } from "@/lib/roles";
 
 export class OpsAccessError extends Error {
   constructor(message: string) {
@@ -11,7 +12,7 @@ export class OpsAccessError extends Error {
 /** Solo equipo NextMedia (admin) puede operar inventario y backoffice. */
 export async function requireOpsSession() {
   const session = await auth();
-  if (!session?.user?.id || session.user.role !== "admin") {
+  if (!session?.user?.id || !isInternalRole(session.user.role)) {
     throw new OpsAccessError("Acceso denegado.");
   }
   return session;

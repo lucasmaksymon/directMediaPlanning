@@ -6,10 +6,11 @@ import { adminPage, surfaceCard } from "@/lib/ui-classes";
 import { PageHeader } from "@/components/ui";
 import { isProgrammaticEnabled } from "@/lib/features";
 
+import { isInternalRole } from "@/lib/roles";
 export default async function ProviderHomePage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "admin") {
+  if (!isInternalRole(session.user.role)) {
     redirect("/");
   }
 

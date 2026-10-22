@@ -7,13 +7,14 @@ import { OpsAccessError, requireOpsSession } from "@/lib/ops-access";
 import { prisma } from "@/lib/prisma";
 import { BLOCKING_SLOT_STATES, reservationOverlapWhere } from "@/lib/availability";
 
+import { isInternalRole } from "@/lib/roles";
 export type AvailabilityActionResult = { ok: boolean; error?: string };
 
 async function assertUnitAccess(unitId: string): Promise<{ isAdmin: boolean; providerId?: string }> {
   const session = await auth();
   if (!session?.user?.id) throw new OpsAccessError("No autenticado.");
 
-  if (session.user.role === "admin") {
+  if (isInternalRole(session.user.role)) {
     await requireOpsSession();
     const unit = await prisma.inventoryUnit.findFirst({ where: { id: unitId }, select: { id: true } });
     if (!unit) throw new OpsAccessError("Unidad no encontrada.");
@@ -80,7 +81,7 @@ export async function deleteAvailabilityBlock(blockId: string): Promise<Availabi
       if (!profile || block.unit.providerId !== profile.id) {
         return { ok: false, error: "Sin permisos." };
       }
-    } else if (session.user.role !== "admin") {
+    } else if (!isInternalRole(session.user.role)) {
       return { ok: false, error: "Sin permisos." };
     } else {
       await requireOpsSession();

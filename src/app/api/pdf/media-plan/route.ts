@@ -4,6 +4,7 @@ import { MediaPlanDocument } from "@/lib/pdf/media-plan-document";
 import { CLIENT_BRAND, PRODUCT_NAME } from "@/lib/brand";
 import { prisma } from "@/lib/prisma";
 
+import { isInternalRole } from "@/lib/roles";
 export async function GET(req: Request) {
   const session = await auth();
   if (!session?.user) return Response.json({ error: "No autenticado." }, { status: 401 });
@@ -16,7 +17,7 @@ export async function GET(req: Request) {
   const reservations = await prisma.reservation.findMany({
     where: {
       id: { in: ids },
-      advertiserId: session.user.role === "admin" ? undefined : session.user.id,
+      advertiserId: isInternalRole(session.user.role) ? undefined : session.user.id,
     },
     include: {
       inventoryUnit: {

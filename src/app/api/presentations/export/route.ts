@@ -13,6 +13,7 @@ import { normalizeVisibleFields } from "@/lib/presentations/slide-data";
 import { normalizePresentationTheme } from "@/lib/presentations/theme";
 import type { PresentationDeck } from "@/lib/presentations/types";
 
+import { isInternalRole } from "@/lib/roles";
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
@@ -93,7 +94,7 @@ export async function POST(req: Request) {
   if (!session?.user) {
     return Response.json({ error: "No autenticado." }, { status: 401 });
   }
-  if (session.user.role !== "admin") {
+  if (!isInternalRole(session.user.role)) {
     return Response.json({ error: "Sin permiso." }, { status: 403 });
   }
 

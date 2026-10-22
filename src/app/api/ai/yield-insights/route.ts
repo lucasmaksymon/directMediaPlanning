@@ -3,11 +3,12 @@ import { openai } from "@/lib/openai";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
+import { isInternalRole } from "@/lib/roles";
 export async function GET(req: Request) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "No autenticado." }, { status: 401 });
 
-  if (session.user.role !== "admin") return NextResponse.json({ error: "Acceso denegado." }, { status: 403 });
+  if (!isInternalRole(session.user.role)) return NextResponse.json({ error: "Acceso denegado." }, { status: 403 });
 
   if (!process.env.OPENAI_API_KEY) {
     return NextResponse.json({ insights: ["Configurá OPENAI_API_KEY para habilitar el análisis IA."] });

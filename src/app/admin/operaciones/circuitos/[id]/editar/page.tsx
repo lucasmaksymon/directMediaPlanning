@@ -6,6 +6,7 @@ import { productTitle } from "@/lib/brand";
 import { CircuitForm } from "../../CircuitForm";
 import { adminOpsPage, adminOpsPageBody, adminOpsPageHeader } from "@/lib/ui-classes";
 
+import { isInternalRole } from "@/lib/roles";
 export const metadata = { title: productTitle("Editar circuito") };
 
 export default async function EditarCircuitoPage({
@@ -15,7 +16,7 @@ export default async function EditarCircuitoPage({
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "admin") redirect("/");
+  if (!isInternalRole(session.user.role)) redirect("/");
 
   const { id } = await params;
 

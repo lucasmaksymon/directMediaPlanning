@@ -1,3 +1,4 @@
+import { isInternalRole } from "@/lib/roles";
 export type NavItem = { href: string; label: string };
 
 type AuthLike = {
@@ -24,7 +25,7 @@ export function buildHeaderNav(session: AuthLike): {
 
   const role = session.user.role;
 
-  if (role === "admin") {
+  if (isInternalRole(role)) {
     const ops: NavItem = { href: "/admin", label: "Operaciones" };
     const backoffice: NavItem = { href: "/backoffice", label: "Administración" };
     return {
@@ -38,7 +39,7 @@ export function buildHeaderNav(session: AuthLike): {
             { href: "/admin/reservas", label: "Reservas" },
             { href: "/admin/operaciones/inventory", label: "Inventario" },
             { href: "/admin/presentaciones", label: "Presentaciones" },
-            { href: "/admin/usuarios", label: "Usuarios" },
+            ...(role === "admin" ? [{ href: "/admin/usuarios", label: "Usuarios" }] : []),
           ],
         },
         {

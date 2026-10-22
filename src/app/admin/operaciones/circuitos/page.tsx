@@ -8,12 +8,13 @@ import { adminPage, btnPrimary, surfaceCard, tableScroll } from "@/lib/ui-classe
 import { formatArs } from "@/lib/format";
 import { EmptyState, PageHeader } from "@/components/ui";
 
+import { isInternalRole } from "@/lib/roles";
 export const metadata = { title: productTitle("Circuitos OOH") };
 
 export default async function CircuitosPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "admin") redirect("/");
+  if (!isInternalRole(session.user.role)) redirect("/");
 
   const circuits = await prisma.circuit.findMany({
     include: {

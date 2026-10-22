@@ -7,6 +7,7 @@ import { advertiserPage } from "@/lib/ui-classes";
 import { PageHeader } from "@/components/ui";
 import { CreativoClient } from "./CreativoClient";
 
+import { isInternalRole } from "@/lib/roles";
 export const metadata = {
   title: productTitle("Validar creativo"),
   description: "Validación automática de artes OOH con IA + generación de mockup.",
@@ -15,7 +16,7 @@ export const metadata = {
 export default async function CreativoPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "advertiser" && session.user.role !== "admin") redirect("/");
+  if (session.user.role !== "advertiser" && !isInternalRole(session.user.role)) redirect("/");
 
   const units = await prisma.inventoryUnit.findMany({
     where: { status: "published" },

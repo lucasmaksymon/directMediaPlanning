@@ -11,9 +11,10 @@ import {
 } from "@/lib/erp";
 import { ErpPaymentOrderDocument } from "@/lib/pdf/erp-payment-order-document";
 
+import { isInternalRole } from "@/lib/roles";
 export async function GET(req: Request) {
   const session = await auth();
-  if (!session?.user || session.user.role !== "admin") {
+  if (!session?.user || !isInternalRole(session.user.role)) {
     return Response.json({ error: "No autenticado." }, { status: 401 });
   }
 

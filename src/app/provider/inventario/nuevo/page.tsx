@@ -6,11 +6,12 @@ import { productTitle } from "@/lib/brand";
 import { PageHeader } from "@/components/ui";
 import { NewInventoryForm } from "./NewInventoryForm";
 
+import { isInternalRole } from "@/lib/roles";
 export const metadata = { title: productTitle("Nuevo espacio") };
 
 export default async function NuevoEspacioPage() {
   const session = await auth();
-  if (!session?.user || (session.user.role !== "provider" && session.user.role !== "admin")) {
+  if (!session?.user || (session.user.role !== "provider" && !isInternalRole(session.user.role))) {
     redirect("/");
   }
 

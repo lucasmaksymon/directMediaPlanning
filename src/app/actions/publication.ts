@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 
+import { isInternalRole } from "@/lib/roles";
 export async function sendPublicationOrder(
   reservationId: string,
   formData: FormData,
@@ -89,7 +90,7 @@ export async function updatePublicationOrderStatus(
   const isProvider =
     session.user.role === "provider" &&
     order.reservation.inventoryUnit.provider.userId === session.user.id;
-  const isAdmin = session.user.role === "admin";
+  const isAdmin = isInternalRole(session.user.role);
   if (!isProvider && !isAdmin) return { ok: false, error: "Sin permisos." };
 
   await prisma.publicationOrder.update({

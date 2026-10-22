@@ -3,6 +3,7 @@ import { CLIENT_BRAND, PRODUCT_NAME } from "@/lib/brand";
 import { brandLogoColorDataUri } from "@/lib/presentations/brand-logo-server";
 import { prisma } from "@/lib/prisma";
 
+import { isInternalRole } from "@/lib/roles";
 export async function GET(req: Request) {
   const session = await auth();
   if (!session?.user) return Response.json({ error: "No autenticado." }, { status: 401 });
@@ -14,7 +15,7 @@ export async function GET(req: Request) {
   const reservation = await prisma.reservation.findFirst({
     where: {
       id: reservationId,
-      ...(session.user.role === "admin"
+      ...(isInternalRole(session.user.role)
         ? {}
         : { advertiserId: session.user.id }),
     },

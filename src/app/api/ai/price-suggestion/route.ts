@@ -3,9 +3,10 @@ import { openai } from "@/lib/openai";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
+import { isInternalRole } from "@/lib/roles";
 export async function POST(req: Request) {
   const session = await auth();
-  if (!session?.user || (session.user.role !== "admin")) {
+  if (!session?.user || (!isInternalRole(session.user.role))) {
     return NextResponse.json({ error: "Sin permiso." }, { status: 401 });
   }
 

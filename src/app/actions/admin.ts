@@ -1,10 +1,11 @@
 "use server";
 
-import { ReservationStatus } from "@prisma/client";
+import { ReservationStatus, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
+import { requireOpsSession } from "@/lib/ops-access";
 
 async function requireAdmin() {
   const session = await auth();
@@ -19,7 +20,7 @@ export async function adminChangeReservationStatus(
   newStatus: ReservationStatus,
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    await requireAdmin();
+    await requireOpsSession();
     await prisma.reservation.update({
       where: { id: reservationId },
       data: { status: newStatus },
@@ -59,8 +60,51 @@ export async function adminSetUserPassword(
   }
 }
 
+const INTERNAL_ROLES = [UserRole.admin, UserRole.staff] as const;
+
+export async function adminSetUserRole(
+  userId: string,
+  role: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const session = await requireAdmin();
+    if (userId === session.user.id) throw new Error("No podés cambiar tu propio rol.");
+    if (!INTERNAL_ROLES.includes(role as (typeof INTERNAL_ROLES)[number])) {
+      throw new Error("Elegí Admin o Equipo.");
+    }
+    await prisma.user.update({ where: { id: userId }, data: { role: role as UserRole } });
+    revalidatePath("/admin/usuarios");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error desconocido." };
+  }
+}
+
+export async function adminCreateUser(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await requireAdmin();
+    const email = String(formData.get("email") ?? "").trim().toLowerCase();
+    const password = String(formData.get("password") ?? "");
+    const role = String(formData.get("role") ?? "");
+    if (!email.includes("@")) throw new Error("Ingresá un email válido.");
+    if (password.length < 8) throw new Error("La contraseña debe tener al menos 8 caracteres.");
+    if (!INTERNAL_ROLES.includes(role as (typeof INTERNAL_ROLES)[number])) {
+      throw new Error("Elegí Admin o Equipo.");
+    }
+    await prisma.user.create({
+      data: { email, passwordHash: await hashPassword(password), role: role as UserRole },
+    });
+    revalidatePath("/admin/usuarios");
+    return { ok: true };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Error desconocido.";
+    if (message.includes("Unique constraint")) return { ok: false, error: "Ese email ya tiene cuenta." };
+    return { ok: false, error: message };
+  }
+}
+
 export async function adminGetStats() {
-  await requireAdmin();
+  await requireOpsSession();
   const [
     totalUsers,
     totalProviders,

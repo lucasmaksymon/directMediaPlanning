@@ -2,12 +2,13 @@ import { auth } from "@/auth";
 import { openai } from "@/lib/openai";
 import { NextResponse } from "next/server";
 
+import { isInternalRole } from "@/lib/roles";
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
-  if (session.user.role !== "advertiser" && session.user.role !== "admin") {
+  if (session.user.role !== "advertiser" && !isInternalRole(session.user.role)) {
     return NextResponse.json({ error: "No autorizado." }, { status: 403 });
   }
 

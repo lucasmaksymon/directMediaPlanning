@@ -5,10 +5,11 @@ import { adminOpsPage, adminOpsPageBody } from "@/lib/ui-classes";
 import { Breadcrumb, PageHeader } from "@/components/ui";
 import { InventoryUnitForm } from "./InventoryUnitForm";
 
+import { isInternalRole } from "@/lib/roles";
 export default async function NewInventoryPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "admin") {
+  if (!isInternalRole(session.user.role)) {
     redirect("/");
   }
 

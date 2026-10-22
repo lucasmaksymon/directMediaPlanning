@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/Badge";
 
+import { isInternalRole } from "@/lib/roles";
 const formatLabels: Record<string, string> = {
   digital_ooh: "Digital OOH",
   static_ooh: "OOH estático",
@@ -58,7 +59,7 @@ export async function HomePageContent() {
   const role = session?.user?.role;
   const isLoggedIn = Boolean(session?.user);
   const isAdvertiser = role === "advertiser";
-  const isAdmin = role === "admin";
+  const isAdmin = isInternalRole(role);
 
   const [lastMinute, publishedCount] = isLoggedIn
     ? await Promise.all([

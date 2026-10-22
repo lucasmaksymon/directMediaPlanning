@@ -7,6 +7,7 @@ import { adminOpsPage, adminOpsPageBody } from "@/lib/ui-classes";
 import { Breadcrumb, PageHeader } from "@/components/ui/Patterns";
 import { InventoryUnitForm } from "../../new/InventoryUnitForm";
 
+import { isInternalRole } from "@/lib/roles";
 export default async function EditInventoryPage({
   params,
 }: {
@@ -15,7 +16,7 @@ export default async function EditInventoryPage({
   const { id } = await params;
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "admin") redirect("/");
+  if (!isInternalRole(session.user.role)) redirect("/");
 
   const [unit, providers] = await Promise.all([
     prisma.inventoryUnit.findFirst({ where: { id } }),

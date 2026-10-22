@@ -11,6 +11,7 @@ import { productTitle } from "@/lib/brand";
 import { buttonVariants } from "@/lib/ui-variants";
 import { YieldInsights } from "@/app/admin/operaciones/analytics/YieldInsights";
 
+import { isInternalRole } from "@/lib/roles";
 export const metadata = { title: productTitle("Métricas") };
 
 async function getStats() {
@@ -99,7 +100,7 @@ async function getStats() {
 
 export default async function AdminPage() {
   const session = await auth();
-  if (!session?.user || session.user.role !== "admin") redirect("/");
+  if (!session?.user || !isInternalRole(session.user.role)) redirect("/");
 
   const s = await getStats();
 

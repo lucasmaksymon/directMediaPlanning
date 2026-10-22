@@ -7,9 +7,10 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { assertProviderScreenLimit } from "@/lib/freemium";
 
+import { isInternalRole } from "@/lib/roles";
 async function requireProviderProfile() {
   const session = await auth();
-  if (!session?.user?.id || (session.user.role !== "provider" && session.user.role !== "admin")) {
+  if (!session?.user?.id || (session.user.role !== "provider" && !isInternalRole(session.user.role))) {
     throw new Error("Acceso denegado.");
   }
   const profile = await prisma.providerProfile.findUnique({ where: { userId: session.user.id } });

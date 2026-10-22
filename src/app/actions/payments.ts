@@ -11,6 +11,7 @@ import { logReservationEvent } from "@/lib/audit";
 import { syncReservationToErp } from "@/lib/erp-from-reservation";
 import { logger } from "@/lib/logger";
 
+import { isInternalRole } from "@/lib/roles";
 export async function initiatePayment(reservationId: string): Promise<{
   ok: boolean;
   error?: string;
@@ -103,7 +104,7 @@ export async function initiatePayment(reservationId: string): Promise<{
 
 export async function confirmPaymentManual(reservationId: string): Promise<{ ok: boolean; error?: string }> {
   const session = await auth();
-  if (!session?.user?.id || session.user.role !== "admin") {
+  if (!session?.user?.id || !isInternalRole(session.user.role)) {
     return { ok: false, error: "Solo administradores pueden confirmar pagos manuales." };
   }
 

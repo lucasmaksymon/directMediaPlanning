@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import {
   BarChart3,
   Boxes,
@@ -425,6 +426,8 @@ const AGENCY_NAV: RoleNavItem[] = [
 ];
 
 export function AdminShell({ children }: { children: ReactNode }) {
+  const { data } = useSession();
+  const nav = data?.user?.role === "admin" ? OPS_NAV : OPS_NAV.filter((item) => item.href !== "/admin/usuarios");
   return (
     <RoleShell
       footer={
@@ -437,7 +440,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           </Link>
         </div>
       }
-      nav={OPS_NAV}
+      nav={nav}
       title="Operaciones"
     >
       {children}

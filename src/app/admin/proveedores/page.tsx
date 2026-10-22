@@ -7,11 +7,12 @@ import { cn } from "@/lib/cn";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { CreateProviderForm } from "./CreateProviderForm";
 
+import { isInternalRole } from "@/lib/roles";
 export const metadata = { title: productTitle("Proveedores") };
 
 export default async function AdminProveedoresPage() {
   const session = await auth();
-  if (!session?.user || session.user.role !== "admin") redirect("/");
+  if (!session?.user || !isInternalRole(session.user.role)) redirect("/");
 
   const providers = await prisma.providerProfile.findMany({
     orderBy: { companyName: "asc" },

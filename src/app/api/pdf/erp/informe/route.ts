@@ -3,9 +3,10 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { buildMonthlyReport } from "@/lib/erp-informe";
 import { ErpInformeDocument } from "@/lib/pdf/erp-informe-document";
 
+import { isInternalRole } from "@/lib/roles";
 export async function GET(req: Request) {
   const session = await auth();
-  if (!session?.user || session.user.role !== "admin") {
+  if (!session?.user || !isInternalRole(session.user.role)) {
     return Response.json({ error: "No autenticado." }, { status: 401 });
   }
   const { searchParams } = new URL(req.url);

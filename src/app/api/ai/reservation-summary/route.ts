@@ -3,9 +3,10 @@ import { auth } from "@/auth";
 import { openai } from "@/lib/openai";
 import { prisma } from "@/lib/prisma";
 
+import { isInternalRole } from "@/lib/roles";
 export async function GET(req: NextRequest) {
   const session = await auth();
-  if (!session?.user || session.user.role !== "admin") {
+  if (!session?.user || !isInternalRole(session.user.role)) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
 

@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/Badge";
 import { PagePager } from "@/components/ui/PagePager";
 import { firstSearchParam, parsePage, pageToSkip, totalPages, withPageParam } from "@/lib/pagination";
 
+import { isInternalRole } from "@/lib/roles";
 export const metadata = { title: productTitle("Solicitudes") };
 
 function formatDate(d: Date) {
@@ -24,7 +25,7 @@ export default async function ProviderReservasPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const session = await auth();
-  if (!session?.user || (session.user.role !== "provider" && session.user.role !== "admin")) {
+  if (!session?.user || (session.user.role !== "provider" && !isInternalRole(session.user.role))) {
     redirect("/");
   }
 

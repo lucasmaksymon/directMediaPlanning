@@ -3,23 +3,22 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { adminPage, surfaceCard, tableScroll } from "@/lib/ui-classes";
 import { cn } from "@/lib/cn";
-import { AdminUserActions } from "./AdminUserActions";
+import { AdminCreateUser, AdminUserActions } from "./AdminUserActions";
+import { ROLE_LABELS } from "@/lib/roles";
 import { productTitle } from "@/lib/brand";
 import { EmptyState, PageHeader } from "@/components/ui/Patterns";
 import { Badge } from "@/components/ui/Badge";
 
 export const metadata = { title: productTitle("Usuarios") };
 
-const roleLabels: Record<string, string> = {
-  advertiser: "Anunciante",
-  provider: "Medio",
-  admin: "Admin",
-};
+const roleLabels = ROLE_LABELS;
 
 const roleBadgeVariant: Record<string, "info" | "brand" | "warning" | "default"> = {
   advertiser: "info",
   provider: "brand",
+  agency: "default",
   admin: "warning",
+  staff: "brand",
 };
 
 export default async function AdminUsuariosPage() {
@@ -41,6 +40,7 @@ export default async function AdminUsuariosPage() {
         actions={<span className="text-xs text-muted-foreground">{users.length} total</span>}
         title="Usuarios"
       />
+      <AdminCreateUser />
 
       {users.length === 0 ? (
         <EmptyState
@@ -86,6 +86,7 @@ export default async function AdminUsuariosPage() {
                         userId={u.id}
                         userEmail={u.email}
                         isSelf={u.id === session.user.id}
+                        role={u.role}
                       />
                     </td>
                   </tr>

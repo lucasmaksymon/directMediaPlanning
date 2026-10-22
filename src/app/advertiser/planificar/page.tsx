@@ -9,6 +9,7 @@ import { cn } from "@/lib/cn";
 import { advertiserPage } from "@/lib/ui-classes";
 import { PageHeader } from "@/components/ui";
 
+import { isInternalRole } from "@/lib/roles";
 export const metadata = {
   title: productTitle("Planificador"),
   description: "Describí tu campaña y la IA selecciona los mejores espacios para vos.",
@@ -21,7 +22,7 @@ export default async function PlanificadorPage({
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "advertiser" && session.user.role !== "admin") redirect("/");
+  if (session.user.role !== "advertiser" && !isInternalRole(session.user.role)) redirect("/");
 
   const { modo } = await searchParams;
   const chatMode = modo === "chat";

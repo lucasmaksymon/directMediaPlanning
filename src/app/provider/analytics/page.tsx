@@ -7,11 +7,12 @@ import { formatArs } from "@/lib/format";
 import { productTitle } from "@/lib/brand";
 import { PageHeader, Stat, StatRow, EmptyState, SectionHeader } from "@/components/ui/Patterns";
 
+import { isInternalRole } from "@/lib/roles";
 export const metadata = { title: productTitle("Analytics") };
 
 export default async function ProviderAnalyticsPage() {
   const session = await auth();
-  if (!session?.user || (session.user.role !== "provider" && session.user.role !== "admin")) {
+  if (!session?.user || (session.user.role !== "provider" && !isInternalRole(session.user.role))) {
     redirect("/");
   }
 
