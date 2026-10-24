@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -274,6 +274,13 @@ export function ErpDataTable<T>({
     };
   }
 
+  function openRowEdit(e: MouseEvent<HTMLTableRowElement>) {
+    const target = e.target as HTMLElement;
+    if (target.closest("a, button, input, select, textarea, label, [role=button], [role=combobox]")) return;
+    if (window.getSelection()?.toString()) return;
+    e.currentTarget.querySelector<HTMLAnchorElement>("[data-row-edit]")?.click();
+  }
+
   function clearFilters() {
     setQuery("");
     setColFilters({});
@@ -446,7 +453,10 @@ export function ErpDataTable<T>({
                 const expanded = expandedRow?.(row);
                 return (
                   <Fragment key={rowKey(row)}>
-                    <TR className={cn("group", rowClassName?.(row))}>
+                    <TR
+                      className={cn("group has-[[data-row-edit]]:cursor-pointer has-[[data-row-edit]_.animate-spin]:bg-primary-subtle", rowClassName?.(row))}
+                      onClick={openRowEdit}
+                    >
                       {visible.map((col) => (
                         <TD
                           className={cn(

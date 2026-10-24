@@ -79,18 +79,7 @@ export function ErpLineList({
 
   return (
     <div className={cn("sm:col-span-2 xl:col-span-4 space-y-2 pt-1", className)}>
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
-        <Button
-          onClick={() => setLines((prev) => [...prev, { key: nextKey(), id: "", values: emptyValues(fields) }])}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          <Plus className="size-3.5" />
-          {addLabel}
-        </Button>
-      </div>
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
       <div className="space-y-2">
         {lines.map((line) => (
           <div
@@ -161,6 +150,15 @@ export function ErpLineList({
           </div>
         ))}
       </div>
+      <Button
+        onClick={() => setLines((prev) => [...prev, { key: nextKey(), id: "", values: emptyValues(fields) }])}
+        size="sm"
+        type="button"
+        variant="outline"
+      >
+        <Plus className="size-3.5" />
+        {addLabel}
+      </Button>
     </div>
   );
 }

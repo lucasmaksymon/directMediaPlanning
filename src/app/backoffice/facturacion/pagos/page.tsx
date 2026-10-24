@@ -34,7 +34,7 @@ export default async function ErpOrdenesPagoPage({
   const { edit } = await searchParams;
   const now = new Date();
   const chequeInclude = { saleReceipt: { select: { client: { select: { name: true } } } } } as const;
-  const [orders, vendors, invoices, pendingCheques] = await Promise.all([
+  const [orders, vendors, invoices, pendingCheques, endorsedCheques] = await Promise.all([
     prisma.erpPaymentOrder.findMany({
       orderBy: { issuedAt: "desc" },
       include: {
@@ -80,23 +80,18 @@ export default async function ErpOrdenesPagoPage({
       include: chequeInclude,
       orderBy: { number: "asc" },
     }),
+    edit
+      ? prisma.erpTreasuryPayment.findMany({
+          where: { endorsements: { some: { paymentOrderId: edit } } },
+          include: chequeInclude,
+        })
+      : Promise.resolve([]),
   ]);
   const current = orders.find((o) => o.id === edit);
-  const extraChequeIds = [
-    ...new Set(
-      (current?.treasury ?? [])
-        .map((p) => p.endorsedFromId)
-        .filter((id): id is string => Boolean(id) && !pendingCheques.some((c) => c.id === id)),
-    ),
-  ];
-  const extraCheques = extraChequeIds.length
-    ? await prisma.erpTreasuryPayment.findMany({
-        where: { id: { in: extraChequeIds } },
-        include: chequeInclude,
-      })
-    : [];
-  const cheques = [...extraCheques, ...pendingCheques];
+  const pendingIds = new Set(pendingCheques.map((c) => c.id));
+  const cheques = [...endorsedCheques.filter((c) => !pendingIds.has(c.id)), ...pendingCheques];
   const selectedInvoices = new Set(current?.invoices.map((i) => i.invoiceId) ?? []);
+  const nextNumber = orders.reduce((max, o) => Math.max(max, Number(erpPaymentOrderNumber(o.id, o.number)) || 0), 0) + 1;
 
   return (
     <div className={cn(adminPage, "gap-4")}>
@@ -109,7 +104,7 @@ export default async function ErpOrdenesPagoPage({
         <ErpForm
           action={current ? updateErpPaymentOrder : createErpPaymentOrder}
           cancelHref={current ? "/backoffice/facturacion/pagos" : undefined}
-          key={current?.id ?? "new"}
+          key={current?.id ?? `new-${nextNumber}`}
           resetOnSuccess={!current}
           submitLabel={current ? "Guardar cambios" : "Guardar"}
           title={current ? "Editar orden de pago" : "Nueva orden de pago"}
@@ -127,7 +122,7 @@ export default async function ErpOrdenesPagoPage({
           >
             <ErpField htmlFor="number" label="Número">
               <Input
-                defaultValue={current ? Number(erpPaymentOrderNumber(current.id, current.number)) : undefined}
+                defaultValue={current ? Number(erpPaymentOrderNumber(current.id, current.number)) : nextNumber}
                 id="number"
                 name="number"
                 required

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type ReactNode } from "react";
 import { Banknote, CircleCheck, FileDown, Loader2, Pencil, Trash2 } from "lucide-react";
@@ -16,6 +16,7 @@ function ActionControl({
   href,
   label,
   onClick,
+  rowEdit,
   target,
   tone = "default",
   children,
@@ -25,6 +26,7 @@ function ActionControl({
   href?: string;
   label: string;
   onClick?: () => void;
+  rowEdit?: boolean;
   target?: string;
   tone?: "default" | "accent" | "danger";
   children: ReactNode;
@@ -38,8 +40,16 @@ function ActionControl({
   );
   if (href) {
     return (
-      <Link aria-label={label} className={styles} href={href} rel={target ? "noreferrer" : undefined} target={target} title={label}>
-        {children}
+      <Link
+        aria-label={label}
+        className={styles}
+        data-row-edit={rowEdit || undefined}
+        href={href}
+        rel={target ? "noreferrer" : undefined}
+        target={target}
+        title={label}
+      >
+        <LinkPending>{children}</LinkPending>
       </Link>
     );
   }
@@ -48,6 +58,11 @@ function ActionControl({
       {children}
     </button>
   );
+}
+
+function LinkPending({ children }: { children: ReactNode }) {
+  const { pending } = useLinkStatus();
+  return pending ? <Loader2 className={cn(iconClass, "animate-spin text-led")} /> : children;
 }
 
 function confirmIcon(label?: string) {
@@ -97,7 +112,7 @@ export function ErpRowActions({
     <div className="flex flex-col items-end gap-1">
       <div className="flex items-center justify-end gap-0.5">
         {editHref ? (
-          <ActionControl href={editHref} label="Editar">
+          <ActionControl href={editHref} label="Editar" rowEdit>
             <Pencil className={iconClass} />
           </ActionControl>
         ) : null}

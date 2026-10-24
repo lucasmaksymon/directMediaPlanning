@@ -229,6 +229,7 @@ export function Select({
         onClick={() => (open ? setOpen(false) : openList())}
         onKeyDown={onKeyDown}
         ref={triggerRef}
+        title={isPlaceholder ? undefined : selected?.text || undefined}
         type="button"
       >
         <span className={cn("min-w-0 truncate", isPlaceholder && "text-muted-foreground")}>

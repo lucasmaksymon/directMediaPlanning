@@ -83,18 +83,7 @@ export function ErpPurchasePayLines({
 
   return (
     <div className="sm:col-span-2 xl:col-span-4 space-y-2 pt-1">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pagos efectuados</h3>
-        <Button
-          onClick={() => setLines((prev) => [...prev, { key: nextKey(), id: "", values: { ...EMPTY } }])}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          <Plus className="size-3.5" />
-          Agregar pago
-        </Button>
-      </div>
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pagos efectuados</h3>
       <div className="space-y-2">
         {lines.map((line) => {
           const endorsed = line.values.paymentKind === String(ERP_PAY_PURCHASE_KIND.endorsed);
@@ -237,6 +226,15 @@ export function ErpPurchasePayLines({
           );
         })}
       </div>
+      <Button
+        onClick={() => setLines((prev) => [...prev, { key: nextKey(), id: "", values: { ...EMPTY } }])}
+        size="sm"
+        type="button"
+        variant="outline"
+      >
+        <Plus className="size-3.5" />
+        Agregar pago
+      </Button>
     </div>
   );
 }

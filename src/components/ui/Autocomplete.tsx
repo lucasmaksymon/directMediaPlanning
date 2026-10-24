@@ -234,7 +234,9 @@ export function Autocomplete(props: AutocompleteProps) {
               className="inline-flex max-w-full items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-foreground"
               key={value}
             >
-              <span className="truncate">{labelByValue.get(value) ?? value}</span>
+              <span className="truncate" title={labelByValue.get(value) ?? value}>
+                {labelByValue.get(value) ?? value}
+              </span>
               <button
                 className="rounded-full p-0.5 text-muted-foreground hover:bg-background hover:text-foreground"
                 onClick={() => pick(value)}
@@ -292,6 +294,7 @@ export function Autocomplete(props: AutocompleteProps) {
           placeholder={hasValue && !multiple ? emptyLabel : placeholder}
           ref={inputRef}
           role="combobox"
+          title={display || undefined}
           type="text"
           value={display}
         />
@@ -349,6 +352,7 @@ export function Autocomplete(props: AutocompleteProps) {
                         onMouseEnter={() => setHighlight(index)}
                         onClick={() => pick(option.value)}
                         role="option"
+                        title={option.label}
                         type="button"
                       >
                         <Check className={cn("size-3.5 shrink-0", active ? "opacity-100" : "opacity-0")} />
