@@ -27,6 +27,8 @@ export type ErpTableColumn<T> = {
   headClass?: string;
   cellClass?: string;
   value?: (row: T) => string | number | null | undefined;
+  /** Texto para buscar/filtrar cuando `value` es un código (p. ej. 0/1) y no lo que se ve en la celda. */
+  filterText?: (row: T) => string;
   cell: (row: T) => ReactNode;
   foot?: (rows: T[]) => ReactNode;
 };
@@ -115,6 +117,10 @@ function columnSearchText(value: unknown) {
     }
   }
   return foldSearch(String(value));
+}
+
+function columnRowText<T>(col: ErpTableColumn<T>, row: T) {
+  return col.filterText ? foldSearch(col.filterText(row)) : columnSearchText(col.value?.(row));
 }
 
 function groupSpans<T>(cols: ErpTableColumn<T>[]) {
@@ -226,13 +232,13 @@ export function ErpDataTable<T>({
     if (!q && activeCols.length === 0) return rows;
     return rows.filter((row) => {
       if (q) {
-        const hit = visible.some((col) => columnSearchText(col.value?.(row)).includes(q));
+        const hit = visible.some((col) => columnRowText(col, row).includes(q));
         if (!hit) return false;
       }
       return activeCols.every(([id, raw]) => {
         const col = byId.get(id);
-        if (!col?.value) return true;
-        return columnSearchText(col.value(row)).includes(foldSearch(raw.trim()));
+        if (!col?.value && !col?.filterText) return true;
+        return columnRowText(col, row).includes(foldSearch(raw.trim()));
       });
     });
   }, [byId, colFilters, query, rows, visible]);

@@ -92,6 +92,7 @@ export function ElementosTable({ rows }: { rows: Named[] }) {
           id: "estado",
           label: "Estado",
           value: (r) => r.estado,
+          filterText: (r) => erpRecordLabel(r.estado),
           cell: (r) => <Badge variant={r.estado === 1 ? "success" : "default"}>{erpRecordLabel(r.estado)}</Badge>,
         },
       ]}
@@ -156,6 +157,7 @@ export function EmpresasTable({
           id: "estado",
           label: "Estado",
           value: (r) => r.estado,
+          filterText: (r) => erpRecordLabel(r.estado),
           cell: (r) => <Badge variant={r.estado === 1 ? "success" : "default"}>{erpRecordLabel(r.estado)}</Badge>,
         },
       ]}
@@ -196,6 +198,7 @@ export function ClientesTable({
           id: "estado",
           label: "Estado",
           value: (r) => r.estado,
+          filterText: (r) => erpRecordLabel(r.estado),
           cell: (r) => <Badge variant={r.estado === 1 ? "success" : "default"}>{erpRecordLabel(r.estado)}</Badge>,
         },
       ]}
@@ -233,6 +236,7 @@ export function ProveedoresTable({
           id: "kind",
           label: "Tipo",
           value: (r) => r.kind,
+          filterText: (r) => erpVendorKindLabel(r.kind),
           cell: (r) => <Badge variant={r.kind === 1 ? "warning" : "info"}>{erpVendorKindLabel(r.kind)}</Badge>,
         },
         { id: "taxId", label: "CUIT", value: (r) => r.taxId, cell: (r) => r.taxId ?? "—" },
@@ -392,6 +396,7 @@ export function FacturasVentaTable({
           id: "cobro",
           label: "Cobro",
           value: (r) => r.collectStatus,
+          filterText: (r) => (r.collectStatus === 1 ? "Cobrado" : "Pendiente"),
           cell: (r) => (
             <Badge variant={r.collectStatus === 1 ? "success" : "warning"}>
               {r.collectStatus === 1 ? "Cobrado" : "Pendiente"}
@@ -467,6 +472,7 @@ export function FacturasCompraTable({
           id: "pago",
           label: "Pago",
           value: (r) => r.payStatus,
+          filterText: (r) => `${r.payStatus === 1 ? "Pagado" : "Pendiente"}${r.isCreditNote ? " NC" : ""}`,
           cell: (r) => (
             <span className="inline-flex items-center gap-1.5">
               {r.isCreditNote ? <Badge variant="info">NC</Badge> : null}
@@ -1044,6 +1050,7 @@ export function OrdenesVentaTable({
           id: "estado",
           label: "Estado",
           value: (r) => r.estado,
+          filterText: (r) => erpOrderLabel(r.estado),
           cell: (r) => <Badge variant={erpOrderBadge(r.estado)}>{erpOrderLabel(r.estado)}</Badge>,
         },
       ]}
@@ -1178,6 +1185,7 @@ export function OrdenesCompraTable({
           id: "estado",
           label: "Estado",
           value: (r) => r.estado,
+          filterText: (r) => erpOrderLabel(r.estado),
           cell: (r) => <Badge variant={erpOrderBadge(r.estado)}>{erpOrderLabel(r.estado)}</Badge>,
         },
       ]}
