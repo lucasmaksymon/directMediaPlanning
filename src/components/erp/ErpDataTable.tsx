@@ -1,6 +1,17 @@
 "use client";
 
-import { Fragment, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import {
+  Fragment,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
+import { createPortal } from "react-dom";
 import {
   DndContext,
   PointerSensor,
@@ -11,7 +22,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, horizontalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowDown, ArrowUp, ChevronsUpDown, ListFilter, X } from "lucide-react";
+import { ArrowDown, ArrowUp, CalendarDays, Check, ChevronDown, ChevronsUpDown, ListFilter, X } from "lucide-react";
 import { Button, Pagination, Search, Table, TBody, TD, TFoot, TH, THead, TR, Select } from "@/components/ui";
 import { TableColumnsMenu } from "@/components/erp/TableColumnsMenu";
 import { cn } from "@/lib/cn";
@@ -28,7 +39,9 @@ export type ErpTableColumn<T> = {
   cellClass?: string;
   value?: (row: T) => string | number | null | undefined;
   /** Texto para buscar/filtrar cuando `value` es un código (p. ej. 0/1) y no lo que se ve en la celda. */
-  filterText?: (row: T) => string;
+  filterText?: (row: T) => string | string[];
+  /** "date": `value` es un timestamp y el filtro es un rango desde/hasta. */
+  filter?: "date";
   cell: (row: T) => ReactNode;
   foot?: (rows: T[]) => ReactNode;
 };
@@ -120,7 +133,320 @@ function columnSearchText(value: unknown) {
 }
 
 function columnRowText<T>(col: ErpTableColumn<T>, row: T) {
-  return col.filterText ? foldSearch(col.filterText(row)) : columnSearchText(col.value?.(row));
+  if (col.filterText) return foldSearch([col.filterText(row)].flat().join(" "));
+  const value = col.value?.(row);
+  if (col.filter === "date" && typeof value === "number") return columnSearchText(new Date(value));
+  return columnSearchText(value);
+}
+
+/** Día local (yyyy-mm-dd), igual al que muestra `displayDate`. */
+function localDayKey(value: unknown) {
+  if (value == null || value === "") return null;
+  const date = new Date(value as string | number);
+  if (Number.isNaN(date.getTime())) return null;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function parseDateRange(raw: string) {
+  const [from = "", to = ""] = raw.split("|");
+  return { from, to };
+}
+
+function matchesDateRange(value: unknown, raw: string) {
+  const { from, to } = parseDateRange(raw);
+  const day = localDayKey(value);
+  if (!day) return false;
+  return (!from || day >= from) && (!to || day <= to);
+}
+
+const MAX_FILTER_OPTIONS = 500;
+
+function filterOptions<T>(col: ErpTableColumn<T>, rows: T[]) {
+  if (col.filter === "date" || !col.value) return null;
+  const seen = new Set<string>();
+  for (const row of rows) {
+    const texts = col.filterText ? [col.filterText(row)].flat() : [col.value(row)];
+    for (const text of texts) {
+      if (typeof text !== "string") return null;
+      const trimmed = text.trim();
+      if (trimmed) seen.add(trimmed);
+    }
+    if (seen.size > MAX_FILTER_OPTIONS) return null;
+  }
+  if (seen.size === 0) return null;
+  return [...seen].sort((a, b) => a.localeCompare(b, "es", { numeric: true, sensitivity: "base" }));
+}
+
+function FilterCombobox({
+  label,
+  onChange,
+  options,
+  value,
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  options: string[] | undefined;
+  value: string;
+}) {
+  const listId = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const [open, setOpen] = useState(false);
+  const [highlight, setHighlight] = useState(-1);
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0, maxHeight: 240 });
+
+  const shown = useMemo(() => {
+    if (!options) return [];
+    const q = foldSearch(value.trim());
+    if (!q || options.some((o) => foldSearch(o) === q)) return options;
+    return options.filter((o) => foldSearch(o).includes(q));
+  }, [options, value]);
+  const listOpen = open && shown.length > 0;
+
+  useLayoutEffect(() => {
+    if (!listOpen) return;
+    const place = () => {
+      const rect = inputRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const width = Math.max(rect.width, 180);
+      const spaceBelow = window.innerHeight - rect.bottom - 8;
+      const spaceAbove = rect.top - 8;
+      const maxHeight = Math.min(240, Math.max(spaceBelow, spaceAbove, 120));
+      const above = spaceBelow < 140 && spaceAbove > spaceBelow;
+      setPos({
+        top: above ? rect.top - maxHeight - 4 : rect.bottom + 4,
+        left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)),
+        width,
+        maxHeight,
+      });
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [listOpen, shown.length]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: globalThis.MouseEvent) => {
+      const target = e.target as Node;
+      if (inputRef.current?.contains(target) || listRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  function pick(option: string) {
+    onChange(option);
+    setOpen(false);
+  }
+
+  return (
+    <div className="relative">
+      <input
+        aria-autocomplete={options ? "list" : undefined}
+        aria-controls={options ? listId : undefined}
+        aria-expanded={options ? listOpen : undefined}
+        aria-label={`Filtrar ${label}`}
+        autoComplete="off"
+        className={cn(filterInputClass, (options || value) && "pr-5")}
+        onChange={(e) => {
+          onChange(e.target.value);
+          setOpen(true);
+          setHighlight(-1);
+        }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (!options) return;
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setOpen(true);
+            setHighlight((i) => Math.min(i + 1, shown.length - 1));
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setHighlight((i) => Math.max(i - 1, 0));
+          } else if (e.key === "Enter" && listOpen && shown[highlight]) {
+            e.preventDefault();
+            pick(shown[highlight]);
+          } else if (e.key === "Escape") {
+            setOpen(false);
+          }
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+        placeholder="Filtrar"
+        ref={inputRef}
+        role={options ? "combobox" : undefined}
+        value={value}
+      />
+      {value ? (
+        <button
+          aria-label={`Limpiar filtro ${label}`}
+          className="absolute inset-y-0 right-1 flex items-center text-muted-foreground hover:text-foreground"
+          onClick={() => {
+            onChange("");
+            inputRef.current?.focus();
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          type="button"
+        >
+          <X className="size-3" />
+        </button>
+      ) : options ? (
+        <ChevronDown className="pointer-events-none absolute inset-y-0 right-1 my-auto size-3 text-muted-foreground" />
+      ) : null}
+      {listOpen && typeof document !== "undefined"
+        ? createPortal(
+            <ul
+              className="nm-scroll fixed z-[80] overflow-auto rounded-[var(--radius-md)] border border-border bg-card py-1 shadow-[var(--shadow-md)]"
+              id={listId}
+              ref={listRef}
+              role="listbox"
+              style={{ top: pos.top, left: pos.left, width: pos.width, maxHeight: pos.maxHeight }}
+            >
+              {shown.map((option, index) => {
+                const active = foldSearch(option) === foldSearch(value.trim());
+                return (
+                  <li key={option}>
+                    <button
+                      aria-selected={active}
+                      className={cn(
+                        "flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs hover:bg-muted",
+                        index === highlight && "bg-muted",
+                      )}
+                      onClick={() => pick(option)}
+                      onMouseEnter={() => setHighlight(index)}
+                      role="option"
+                      title={option}
+                      type="button"
+                    >
+                      <Check className={cn("size-3 shrink-0 text-led", active ? "opacity-100" : "opacity-0")} />
+                      <span className="min-w-0 truncate">{option}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>,
+            document.body,
+          )
+        : null}
+    </div>
+  );
+}
+
+function shortDate(iso: string) {
+  const [y, m, d] = iso.split("-");
+  return y && m && d ? `${d}/${m}/${y.slice(2)}` : iso;
+}
+
+function DateRangeFilter({
+  label,
+  onChange,
+  value,
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  value: string;
+}) {
+  const { from, to } = parseDateRange(value);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
+  useEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const rect = buttonRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const width = 240;
+      setPos({ top: rect.bottom + 4, left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)) });
+    };
+    place();
+    const onDoc = (e: globalThis.MouseEvent) => {
+      const target = e.target as Node;
+      if (buttonRef.current?.contains(target) || panelRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  function update(next: { from: string; to: string }) {
+    onChange(next.from || next.to ? `${next.from}|${next.to}` : "");
+  }
+
+  const summary =
+    from && to ? `${shortDate(from)}–${shortDate(to)}` : from ? `≥ ${shortDate(from)}` : to ? `≤ ${shortDate(to)}` : "";
+
+  return (
+    <>
+      <button
+        aria-label={`Filtrar ${label}`}
+        className={cn(filterInputClass, "inline-flex items-center gap-1 text-left", !summary && "text-muted-foreground/70")}
+        onClick={() => setOpen((v) => !v)}
+        onPointerDown={(e) => e.stopPropagation()}
+        ref={buttonRef}
+        title={summary || undefined}
+        type="button"
+      >
+        <CalendarDays className="size-3 shrink-0" />
+        <span className="truncate">{summary || "Fechas"}</span>
+      </button>
+      {open && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className="fixed z-[80] flex w-60 flex-col gap-2 rounded-[var(--radius-md)] border border-border bg-card p-3 text-xs shadow-[var(--shadow-md)]"
+              ref={panelRef}
+              style={{ top: pos.top, left: pos.left }}
+            >
+              <label className="flex flex-col gap-1">
+                <span className="text-muted-foreground">Desde</span>
+                <input
+                  className={filterInputClass}
+                  max={to || undefined}
+                  onChange={(e) => update({ from: e.target.value, to })}
+                  type="date"
+                  value={from}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-muted-foreground">Hasta</span>
+                <input
+                  className={filterInputClass}
+                  min={from || undefined}
+                  onChange={(e) => update({ from, to: e.target.value })}
+                  type="date"
+                  value={to}
+                />
+              </label>
+              {summary ? (
+                <Button onClick={() => update({ from: "", to: "" })} size="sm" type="button" variant="ghost">
+                  <X className="size-3.5" />
+                  Limpiar fechas
+                </Button>
+              ) : null}
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
+  );
 }
 
 function groupSpans<T>(cols: ErpTableColumn<T>[]) {
@@ -192,6 +518,15 @@ export function ErpDataTable<T>({
   const [query, setQuery] = useState("");
   const [colFilters, setColFilters] = useState<Record<string, string>>({});
   const [showFilters, setShowFilters] = useState(false);
+  const optionsById = useMemo(() => {
+    if (!showFilters) return new Map<string, string[]>();
+    const map = new Map<string, string[]>();
+    for (const col of columns) {
+      const options = filterOptions(col, rows);
+      if (options) map.set(col.id, options);
+    }
+    return map;
+  }, [columns, rows, showFilters]);
 
   useLayoutEffect(() => {
     function measure() {
@@ -238,6 +573,7 @@ export function ErpDataTable<T>({
       return activeCols.every(([id, raw]) => {
         const col = byId.get(id);
         if (!col?.value && !col?.filterText) return true;
+        if (col.filter === "date") return matchesDateRange(col.value?.(row), raw);
         return columnRowText(col, row).includes(foldSearch(raw.trim()));
       });
     });
@@ -425,15 +761,17 @@ export function ErpDataTable<T>({
                       style={{ top: headTops.filter }}
                       {...pinProps(col.id)}
                     >
-                      {col.value ? (
-                        <input
-                          aria-label={`Filtrar ${col.label}`}
-                          className={filterInputClass}
-                          onChange={(e) =>
-                            setColFilters((prev) => ({ ...prev, [col.id]: e.target.value }))
-                          }
-                          onPointerDown={(e) => e.stopPropagation()}
-                          placeholder="Filtrar"
+                      {col.filter === "date" ? (
+                        <DateRangeFilter
+                          label={col.label}
+                          onChange={(next) => setColFilters((prev) => ({ ...prev, [col.id]: next }))}
+                          value={colFilters[col.id] ?? ""}
+                        />
+                      ) : col.value || col.filterText ? (
+                        <FilterCombobox
+                          label={col.label}
+                          onChange={(next) => setColFilters((prev) => ({ ...prev, [col.id]: next }))}
+                          options={optionsById.get(col.id)}
                           value={colFilters[col.id] ?? ""}
                         />
                       ) : null}

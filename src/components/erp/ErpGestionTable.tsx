@@ -122,7 +122,7 @@ export function ErpGestionTable({ rows }: { rows: GestionOrderRow[] }) {
         value: (r) => r.year * 100 + r.month,
         cell: (r) => `${ERP_MONTHS[r.month] ?? r.month} ${r.year}`,
       },
-      { id: "issuedAt", label: "Fecha", value: (r) => dateSortValue(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
+      { id: "issuedAt", label: "Fecha", filter: "date", value: (r) => dateSortValue(r.issuedAt), cell: (r) => displayDate(r.issuedAt) },
       { id: "client", label: "Cliente", value: (r) => r.client, cell: (r) => r.client },
       { id: "product", label: "Producto", value: (r) => r.product, cell: (r) => r.product || "—" },
       {
