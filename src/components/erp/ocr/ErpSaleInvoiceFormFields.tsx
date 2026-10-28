@@ -35,6 +35,12 @@ export type SaleInvoiceCurrent = {
 };
 
 function draftFromCurrent(current: SaleInvoiceCurrent | null | undefined, now: string): OcrFormDraft {
+  const credit = (current?.docType ?? "").toUpperCase().startsWith("NC");
+  const net = (value: unknown) => {
+    const n = Number(value ?? 0);
+    const safe = Number.isFinite(n) ? n : 0;
+    return String(credit ? -Math.abs(safe) : safe);
+  };
   return {
     saleOrderId: current?.saleOrderId ?? "",
     vendorId: "",
@@ -48,8 +54,8 @@ function draftFromCurrent(current: SaleInvoiceCurrent | null | undefined, now: s
     docType: current?.docType ?? "A",
     pos: String(current?.pos ?? 1),
     number: current?.number != null ? String(current.number) : "",
-    amount: current ? erpInputNumber(current.amount) : "",
-    vat: current ? erpInputNumber(current.vat) : "",
+    amount: current ? net(current.amount) : "",
+    vat: current ? net(current.vat) : "",
     detail: current?.detail ?? "",
     collected: erpInputNumber(current?.collected),
     echeq: erpInputNumber(current?.echeq),

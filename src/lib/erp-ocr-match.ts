@@ -112,7 +112,8 @@ function partyForKind(extracted: OcrExtracted, kind: OcrKind): OcrParty {
 }
 
 function invoiceTotal(extracted: OcrExtracted) {
-  return extracted.total ?? (extracted.amount ?? 0) + (extracted.vat ?? 0);
+  const total = extracted.total ?? (extracted.amount ?? 0) + (extracted.vat ?? 0);
+  return extracted.isCreditNote ? Math.abs(total) : total;
 }
 
 function docLabel(docType: string | null, pos: number | null, number: number | null) {
@@ -176,7 +177,7 @@ export async function matchOcrExtracted(
               clientId: true,
               client: { select: { name: true } },
               items: { select: { element: true } },
-              invoices: { select: { amount: true, vat: true } },
+              invoices: { select: { amount: true, vat: true, docType: true } },
             },
           })
         : Promise.resolve([]),
@@ -473,9 +474,9 @@ export async function matchOcrExtracted(
     review.push(
       ...amountReview({
         docType: extracted.docType,
-        amount: extracted.amount,
-        vat: extracted.vat,
-        total: extracted.total,
+        amount: extracted.isCreditNote && extracted.amount != null ? Math.abs(extracted.amount) : extracted.amount,
+        vat: extracted.isCreditNote && extracted.vat != null ? Math.abs(extracted.vat) : extracted.vat,
+        total: extracted.isCreditNote && extracted.total != null ? Math.abs(extracted.total) : extracted.total,
         extras:
           (extracted.nonTaxable ?? 0) +
           (extracted.internalTax ?? 0) +

@@ -261,6 +261,49 @@ function invoiceRefs(raw: unknown): OcrInvoiceRef[] {
   return refs;
 }
 
+const CREDIT_MONEY_KEYS = [
+  "amount",
+  "vat",
+  "total",
+  "nonTaxable",
+  "internalTax",
+  "iibbCaba",
+  "iibbBsAs",
+  "vatWithholding",
+] as const;
+
+/** La nota de crédito a veces vuelve con el IVA en negativo y el neto en positivo. */
+function absoluteCreditMoney(extracted: OcrExtracted) {
+  if (!extracted.isCreditNote) return;
+  for (const key of CREDIT_MONEY_KEYS) {
+    const value = extracted[key];
+    if (value != null) extracted[key] = Math.abs(value);
+  }
+}
+
+function moneyParts(extracted: OcrExtracted) {
+  const perceptions =
+    extracted.kind === "purchase_invoice"
+      ? (extracted.iibbCaba ?? 0) + (extracted.iibbBsAs ?? 0) + (extracted.vatWithholding ?? 0)
+      : 0;
+  return (
+    (extracted.amount ?? 0) +
+    (extracted.vat ?? 0) +
+    (extracted.nonTaxable ?? 0) +
+    (extracted.internalTax ?? 0) +
+    perceptions
+  );
+}
+
+/** En venta no hay marca de NC: neto e IVA tienen que restar los dos. */
+function negateSaleCredit(extracted: OcrExtracted) {
+  if (!extracted.isCreditNote || extracted.kind !== "sale_invoice") return;
+  for (const key of ["amount", "vat", "total", "nonTaxable", "internalTax"] as const) {
+    const value = extracted[key];
+    if (value != null) extracted[key] = -Math.abs(value);
+  }
+}
+
 function parsePosNumber(raw: unknown): { pos: number | null; number: number | null } {
   const s = String(raw ?? "").trim();
   const pair = /(\d{1,5})\s*[-/]\s*(\d{1,8})/.exec(s);
@@ -315,15 +358,24 @@ export function parseOcrExtracted(raw: unknown, kindHint: OcrKind): OcrExtracted
           )
         : {},
   };
+  const totalWasTheSum =
+    extracted.isCreditNote &&
+    extracted.total != null &&
+    extracted.amount != null &&
+    Math.abs(moneyParts(extracted) - extracted.total) <= 1.5;
+  absoluteCreditMoney(extracted);
   if (extracted.amount == null && extracted.total != null) {
     extracted.amount = Math.max(0, extracted.total - (extracted.vat ?? 0) - (extracted.nonTaxable ?? 0));
   }
   if (extracted.total == null && extracted.amount != null) {
     extracted.total = extracted.amount + (extracted.vat ?? 0) + (extracted.nonTaxable ?? 0) + (extracted.internalTax ?? 0);
+  } else if (totalWasTheSum && extracted.amount != null) {
+    extracted.total = moneyParts(extracted);
   }
   if (kindHint === "sale_receipt" && extracted.balance == null && extracted.amount != null) {
     extracted.balance = 0;
   }
+  negateSaleCredit(extracted);
   return addDerivedWarnings(fixSwappedDates(extracted));
 }
 
@@ -412,6 +464,7 @@ Nuestra empresa suele figurar como ${ERP_ISSUER.legalName} / CUIT ${ERP_ISSUER.t
 Reglas:
 - Fechas exactamente como figuran impresas, en formato argentino DD/MM/AAAA (día primero). No las conviertas ni reordenes: 12/10/2026 es el 12 de octubre.
 - Importes como números (1234.56), no strings. Neto en amount, IVA en vat, total en total.
+- Nota de crédito: isCreditNote true y docType "NC". Importe, IVA, total y percepciones siempre positivos, sin signo menos.
 - El número de factura suele ser Punto-Número (00003-00000616 → pos 3, number 616).
 - docType: A, B, C, E o NC. Recibos de cobranza suelen ser X.
 - En un recibo, number es el número del recibo (Recibo N°). No uses el número de una factura que figure en el detalle. Si el recibo no tiene punto de venta, pos es null.

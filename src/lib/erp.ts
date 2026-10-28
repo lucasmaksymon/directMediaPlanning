@@ -344,7 +344,10 @@ export function displayDate(d: Date | string | null | undefined) {
 
 /** Importe que cubre la orden: las facturas suman y las notas de crédito restan. */
 export function invoiceCoverAmount(inv: { amount: unknown; vat: unknown; isCreditNote?: boolean }) {
-  const total = Number(inv.amount ?? 0) + Number(inv.vat ?? 0);
+  const amount = Number(inv.amount ?? 0);
+  const vat = Number(inv.vat ?? 0);
+  // La NC a veces quedó con el IVA en negativo y el neto en positivo: se toma el valor absoluto.
+  const total = inv.isCreditNote ? Math.abs(amount) + Math.abs(vat) : amount + vat;
   return inv.isCreditNote ? -total : total;
 }
 
@@ -352,15 +355,20 @@ export function shouldCloseOrder(invoicedTotal: number, orderAmount: number) {
   return invoicedTotal >= orderAmount - 0.009;
 }
 
-export function saleOrderInvoiceCover(invoices: Array<{ amount: unknown; vat: unknown }>): {
+export function saleOrderInvoiceCover(
+  invoices: Array<{ amount: unknown; vat: unknown; docType?: string | null }>,
+): {
   amount: number;
   vat: number;
 } {
   let amount = 0;
   let vat = 0;
   for (const inv of invoices) {
-    amount += Number(inv.amount ?? 0);
-    vat += Number(inv.vat ?? 0);
+    const net = Number(inv.amount ?? 0);
+    const tax = Number(inv.vat ?? 0);
+    const credit = (inv.docType ?? "").toUpperCase().startsWith("NC");
+    amount += credit ? -Math.abs(net) : net;
+    vat += credit ? -Math.abs(tax) : tax;
   }
   return { amount, vat };
 }
@@ -467,8 +475,12 @@ export function erpPurchaseInvoiceTotal(inv: {
   iibbBsAs?: number | { toString(): string } | null;
   internalTax?: number | { toString(): string } | null;
   nonTaxable?: number | { toString(): string } | null;
+  isCreditNote?: boolean;
 }) {
-  const n = (v: number | { toString(): string } | null | undefined) => Number(v ?? 0);
+  const n = (v: number | { toString(): string } | null | undefined) => {
+    const value = Number(v ?? 0);
+    return inv.isCreditNote ? Math.abs(value) : value;
+  };
   return (
     n(inv.amount) +
     n(inv.vat) +

@@ -33,7 +33,14 @@ export type PurchaseInvoiceCurrent = {
   attachmentUrl?: string | null;
 };
 
+function creditInput(value: unknown, credit: boolean) {
+  const n = Number(value ?? 0);
+  if (!Number.isFinite(n)) return "0";
+  return String(credit ? Math.abs(n) : n);
+}
+
 function draftFromCurrent(current: PurchaseInvoiceCurrent | null | undefined, now: string): OcrFormDraft {
+  const credit = Boolean(current?.isCreditNote);
   return {
     saleOrderId: "",
     vendorId: current?.vendorId ?? "",
@@ -47,8 +54,8 @@ function draftFromCurrent(current: PurchaseInvoiceCurrent | null | undefined, no
     docType: current?.docType ?? "A",
     pos: String(current?.pos ?? 1),
     number: current?.number != null ? String(current.number) : "",
-    amount: erpInputNumber(current?.amount),
-    vat: erpInputNumber(current?.vat),
+    amount: creditInput(current?.amount, credit),
+    vat: creditInput(current?.vat, credit),
     detail: "",
     collected: "0",
     echeq: "0",
@@ -57,11 +64,11 @@ function draftFromCurrent(current: PurchaseInvoiceCurrent | null | undefined, no
     retGan: "0",
     retSuss: "0",
     retIibb: "0",
-    vatWithholding: erpInputNumber(current?.vatWithholding),
-    iibbCaba: erpInputNumber(current?.iibbCaba),
-    iibbBsAs: erpInputNumber(current?.iibbBsAs),
-    internalTax: erpInputNumber(current?.internalTax),
-    nonTaxable: erpInputNumber(current?.nonTaxable),
+    vatWithholding: creditInput(current?.vatWithholding, credit),
+    iibbCaba: creditInput(current?.iibbCaba, credit),
+    iibbBsAs: creditInput(current?.iibbBsAs, credit),
+    internalTax: creditInput(current?.internalTax, credit),
+    nonTaxable: creditInput(current?.nonTaxable, credit),
     isCreditNote: current?.isCreditNote ? "1" : "0",
     diegoFee: erpInputNumber(current?.diegoFee),
     balance: "0",

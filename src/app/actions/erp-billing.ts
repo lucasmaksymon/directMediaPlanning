@@ -149,6 +149,12 @@ async function resolveDueAt(
   return parseDateField(rawDue) ?? new Date(issuedAt.getTime() + paymentDays * 86400000);
 }
 
+/** En venta la NC no tiene marca: neto e IVA se guardan negativos para que resten. */
+function saleCreditMoney(docType: string, amount: number, vat: number) {
+  if (!docType.startsWith("NC")) return { amount, vat };
+  return { amount: -Math.abs(amount), vat: -Math.abs(vat) };
+}
+
 export async function createErpSaleInvoice(formData: FormData): Promise<Result> {
   try {
     await requireAdministrationSession();
@@ -168,19 +174,19 @@ export async function createErpSaleInvoice(formData: FormData): Promise<Result> 
     });
     const issuedAt = parseDateField(formData.get("issuedAt"));
     if (!issuedAt) throw new Error("Indicá la fecha.");
-    const amount = parseMoney(formData.get("amount"));
-    const vat = parseMoney(formData.get("vat"));
+    const docType = requiredString(formData.get("docType"), "el tipo").toUpperCase();
+    const signed = saleCreditMoney(docType, parseMoney(formData.get("amount")), parseMoney(formData.get("vat")));
     const invoice = await prisma.erpSaleInvoice.create({
       data: {
         client: { connect: { id: order.clientId } },
         saleOrder: { connect: { id: saleOrderId } },
         issuedAt,
         dueAt: await resolveDueAt(issuedAt, order.client.company.paymentDays, formData.get("dueAt")),
-        docType: requiredString(formData.get("docType"), "el tipo").toUpperCase(),
+        docType,
         pos: parseIntField(formData.get("pos")),
         number: parseIntField(formData.get("number")),
-        amount,
-        vat,
+        amount: signed.amount,
+        vat: signed.vat,
         legalName:
           String(formData.get("legalName") ?? "").trim() ||
           order.client.legalName?.trim() ||
@@ -231,18 +237,18 @@ export async function updateErpSaleInvoice(formData: FormData): Promise<Result> 
     });
     const issuedAt = parseDateField(formData.get("issuedAt"));
     if (!issuedAt) throw new Error("Indicá la fecha.");
-    const amount = parseMoney(formData.get("amount"));
-    const vat = parseMoney(formData.get("vat"));
+    const docType = requiredString(formData.get("docType"), "el tipo").toUpperCase();
+    const signed = saleCreditMoney(docType, parseMoney(formData.get("amount")), parseMoney(formData.get("vat")));
     await prisma.erpSaleInvoice.update({
       where: { id },
       data: {
         client: { connect: { id: order.clientId } },
         saleOrder: { connect: { id: saleOrderId } },
-        amount,
-        vat,
+        amount: signed.amount,
+        vat: signed.vat,
         issuedAt,
         dueAt: await resolveDueAt(issuedAt, order.client.company.paymentDays, formData.get("dueAt")),
-        docType: requiredString(formData.get("docType"), "el tipo").toUpperCase(),
+        docType,
         pos: parseIntField(formData.get("pos")),
         number: parseIntField(formData.get("number")),
         legalName:
@@ -320,6 +326,11 @@ async function purchaseInvoicePayload(formData: FormData) {
   if (orderId && !purchase && !production) throw new Error("No encontramos esa orden.");
 
   const docType = requiredString(formData.get("docType"), "el tipo").toUpperCase();
+  const isCreditNote = String(formData.get("isCreditNote") ?? "") === "1" || docType.startsWith("NC");
+  const money = (raw: FormDataEntryValue | null) => {
+    const n = parseMoney(raw);
+    return isCreditNote ? Math.abs(n) : n;
+  };
 
   return {
     vendor,
@@ -333,15 +344,15 @@ async function purchaseInvoicePayload(formData: FormData) {
       docType,
       pos: parseIntField(formData.get("pos")),
       number: parseIntField(formData.get("number")),
-      amount: parseMoney(formData.get("amount")),
-      vat: parseMoney(formData.get("vat")),
-      vatWithholding: parseMoney(formData.get("vatWithholding")),
-      iibbCaba: parseMoney(formData.get("iibbCaba")),
-      iibbBsAs: parseMoney(formData.get("iibbBsAs")),
-      internalTax: parseMoney(formData.get("internalTax")),
-      nonTaxable: parseMoney(formData.get("nonTaxable")),
+      amount: money(formData.get("amount")),
+      vat: money(formData.get("vat")),
+      vatWithholding: money(formData.get("vatWithholding")),
+      iibbCaba: money(formData.get("iibbCaba")),
+      iibbBsAs: money(formData.get("iibbBsAs")),
+      internalTax: money(formData.get("internalTax")),
+      nonTaxable: money(formData.get("nonTaxable")),
       isVatPurchase,
-      isCreditNote: String(formData.get("isCreditNote") ?? "") === "1" || docType.startsWith("NC"),
+      isCreditNote,
       commission: parseMoney(formData.get("commission")),
       diegoFee: parseMoney(formData.get("diegoFee")),
       payStatus: parseIntField(formData.get("payStatus"), ERP_SETTLE.pending),
@@ -636,6 +647,7 @@ async function paymentOrderAmount(
       iibbBsAs: true,
       internalTax: true,
       nonTaxable: true,
+      isCreditNote: true,
     },
   });
   return invoices.reduce((sum, inv) => sum + erpPurchaseInvoiceTotal(inv), 0);

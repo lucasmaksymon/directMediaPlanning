@@ -70,6 +70,22 @@ describe("invoiceCoverAmount", () => {
   it("resta la nota de crédito", () => {
     expect(invoiceCoverAmount({ amount: 10, vat: 2.1, isCreditNote: true })).toBe(-12.1);
   });
+
+  it("resta neto e IVA aunque el IVA haya quedado negativo", () => {
+    expect(invoiceCoverAmount({ amount: 100, vat: -21, isCreditNote: true })).toBe(-121);
+  });
+
+  it("en venta la NC resta aunque solo el IVA esté negativo", () => {
+    const invoiced = saleOrderInvoiceCover([
+      { amount: 100, vat: 21, docType: "A" },
+      { amount: 10, vat: -2, docType: "NC" },
+    ]);
+    expect(invoiced).toEqual({ amount: 90, vat: 19 });
+  });
+
+  it("resta aunque neto e IVA ya estén negativos", () => {
+    expect(invoiceCoverAmount({ amount: -100, vat: -21, isCreditNote: true })).toBe(-121);
+  });
 });
 
 describe("nextAutoOrderEstado con NC de confidencial", () => {

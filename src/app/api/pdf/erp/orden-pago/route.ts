@@ -40,6 +40,7 @@ export async function GET(req: Request) {
               iibbBsAs: true,
               internalTax: true,
               nonTaxable: true,
+              isCreditNote: true,
             },
           },
         },

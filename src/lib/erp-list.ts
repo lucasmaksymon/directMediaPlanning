@@ -124,7 +124,7 @@ export function listSaleOrdersForPick() {
 
 const saleInvoicePickSelect = {
   ...salePickSelect,
-  invoices: { select: { amount: true, vat: true } },
+  invoices: { select: { amount: true, vat: true, docType: true } },
 } as const;
 
 /** O.P. con saldo: se puede seguir facturando. Al cubrir el total, desaparece. */

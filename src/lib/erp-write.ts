@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { ERP_ORDER, invoiceCoverAmount, nextAutoOrderEstado, requiredString } from "@/lib/erp";
+import { ERP_ORDER, invoiceCoverAmount, nextAutoOrderEstado, requiredString, saleOrderInvoiceCover } from "@/lib/erp";
 
 export type ErpResult = { ok: true } | { ok: false; error: string };
 
@@ -23,17 +23,18 @@ export function requiredId(raw: FormDataEntryValue | string | null | undefined, 
 }
 
 export async function syncSaleOrderEstado(saleOrderId: string) {
-  const [order, agg] = await Promise.all([
+  const [order, invoices] = await Promise.all([
     prisma.erpSaleOrder.findUniqueOrThrow({
       where: { id: saleOrderId },
       select: { amount: true, estado: true, cashAmount: true },
     }),
-    prisma.erpSaleInvoice.aggregate({
+    prisma.erpSaleInvoice.findMany({
       where: { saleOrderId },
-      _sum: { amount: true, vat: true },
+      select: { amount: true, vat: true, docType: true },
     }),
   ]);
-  const invoiced = Number(agg._sum.amount ?? 0) + Number(agg._sum.vat ?? 0);
+  const covered = saleOrderInvoiceCover(invoices);
+  const invoiced = covered.amount + covered.vat;
   const estado = nextAutoOrderEstado(invoiced + Number(order.cashAmount), Number(order.amount), order.estado);
   if (estado !== order.estado) {
     await prisma.erpSaleOrder.update({ where: { id: saleOrderId }, data: { estado } });

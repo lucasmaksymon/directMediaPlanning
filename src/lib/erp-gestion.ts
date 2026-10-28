@@ -505,7 +505,7 @@ export async function loadOrdersToInvoice() {
     orderBy: [{ year: "asc" }, { month: "asc" }, { number: "asc" }],
     include: {
       client: { select: { name: true } },
-      invoices: { select: { amount: true, vat: true } },
+      invoices: { select: { amount: true, vat: true, docType: true } },
     },
   });
   return orders
