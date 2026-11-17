@@ -164,7 +164,7 @@ export async function loadBackofficeDashboard(): Promise<BackofficeDashboard> {
 
   // Una ida a la base por consulta, todas en paralelo: nada encadenado ni escrituras.
   try {
-    const [totals, receivables, payables, toInvoice, cheques, campaigns, recentOrders] =
+    const [totals, receivables, pendingPayables, toInvoice, cheques, campaigns, recentOrders] =
       await Promise.all([
         loadMonthlyOrderTotals(month, year),
         loadPendingReceivables({ reconcile: false }),
@@ -202,6 +202,10 @@ export async function loadBackofficeDashboard(): Promise<BackofficeDashboard> {
 
     const { venta, compra, topClients, previous } = totals;
     const ganancia = venta - compra;
+
+    // Las facturas de compra IVA vencidas no se muestran en Inicio (ni en la agenda ni en
+    // "Por pagar"); siguen apareciendo en Pendientes y en Compra IVA.
+    const payables = pendingPayables.filter((p) => !(p.isVatPurchase && p.overdue));
 
     const agenda: DashboardDue[] = [
       ...payables.map((p) => ({
