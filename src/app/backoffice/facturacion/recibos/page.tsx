@@ -36,6 +36,8 @@ export default async function ErpRecibosPage({
       where: {
         OR: [
           { collectStatus: ERP_COLLECT.pending },
+          // Cobradas a mano sin recibo: si no, nunca se les podría asociar el recibo real.
+          { receiptLinks: { none: {} } },
           ...(edit ? [{ receiptLinks: { some: { receiptId: edit } } }] : []),
         ],
       },
@@ -44,6 +46,8 @@ export default async function ErpRecibosPage({
         id: true,
         amount: true,
         vat: true,
+        collectStatus: true,
+        _count: { select: { receiptLinks: true } },
         docType: true,
         pos: true,
         number: true,
@@ -55,6 +59,12 @@ export default async function ErpRecibosPage({
   ]);
   const current = receipts.find((r) => r.id === edit);
   const selectedInvoices = new Set(current?.invoices.map((i) => i.invoiceId) ?? []);
+  const invoiceOptions = invoices.map((f) => ({
+    value: f.id,
+    label:
+      `${f.client.name} · ${erpInvoiceRef(f.docType, f.pos, f.number)} · ${money(Number(f.amount) + Number(f.vat))}` +
+      (f.collectStatus === ERP_COLLECT.collected && f._count.receiptLinks === 0 ? " · cobrada sin recibo" : ""),
+  }));
 
   return (
     <div className={cn(adminPage, "gap-4")}>
@@ -103,19 +113,13 @@ export default async function ErpRecibosPage({
                   }
                 : null
             }
-            invoices={invoices.map((f) => ({
-              value: f.id,
-              label: `${f.client.name} · ${erpInvoiceRef(f.docType, f.pos, f.number)} · ${money(Number(f.amount) + Number(f.vat))}`,
-            }))}
+            invoices={invoiceOptions}
             now={isoDate(now)}
           />
         </ErpForm>
         <ErpOcrImportClient
           clients={clients.map((c) => ({ value: c.id, label: c.name }))}
-          invoices={invoices.map((f) => ({
-            value: f.id,
-            label: `${f.client.name} · ${erpInvoiceRef(f.docType, f.pos, f.number)} · ${money(Number(f.amount) + Number(f.vat))}`,
-          }))}
+          invoices={invoiceOptions}
           kind="sale_receipt"
         />
 
