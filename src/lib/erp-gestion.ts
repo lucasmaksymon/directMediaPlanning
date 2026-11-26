@@ -141,6 +141,7 @@ const purchaseInvoiceSelect = {
   internalTax: true,
   nonTaxable: true,
   isVatPurchase: true,
+  isCreditNote: true,
   payStatus: true,
 } as const;
 
