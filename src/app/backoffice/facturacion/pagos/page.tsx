@@ -53,6 +53,7 @@ export default async function ErpOrdenesPagoPage({
                 iibbBsAs: true,
                 internalTax: true,
                 nonTaxable: true,
+                isCreditNote: true,
               },
             },
           },
