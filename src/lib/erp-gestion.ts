@@ -264,7 +264,8 @@ export async function loadGestionOrders(filter: GestionFilter): Promise<GestionO
         hasSupplierInvoices = true;
         if (!inv.isVatPurchase && !seenPurchase.has(inv.id)) {
           seenPurchase.add(inv.id);
-          percepciones += n(inv.vatWithholding) + n(inv.iibbCaba) + n(inv.iibbBsAs);
+          const perc = n(inv.vatWithholding) + n(inv.iibbCaba) + n(inv.iibbBsAs);
+          percepciones += inv.isCreditNote ? -Math.abs(perc) : perc;
         }
         const paid = inv.payStatus === ERP_SETTLE.paid;
         if (!paid) anyPending = true;
@@ -275,7 +276,7 @@ export async function loadGestionOrders(filter: GestionFilter): Promise<GestionO
           party: po.vendor.name,
           doc: erpInvoiceRef(inv.docType, inv.pos, inv.number),
           issuedAt: inv.issuedAt,
-          net: n(inv.amount),
+          net: inv.isCreditNote ? -Math.abs(n(inv.amount)) : n(inv.amount),
           total: erpPurchaseInvoiceTotal(inv),
           status: paid ? "Pagado" : "Pendiente",
           href: `/backoffice/facturacion/${inv.isVatPurchase ? "iva" : "compra"}?edit=${inv.id}`,

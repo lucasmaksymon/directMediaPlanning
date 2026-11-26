@@ -7,6 +7,7 @@ import {
   erpSettlementLabel,
   fixSwappedDueIso,
   fixSwappedIssuedIso,
+  erpPurchaseInvoiceTotal,
   invoiceCoverAmount,
   isSaleOrderOpen,
   nextAutoOrderEstado,
@@ -15,6 +16,45 @@ import {
   saleOrderRemaining,
   vatPurchaseCommission,
 } from "./erp";
+
+describe("erpPurchaseInvoiceTotal", () => {
+  it("suma neto, IVA y percepciones", () => {
+    expect(
+      erpPurchaseInvoiceTotal({
+        amount: 1000,
+        vat: 210,
+        vatWithholding: 50,
+        iibbCaba: 20,
+        iibbBsAs: 10,
+        internalTax: 5,
+        nonTaxable: 15,
+      }),
+    ).toBe(1310);
+  });
+
+  it("deja la NC en negativo", () => {
+    expect(
+      erpPurchaseInvoiceTotal({
+        amount: 1000,
+        vat: 210,
+        vatWithholding: 50,
+        iibbCaba: 0,
+        iibbBsAs: 0,
+        isCreditNote: true,
+      }),
+    ).toBe(-1260);
+  });
+
+  it("normaliza signos mezclados en la NC", () => {
+    expect(
+      erpPurchaseInvoiceTotal({
+        amount: 1000,
+        vat: -210,
+        isCreditNote: true,
+      }),
+    ).toBe(-1210);
+  });
+});
 
 describe("vatPurchaseCommission", () => {
   it("usa solo el neto, sin IVA", () => {

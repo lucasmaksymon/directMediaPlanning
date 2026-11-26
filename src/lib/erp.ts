@@ -481,13 +481,14 @@ export function erpPurchaseInvoiceTotal(inv: {
     const value = Number(v ?? 0);
     return inv.isCreditNote ? Math.abs(value) : value;
   };
-  return (
+  const total =
     n(inv.amount) +
     n(inv.vat) +
     n(inv.vatWithholding) +
     n(inv.iibbCaba) +
     n(inv.iibbBsAs) +
     n(inv.internalTax) +
-    n(inv.nonTaxable)
-  );
+    n(inv.nonTaxable);
+  // Las NC se guardan en positivo; al mostrar/sumar tienen que restar.
+  return inv.isCreditNote ? -total : total;
 }

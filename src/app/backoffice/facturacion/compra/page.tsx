@@ -133,7 +133,13 @@ export default async function ErpFacturasCompraPage({
               vendor: f.vendor.name,
               issuedAt: f.issuedAt,
               total: erpPurchaseInvoiceTotal(f),
-              retenciones: Number(f.vatWithholding) + Number(f.iibbCaba) + Number(f.iibbBsAs),
+              retenciones: (() => {
+                const r =
+                  Math.abs(Number(f.vatWithholding)) +
+                  Math.abs(Number(f.iibbCaba)) +
+                  Math.abs(Number(f.iibbBsAs));
+                return f.isCreditNote ? -r : r;
+              })(),
               payStatus: f.payStatus,
               isCreditNote: f.isCreditNote,
             }))}
